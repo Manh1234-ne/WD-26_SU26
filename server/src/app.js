@@ -13,4 +13,4 @@ app.get("/", (req, res) => {
   res.send("Cinema Booking API Running");
 });
 
-module.exports = app;
+export default app;
