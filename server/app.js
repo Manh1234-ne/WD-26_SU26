@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import movieRoutes from "./src/routes/movieRoutes.js";
+import router from "./src/routes/index.js";
+
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ app.get("/", (req, res) => {
   res.send("Cinema backend is running...");
 });
 
-app.use("/api/movies", movieRoutes);
+app.use("/api", router)
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/CINEMA";
