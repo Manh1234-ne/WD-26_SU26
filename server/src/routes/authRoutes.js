@@ -8,5 +8,5 @@ routerAuth.post("/signUp", signUP);
 routerAuth.post("/signIn", signIN);
 routerAuth.post("/signOut", signOut);
 routerAuth.post("/google_signIn", googleSignIn)
-routerAuth.patch("/change_password", protect, changePassword);
+routerAuth.post("/change_password", protect, changePassword);
 export default routerAuth

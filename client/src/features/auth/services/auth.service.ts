@@ -12,7 +12,7 @@ export async function register(payload: RegisterPayload) {
 }
 
 export async function changePassword(payload: ChangePassword) {
-  const response = await api.put<AuthResponse>('/auth/change-password', payload)
+  const response = await api.post<AuthResponse>('/auth/change-password', payload)
   return response.data
 }
 
