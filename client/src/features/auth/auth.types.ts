@@ -28,3 +28,8 @@ export type AuthResponse = {
   token: string
   user: AuthUser
 }
+export type ChangePassword = {
+  currentPassword: string
+  newPassword: string,
+  confirmPassword: string
+}

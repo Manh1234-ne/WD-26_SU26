@@ -24,7 +24,7 @@ function RegisterForm() {
         try {
             const payload: RegisterPayload = { email, password, fullName, phone }
             await register(payload)
-            navigate('/login')
+            navigate('/signIn')
         } catch {
             setError('Đăng ký thất bại. Vui lòng thử lại.')
         } finally {
@@ -93,7 +93,7 @@ function RegisterForm() {
                 {isSubmitting ? 'Đang xử lý...' : 'Đăng ký'}
             </button>
             <p className="auth-switch">
-                Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link>
+                Đã có tài khoản? <Link to="/signIn">Đăng nhập ngay</Link>
             </p>
         </form>
     )

@@ -9,6 +9,7 @@ import './App.css'
 import LoginForm from './features/auth/components/LoginForm'
 import RegisterForm from './features/auth/components/RegisterForm'
 import AuthLayout from './layouts/AuthLayout'
+import ChangePasswordForm from './features/auth/components/ChangePasswordForm'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route element={<AuthLayout />}>
           <Route path="signIn" element={<LoginForm />} />
           <Route path="signUp" element={<RegisterForm />} />
+          <Route path="forgot-password" element={<ChangePasswordForm />} />
         </Route>
         <Route element={<ClientLayout />}>
           <Route index element={<Home />} />
