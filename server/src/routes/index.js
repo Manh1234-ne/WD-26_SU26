@@ -1,16 +1,7 @@
-import express from "express"
-import routerMovie from "./movieRoutes.js";
-import routerAuth from "./authRoutes.js";
-import routerCinema from "./cinemaRoutes.js";
-const router = express.Router();
-
-router.use("/movies", routerMovie);
-router.use("/auth", routerAuth);
-router.use('/cinemas', routerCinema);
-export default router
 import express from "express";
 import movieRoutes from "./movieRoutes.js";
 import authRoutes from "./authRoutes.js";
+import cinemaRoutes from "./cinemaRoutes.js";
 import categoryRoutes from "./categoryRoutes.js";
 
 const router = express.Router();
@@ -19,6 +10,7 @@ const router = express.Router();
 router.use("/auth", authRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/movies", movieRoutes);
+router.use("/cinemas", cinemaRoutes);
 
 // Health check - Kiểm tra API còn chạy không
 router.get("/health", (req, res) => {
@@ -30,3 +22,4 @@ router.get("/health", (req, res) => {
 });
 
 export default router;
+
