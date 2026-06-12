@@ -135,11 +135,11 @@ function ClientLayout() {
         </nav>
 
         <div style={styles.navRight}>
-          {/* <BgColorsOutlined style={styles.themeIcon} /> */}
-          {/* <button style={styles.cartBtn}>
+          <BgColorsOutlined style={styles.themeIcon} />
+          <button style={styles.cartBtn}>
             <ShoppingCartOutlined />
             Mua Vé
-          </button> */}
+          </button>
           <NavLink to="/signIn" style={styles.signInBtn}>
             Đăng nhập
           </NavLink>
