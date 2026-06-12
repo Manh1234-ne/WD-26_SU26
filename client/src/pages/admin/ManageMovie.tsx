@@ -145,7 +145,7 @@ function ManageMovie() {
       setEditingId(null)
       await loadMovies()
     } catch {
-      setError('Luu phim that bai. Kiem tra cac truong bat buoc.')
+      setError('Lưu phim thất bại. Kiểm tra các trường bắt buộc.')
     } finally {
       setIsSaving(false)
     }
@@ -159,7 +159,7 @@ function ManageMovie() {
   }
 
   const handleDelete = async (movie: Movie) => {
-    const confirmed = window.confirm(`Xoa phim "${movie.title}"?`)
+    const confirmed = window.confirm(`xóa"${movie.title}"?`)
 
     if (!confirmed) {
       return
@@ -167,10 +167,10 @@ function ManageMovie() {
 
     try {
       await deleteMovie(movie._id)
-      setMessage('Da xoa phim.')
+      setMessage('Đã xóa phim.')
       await loadMovies()
     } catch {
-      setError('Xoa phim that bai.')
+      setError('Xóa phim thất bại.')
     }
   }
 
@@ -184,7 +184,7 @@ function ManageMovie() {
         <div className="panel-heading">
           <div>
             <p className="eyebrow">API /movies</p>
-            <h2>{editingId ? 'Cap nhat phim' : 'Them phim moi'}</h2>
+            <h2>{editingId ? 'cập nhật' : 'Thêm phim'}</h2>
           </div>
           {editingId && (
             <button
@@ -205,7 +205,7 @@ function ManageMovie() {
 
         <form className="movie-form" onSubmit={handleSubmit}>
           <label>
-            Ten phim
+            Tên phim
             <input
               required
               value={form.title}
@@ -213,14 +213,14 @@ function ManageMovie() {
             />
           </label>
           <label>
-            Ten goc
+            Tên goc
             <input
               value={form.originalTitle}
               onChange={(event) => updateField('originalTitle', event.target.value)}
             />
           </label>
           <label className="wide">
-            Mo ta
+            Mô tả
             <textarea
               required
               rows={4}
@@ -229,7 +229,7 @@ function ManageMovie() {
             />
           </label>
           <label>
-            The loai
+            Thể loại
             <input
               placeholder="Action, Drama"
               value={form.genres}
@@ -237,7 +237,7 @@ function ManageMovie() {
             />
           </label>
           <label>
-            Dien vien
+            Diễn viên
             <input
               placeholder="Ten 1, Ten 2"
               value={form.cast}
@@ -245,7 +245,7 @@ function ManageMovie() {
             />
           </label>
           <label>
-            Thoi luong
+            Thời lượng
             <input
               min={1}
               required
@@ -255,7 +255,7 @@ function ManageMovie() {
             />
           </label>
           <label>
-            Ngay chieu
+            Ngày chiếu
             <input
               required
               type="date"
@@ -264,7 +264,7 @@ function ManageMovie() {
             />
           </label>
           <label>
-            Phan loai
+            Phân loại
             <select
               value={form.ageRating}
               onChange={(event) => updateField('ageRating', event.target.value as MovieForm['ageRating'])}
@@ -277,7 +277,7 @@ function ManageMovie() {
             </select>
           </label>
           <label>
-            Trang thai
+            Trạng thái
             <select
               value={form.status}
               onChange={(event) => updateField('status', event.target.value as MovieStatus)}
@@ -288,21 +288,21 @@ function ManageMovie() {
             </select>
           </label>
           <label>
-            Ngon ngu
+            Ngôn ngư
             <input
               value={form.language}
               onChange={(event) => updateField('language', event.target.value)}
             />
           </label>
           <label>
-            Dao dien
+            Đạo diễn
             <input
               value={form.director}
               onChange={(event) => updateField('director', event.target.value)}
             />
           </label>
           <label>
-            Diem TB
+            Điểm trung bình
             <input
               max={5}
               min={0}
@@ -339,10 +339,10 @@ function ManageMovie() {
               type="checkbox"
               onChange={(event) => updateField('isActive', event.target.checked)}
             />
-            Dang hien thi
+            Đang hiển thị
           </label>
           <button className="primary-button form-submit" disabled={isSaving} type="submit">
-            {isSaving ? 'Dang luu...' : editingId ? 'Luu thay doi' : 'Them phim'}
+            {isSaving ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Thêm phim'}
           </button>
         </form>
       </div>
@@ -350,23 +350,23 @@ function ManageMovie() {
       <div className="admin-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Danh sach</p>
+            <p className="eyebrow">Danh sách</p>
             <h2>Kho phim</h2>
           </div>
           <button className="ghost-button compact" onClick={loadMovies} type="button">
-            Tai lai
+            tải lại
           </button>
         </div>
-        {isLoading && <p className="state-text">Dang tai phim...</p>}
+        {isLoading && <p className="state-text">Đang tải...</p>}
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Phim</th>
-                <th>Trang thai</th>
-                <th>Ngay chieu</th>
-                <th>Hien thi</th>
-                <th>Thao tac</th>
+                <th>Trạng thái</th>
+                <th>Ngày chiếu</th>
+                <th>Hiển thị</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -378,14 +378,14 @@ function ManageMovie() {
                   </td>
                   <td>{movie.status}</td>
                   <td>{new Date(movie.releaseDate).toLocaleDateString('vi-VN')}</td>
-                  <td>{movie.isActive === false ? 'An' : 'Hien'}</td>
+                  <td>{movie.isActive === false ? 'Ẩn' : 'Hiện'}</td>
                   <td>
                     <div className="table-actions">
                       <button className="text-button" onClick={() => handleEdit(movie)} type="button">
-                        Sua
+                        sửa
                       </button>
                       <button className="danger-button" onClick={() => handleDelete(movie)} type="button">
-                        Xoa
+                        xóa
                       </button>
                     </div>
                   </td>
@@ -393,7 +393,7 @@ function ManageMovie() {
               ))}
               {!isLoading && sortedMovies.length === 0 && (
                 <tr>
-                  <td colSpan={5}>Chua co phim nao.</td>
+                  <td colSpan={5}>chưa có phim nào</td>
                 </tr>
               )}
             </tbody>
