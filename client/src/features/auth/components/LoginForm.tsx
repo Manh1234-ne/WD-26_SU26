@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../auth.store'
 import { login } from '../services/auth.service'
+import { toast } from 'react-toastify'
 
 function LoginForm() {
   const navigate = useNavigate()
@@ -21,6 +22,7 @@ function LoginForm() {
       const data = await login({ email, password })
       setAuth(data.token, data.user)
       navigate(data.user.role === 'admin' ? '/admin' : '/')
+      toast.success('đăng nhập thành công');
     } catch {
       setError('Đăng nhập thất bại. Kiểm tra email hoặc mật khẩu.')
     } finally {
@@ -43,6 +45,7 @@ function LoginForm() {
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          placeholder='..........'
         />
       </label>
       <label>
@@ -53,13 +56,14 @@ function LoginForm() {
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          placeholder='..........'
         />
       </label>
       <button className="primary-button" disabled={isSubmitting} type="submit">
         {isSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}
       </button>
       <p className="auth-switch">
-        chưa có tài khoản <Link to="/register">Đăng ký ngay</Link>
+        chưa có tài khoản <Link to="/signUp">Đăng ký ngay</Link>
       </p>
     </form>
   )

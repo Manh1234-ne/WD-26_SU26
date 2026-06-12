@@ -106,6 +106,20 @@ function ClientLayout() {
       padding: '40px 24px',
       color: '#262626',
     },
+    adminBtn: {
+      color: '#ff4757',
+      border: '2px solid #ff4757',
+      borderRadius: '6px',
+      padding: '6px 16px',
+      fontWeight: 600,
+      cursor: 'pointer',
+      background: 'transparent',
+      fontSize: '14px',
+      textDecoration: 'none',
+      display: 'flex',
+      alignItems: 'center',
+    }
+
   }
   const nav = useNavigate();
   const {
@@ -154,9 +168,10 @@ function ClientLayout() {
 
         <div style={styles.navRight}>
           {user?.role == "admin" && (
-            <NavLink to="/admin" style={styles.navLink}>
+            <NavLink to="/admin" style={styles.adminBtn}>
               <span>Kênh quản trị</span>
             </NavLink>
+
           )}
           {isAuthenticated &&
             <>

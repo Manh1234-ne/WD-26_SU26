@@ -14,16 +14,17 @@ function Dashboard() {
         setMovies(data)
         setError('')
       })
-      .catch(() => setError('Khong the lay du lieu dashboard.'))
+      .catch(() => setError('Không thể lấy dữ liệu từ Dashboard'))
       .finally(() => setIsLoading(false))
   }, [])
 
   const stats = useMemo(
     () => [
-      { label: 'Tong phim', value: movies.length },
-      { label: 'Dang chieu', value: movies.filter((movie) => movie.status === 'now_showing').length },
-      { label: 'Sap chieu', value: movies.filter((movie) => movie.status === 'coming_soon').length },
-      { label: 'Tam an', value: movies.filter((movie) => movie.isActive === false).length },
+      { label: 'Tổng phim', value: movies.length },
+      { label: 'Đang chiếu', value: movies.filter((movie) => movie.status === 'now_showing').length },
+      { label: 'Sắp chiếu', value: movies.filter((movie) => movie.status === 'coming_soon').length },
+      { label: 'Tạm ẩn', value: movies.filter((movie) => movie.isActive === false).length },
+
     ],
     [movies],
   )
@@ -31,7 +32,7 @@ function Dashboard() {
   return (
     <section className="admin-page">
       {error && <p className="state-text error-text">{error}</p>}
-      {isLoading && <p className="state-text">Dang tai dashboard...</p>}
+      {isLoading && <p className="state-text">Đang tải dashboard...</p>}
 
       <div className="stats-grid">
         {stats.map((stat) => (
@@ -45,21 +46,21 @@ function Dashboard() {
       <div className="admin-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Du lieu tu API</p>
-            <h2>Phim moi cap nhat</h2>
+            <p className="eyebrow">Dữ liệu từ API</p>
+            <h2>Phim mới cập nhật</h2>
           </div>
           <Link className="primary-button compact" to="/admin/movies">
-            Quan ly phim
+            Quản lý phim
           </Link>
         </div>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Ten phim</th>
-                <th>Trang thai</th>
-                <th>Thoi luong</th>
-                <th>Ngay chieu</th>
+                <th>Tên phim</th>
+                <th>Trạng thái</th>
+                <th>Thời lượng</th>
+                <th>Ngày chiếu</th>
               </tr>
             </thead>
             <tbody>
@@ -73,7 +74,7 @@ function Dashboard() {
               ))}
               {!isLoading && movies.length === 0 && (
                 <tr>
-                  <td colSpan={4}>Chua co phim nao.</td>
+                  <td colSpan={4}>Chưa có phim nào</td>
                 </tr>
               )}
             </tbody>

@@ -72,7 +72,6 @@ categorySchema.pre("save", function (next) {
 
 // Index để tối ưu tìm kiếm
 categorySchema.index({ name: "text", description: "text" });
-categorySchema.index({ slug: 1 });
 categorySchema.index({ status: 1 });
 
 // Tạo model Category từ schema

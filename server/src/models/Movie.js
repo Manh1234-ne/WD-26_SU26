@@ -120,7 +120,7 @@ const movieSchema = new mongoose.Schema(
 );
 
 // Index để tối ưu tìm kiếm
-movieSchema.index({ title: "text", description: "text" });
+movieSchema.index({ title: "text", description: "text" }, { language_override: "dummy" });
 movieSchema.index({ status: 1 });
 movieSchema.index({ isActive: 1 });
 movieSchema.index({ categoryId: 1 });
