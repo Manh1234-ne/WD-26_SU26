@@ -45,9 +45,18 @@ const cinemaSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
+
 );
 
 cinemaSchema.index({ city: 1, district: 1 });
+cinemaSchema.virtual('rooms', {
+  ref: 'Room',
+  localField: '_id',
+  foreignField: 'cinema',
+  match: { isActive: true }
+});
 
 export default mongoose.model("Cinema", cinemaSchema);
