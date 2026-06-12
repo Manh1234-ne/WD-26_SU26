@@ -1,6 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined, ShoppingCartOutlined, BgColorsOutlined } from '@ant-design/icons'
-
+import { useAuth } from '../features/auth/hooks/useAuth'
+import { Button } from 'antd'
+import { logout } from '../features/auth/services/auth.service'
 function ClientLayout() {
   const styles = {
     shell: {
@@ -104,8 +106,38 @@ function ClientLayout() {
       padding: '40px 24px',
       color: '#262626',
     },
-  }
+    adminBtn: {
+      color: '#ff4757',
+      border: '2px solid #ff4757',
+      borderRadius: '6px',
+      padding: '6px 16px',
+      fontWeight: 600,
+      cursor: 'pointer',
+      background: 'transparent',
+      fontSize: '14px',
+      textDecoration: 'none',
+      display: 'flex',
+      alignItems: 'center',
+    }
 
+  }
+  const nav = useNavigate();
+  const {
+    isAuthenticated,
+    user,
+    token,
+    clearAuth,
+  } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      clearAuth();
+      nav('/');
+    } catch (error) {
+      console.log(error)
+    }
+  }
   return (
     <div style={styles.shell}>
       <header style={styles.header}>
@@ -135,17 +167,34 @@ function ClientLayout() {
         </nav>
 
         <div style={styles.navRight}>
-          <BgColorsOutlined style={styles.themeIcon} />
-          <button style={styles.cartBtn}>
-            <ShoppingCartOutlined />
-            Mua Vé
-          </button>
-          <NavLink to="/signIn" style={styles.signInBtn}>
-            Đăng nhập
-          </NavLink>
-          <NavLink to="/signUp" style={styles.signUpBtn}>
-            Đăng ký
-          </NavLink>
+          {user?.role == "admin" && (
+            <NavLink to="/admin" style={styles.adminBtn}>
+              <span>Kênh quản trị</span>
+            </NavLink>
+
+          )}
+          {isAuthenticated &&
+            <>
+              <BgColorsOutlined style={styles.themeIcon} />
+              <button style={styles.cartBtn}>
+                <ShoppingCartOutlined />
+                Mua Vé
+              </button>
+            </>}
+          {!isAuthenticated ? (
+            <>
+              <NavLink to="/signIn" style={styles.signInBtn}>
+                Đăng nhập
+              </NavLink>
+              <NavLink to="/signUp" style={styles.signUpBtn}>
+                Đăng ký
+              </NavLink>
+            </>
+          ) : (
+            <Button type="primary" style={{ cursor: "pointer", backgroundColor: '#ff4757' }} onClick={handleLogout}>
+              Đăng xuất
+            </Button>
+          )}
         </div>
       </header>
 

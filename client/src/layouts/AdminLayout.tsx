@@ -2,8 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { HomeOutlined, DashboardOutlined, VideoCameraOutlined } from '@ant-design/icons'
 
 const adminLinks = [
-  { to: '/admin', label: 'Tổng quan', icon: <DashboardOutlined />, end: true },
-  { to: '/admin/movies', label: 'Quản lý phim', icon: <VideoCameraOutlined /> },
+  { to: '/admin', label: 'Tổng Quát', end: true },
+  { to: '/admin/movies', label: 'Quản lý phim' },
 ]
 
 function AdminLayout() {
@@ -11,7 +11,7 @@ function AdminLayout() {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <NavLink className="brand admin-brand" to="/">
-          <span className="brand-mark">C</span>
+          <span className="brand-mark">L</span>
           <span>Admin</span>
         </NavLink>
         <nav className="admin-nav">

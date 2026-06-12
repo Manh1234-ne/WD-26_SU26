@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register } from '../services/auth.service'
 import type { RegisterPayload } from '../auth.types'
+import { toast } from 'react-toastify'
 
 function RegisterForm() {
     const navigate = useNavigate()
@@ -23,8 +24,9 @@ function RegisterForm() {
         setError('')
         try {
             const payload: RegisterPayload = { email, password, fullName, phone }
-            await register(payload)
-            navigate('/signIn')
+            await register(payload);
+            toast.success("đăng ký thành công");
+            navigate('/signIn');
         } catch {
             setError('Đăng ký thất bại. Vui lòng thử lại.')
         } finally {
@@ -47,6 +49,7 @@ function RegisterForm() {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    placeholder='..........'
                 />
             </label>
             <label>
@@ -57,6 +60,7 @@ function RegisterForm() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    placeholder='..........'
                 />
             </label>
             <label>
@@ -67,6 +71,7 @@ function RegisterForm() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    placeholder='..........'
                 />
             </label>
             <label>
@@ -77,6 +82,7 @@ function RegisterForm() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder='..........'
                 />
             </label>
             <label>
@@ -87,6 +93,7 @@ function RegisterForm() {
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder='..........'
                 />
             </label>
             <button className="primary-button" disabled={isSubmitting} type="submit">

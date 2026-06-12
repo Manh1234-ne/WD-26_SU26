@@ -111,10 +111,10 @@ function Home() {
           ))}
         </div>
 
-        {isLoading && <p className="state-text">Dang tai phim...</p>}
+        {isLoading && <p className="state-text">Đang tải phim</p>}
         {error && <p className="state-text error-text">{error}</p>}
         {!isLoading && !error && movies.length === 0 && (
-          <p className="state-text">Chua co phim nao phu hop.</p>
+          <p className="state-text">Chưa có phim nào phù hợp.</p>
         )}
 
         <div className="movie-grid">
