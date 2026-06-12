@@ -1,121 +1,426 @@
 import Movie from "../models/Movie.js";
 
-export const getMovies = async (req, res) => {
-  try {
-    const { status, search } = req.query;
-    const filter = {};
+class MovieController {
+  // GET /movies - Lấy tất cả phim
+  async getMovies(req, res) {
+    try {
+      const { status, search, isActive, page = 1, limit = 10 } = req.query;
+      const query = {};
 
-    if (status) {
-      filter.status = status;
-    }
+      // Filter theo status
+      if (status) {
+        const validStatus = ["coming_soon", "now_showing", "ended"];
+        if (!validStatus.includes(status)) {
+          return res.status(400).json({
+            success: false,
+            message: "Trạng thái phim không hợp lệ",
+          });
+        }
+        query.status = status;
+      }
 
-    if (search) {
-      filter.$text = { $search: search };
-    }
+      // Filter theo isActive
+      if (isActive !== undefined) {
+        query.isActive = isActive === "true";
+      } else {
+        query.isActive = true; // Mặc định chỉ lấy phim active
+      }
 
-    const movies = await Movie.find(filter).sort({ createdAt: -1 });
+      // Tìm kiếm
+      if (search && search.trim() !== "") {
+        query.$text = { $search: search.trim() };
+      }
 
-    res.status(200).json({
-      success: true,
-      data: movies,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Khong the lay danh sach phim",
-      error: error.message,
-    });
-  }
-};
+      // Pagination
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
+      const skip = (pageNum - 1) * limitNum;
 
-export const getMovieById = async (req, res) => {
-  try {
-    const movie = await Movie.findById(req.params.id);
+      const movies = await Movie.find(query)
+        .populate("categoryId", "name")
+        .sort({ releaseDate: -1 })
+        .skip(skip)
+        .limit(limitNum);
 
-    if (!movie) {
-      return res.status(404).json({
+      const total = await Movie.countDocuments(query);
+
+      res.status(200).json({
+        success: true,
+        data: movies,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          pages: Math.ceil(total / limitNum),
+        },
+        message: "Lấy danh sách phim thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
         success: false,
-        message: "Khong tim thay phim",
+        message: error.message || "Lỗi khi lấy danh sách phim",
       });
     }
-
-    res.status(200).json({
-      success: true,
-      data: movie,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Khong the lay thong tin phim",
-      error: error.message,
-    });
   }
-};
 
-export const createMovie = async (req, res) => {
-  try {
-    const movie = await Movie.create(req.body);
+  // GET /movies/:id - Lấy phim theo ID
+  async getMovieById(req, res) {
+    try {
+      const { id } = req.params;
 
-    res.status(201).json({
-      success: true,
-      data: movie,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: "Khong the tao phim",
-      error: error.message,
-    });
-  }
-};
+      // Validate ID format
+      if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID phim không hợp lệ",
+        });
+      }
 
-export const updateMovie = async (req, res) => {
-  try {
-    const movie = await Movie.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+      const movie = await Movie.findById(id).populate("categoryId", "name");
 
-    if (!movie) {
-      return res.status(404).json({
+      if (!movie) {
+        return res.status(404).json({
+          success: false,
+          message: "Phim không tồn tại",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: movie,
+        message: "Lấy thông tin phim thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
         success: false,
-        message: "Khong tim thay phim",
+        message: error.message,
       });
     }
-
-    res.status(200).json({
-      success: true,
-      data: movie,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: "Khong the cap nhat phim",
-      error: error.message,
-    });
   }
-};
 
-export const deleteMovie = async (req, res) => {
-  try {
-    const movie = await Movie.findByIdAndDelete(req.params.id);
+  // POST /movies - Tạo phim mới
 
-    if (!movie) {
-      return res.status(404).json({
+  async createMovie(req, res) {
+    try {
+      const {
+        title,
+        originalTitle,
+        description,
+        genres,
+        duration,
+        releaseDate,
+        ageRating,
+        language,
+        director,
+        cast,
+        posterUrl,
+        backdropUrl,
+        trailerUrl,
+        status,
+        categoryId,
+      } = req.body;
+
+      // Validate bắt buộc
+      if (!title || title.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Tiêu đề phim không được để trống",
+        });
+      }
+
+      if (title.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: "Tiêu đề phim phải ít nhất 2 ký tự",
+        });
+      }
+
+      if (!description || description.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Mô tả phim không được để trống",
+        });
+      }
+
+      if (description.trim().length < 10) {
+        return res.status(400).json({
+          success: false,
+          message: "Mô tả phim phải ít nhất 10 ký tự",
+        });
+      }
+
+      if (!duration || duration < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Thời lượng phim phải lớn hơn 0",
+        });
+      }
+
+      if (!releaseDate) {
+        return res.status(400).json({
+          success: false,
+          message: "Ngày phát hành không được để trống",
+        });
+      }
+
+      // Validate enum fields
+      if (status && !["coming_soon", "now_showing", "ended"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Trạng thái phim không hợp lệ (coming_soon, now_showing, ended)",
+        });
+      }
+
+      if (
+        ageRating &&
+        !["P", "K", "T13", "T16", "T18", "C"].includes(ageRating)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Xếp hạng tuổi không hợp lệ (P, K, T13, T16, T18, C)",
+        });
+      }
+
+      // Tạo phim mới
+      const movie = new Movie({
+        title: title.trim(),
+        originalTitle: originalTitle?.trim() || "",
+        description: description.trim(),
+        genres: genres || [],
+        duration,
+        releaseDate,
+        ageRating: ageRating || "P",
+        language: language?.trim() || "Tiếng Việt",
+        director: director?.trim() || "",
+        cast: cast || [],
+        posterUrl: posterUrl || "",
+        backdropUrl: backdropUrl || "",
+        trailerUrl: trailerUrl || "",
+        status: status || "coming_soon",
+        categoryId: categoryId || null,
+      });
+
+      await movie.save();
+      await movie.populate("categoryId", "name");
+
+      res.status(201).json({
+        success: true,
+        data: movie,
+        message: "Tạo phim thành công",
+      });
+    } catch (error) {
+      res.status(400).json({
         success: false,
-        message: "Khong tim thay phim",
+        message: error.message,
       });
     }
-
-    res.status(200).json({
-      success: true,
-      message: "Da xoa phim",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Khong the xoa phim",
-      error: error.message,
-    });
   }
-};
+
+  // PUT /movies/:id - Cập nhật phim
+  async updateMovie(req, res) {
+    try {
+      const { id } = req.params;
+      const {
+        title,
+        originalTitle,
+        description,
+        genres,
+        duration,
+        releaseDate,
+        ageRating,
+        language,
+        director,
+        cast,
+        posterUrl,
+        backdropUrl,
+        trailerUrl,
+        status,
+        categoryId,
+        isActive,
+      } = req.body;
+
+      // Validate ID format
+      if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID phim không hợp lệ",
+        });
+      }
+
+      // Validate fields nếu có update
+      if (title && title.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: "Tiêu đề phim phải ít nhất 2 ký tự",
+        });
+      }
+
+      if (description && description.trim().length < 10) {
+        return res.status(400).json({
+          success: false,
+          message: "Mô tả phim phải ít nhất 10 ký tự",
+        });
+      }
+
+      if (duration && duration < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Thời lượng phim phải lớn hơn 0",
+        });
+      }
+
+      if (status && !["coming_soon", "now_showing", "ended"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Trạng thái phim không hợp lệ",
+        });
+      }
+
+      if (
+        ageRating &&
+        !["P", "K", "T13", "T16", "T18", "C"].includes(ageRating)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Xếp hạng tuổi không hợp lệ",
+        });
+      }
+
+      // Tìm và cập nhật phim
+      const movie = await Movie.findById(id);
+
+      if (!movie) {
+        return res.status(404).json({
+          success: false,
+          message: "Phim không tồn tại",
+        });
+      }
+
+      // Cập nhật các trường
+      if (title) movie.title = title.trim();
+      if (originalTitle !== undefined)
+        movie.originalTitle = originalTitle?.trim() || "";
+      if (description) movie.description = description.trim();
+      if (genres !== undefined) movie.genres = genres || [];
+      if (duration !== undefined) movie.duration = duration;
+      if (releaseDate !== undefined) movie.releaseDate = releaseDate;
+      if (ageRating !== undefined) movie.ageRating = ageRating;
+      if (language !== undefined) movie.language = language?.trim() || "Tiếng Việt";
+      if (director !== undefined) movie.director = director?.trim() || "";
+      if (cast !== undefined) movie.cast = cast || [];
+      if (posterUrl !== undefined) movie.posterUrl = posterUrl || "";
+      if (backdropUrl !== undefined) movie.backdropUrl = backdropUrl || "";
+      if (trailerUrl !== undefined) movie.trailerUrl = trailerUrl || "";
+      if (status !== undefined) movie.status = status;
+      if (categoryId !== undefined) movie.categoryId = categoryId || null;
+      if (isActive !== undefined) movie.isActive = isActive;
+
+      await movie.save();
+      await movie.populate("categoryId", "name");
+
+      res.status(200).json({
+        success: true,
+        data: movie,
+        message: "Cập nhật phim thành công",
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // DELETE /movies/:id - Xóa phim
+  async deleteMovie(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Validate ID format
+      if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID phim không hợp lệ",
+        });
+      }
+
+      const movie = await Movie.findByIdAndDelete(id);
+
+      if (!movie) {
+        return res.status(404).json({
+          success: false,
+          message: "Phim không tồn tại",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Xóa phim thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // GET /movies/search?keyword=... - Tìm kiếm phim
+  async searchMovies(req, res) {
+    try {
+      const { keyword, status, page = 1, limit = 10 } = req.query;
+
+      if (!keyword || keyword.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Từ khóa tìm kiếm không được để trống",
+        });
+      }
+
+      const query = {
+        $or: [
+          { title: { $regex: keyword, $options: "i" } },
+          { description: { $regex: keyword, $options: "i" } },
+          { director: { $regex: keyword, $options: "i" } },
+        ],
+        isActive: true,
+      };
+
+      if (status && ["coming_soon", "now_showing", "ended"].includes(status)) {
+        query.status = status;
+      }
+
+      // Pagination
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
+      const skip = (pageNum - 1) * limitNum;
+
+      const movies = await Movie.find(query)
+        .populate("categoryId", "name")
+        .sort({ releaseDate: -1 })
+        .skip(skip)
+        .limit(limitNum);
+
+      const total = await Movie.countDocuments(query);
+
+      res.status(200).json({
+        success: true,
+        data: movies,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          pages: Math.ceil(total / limitNum),
+        },
+        message: "Tìm kiếm phim thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+}
+
+export default new MovieController();
