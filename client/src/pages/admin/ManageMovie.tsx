@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
 import {
   createMovie,
   deleteMovie,
@@ -7,15 +6,54 @@ import {
   updateMovie,
 } from '../../features/movie/movie.service'
 import type { Movie, MoviePayload, MovieStatus } from '../../features/movie/movie.types'
+import {
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  DatePicker,
+  Switch,
+  Button,
+  Table,
+  Space,
+  Popconfirm,
+  Card,
+  Typography,
+  Tag,
+  Row,
+  Col,
+  message,
+  Tooltip,
+  Divider,
+} from 'antd'
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  VideoCameraOutlined,
+  CalendarOutlined,
+  StarOutlined,
+  GlobalOutlined,
+  UserOutlined,
+  LinkOutlined,
+  CloseOutlined,
+  SaveOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons'
+import dayjs from 'dayjs'
+import type { ColumnsType } from 'antd/es/table'
 
+const { Title, Text } = Typography
+const { TextArea } = Input
 
-type MovieForm = {
+type MovieFormFields = {
   title: string
   originalTitle: string
   description: string
   genres: string
-  duration: string
-  releaseDate: string
+  duration: number
+  releaseDate: dayjs.Dayjs
   ageRating: MoviePayload['ageRating']
   language: string
   director: string
@@ -24,26 +62,26 @@ type MovieForm = {
   backdropUrl: string
   trailerUrl: string
   status: MovieStatus
-  averageRating: string
+  averageRating: number
   isActive: boolean
 }
 
-const emptyForm: MovieForm = {
+const emptyFormValues = {
   title: '',
   originalTitle: '',
   description: '',
   genres: '',
-  duration: '90',
-  releaseDate: new Date().toISOString().slice(0, 10),
-  ageRating: 'P',
+  duration: 90,
+  releaseDate: dayjs(),
+  ageRating: 'P' as const,
   language: 'Vietnamese',
   director: '',
   cast: '',
   posterUrl: '',
   backdropUrl: '',
   trailerUrl: '',
-  status: 'coming_soon',
-  averageRating: '0',
+  status: 'coming_soon' as const,
+  averageRating: 0,
   isActive: true,
 }
 
@@ -54,35 +92,35 @@ function toList(value: string) {
     .filter(Boolean)
 }
 
-function toPayload(form: MovieForm): MoviePayload {
+function toPayload(formValues: MovieFormFields): MoviePayload {
   return {
-    title: form.title.trim(),
-    originalTitle: form.originalTitle.trim(),
-    description: form.description.trim(),
-    genres: toList(form.genres),
-    duration: Number(form.duration),
-    releaseDate: form.releaseDate,
-    ageRating: form.ageRating,
-    language: form.language.trim(),
-    director: form.director.trim(),
-    cast: toList(form.cast),
-    posterUrl: form.posterUrl.trim(),
-    backdropUrl: form.backdropUrl.trim(),
-    trailerUrl: form.trailerUrl.trim(),
-    status: form.status,
-    averageRating: Number(form.averageRating),
-    isActive: form.isActive,
+    title: formValues.title.trim(),
+    originalTitle: formValues.originalTitle?.trim() || '',
+    description: formValues.description.trim(),
+    genres: toList(formValues.genres),
+    duration: formValues.duration,
+    releaseDate: formValues.releaseDate.format('YYYY-MM-DD'),
+    ageRating: formValues.ageRating,
+    language: formValues.language.trim(),
+    director: formValues.director.trim(),
+    cast: toList(formValues.cast),
+    posterUrl: formValues.posterUrl.trim(),
+    backdropUrl: formValues.backdropUrl.trim(),
+    trailerUrl: formValues.trailerUrl.trim(),
+    status: formValues.status,
+    averageRating: formValues.averageRating,
+    isActive: formValues.isActive,
   }
 }
 
-function toForm(movie: Movie): MovieForm {
+function toFormFields(movie: Movie): Partial<MovieFormFields> {
   return {
     title: movie.title,
     originalTitle: movie.originalTitle || '',
     description: movie.description,
     genres: movie.genres?.join(', ') || '',
-    duration: String(movie.duration),
-    releaseDate: new Date(movie.releaseDate).toISOString().slice(0, 10),
+    duration: movie.duration,
+    releaseDate: dayjs(movie.releaseDate),
     ageRating: movie.ageRating,
     language: movie.language || 'Vietnamese',
     director: movie.director || '',
@@ -91,19 +129,17 @@ function toForm(movie: Movie): MovieForm {
     backdropUrl: movie.backdropUrl || '',
     trailerUrl: movie.trailerUrl || '',
     status: movie.status,
-    averageRating: String(movie.averageRating || 0),
+    averageRating: movie.averageRating || 0,
     isActive: movie.isActive ?? true,
   }
 }
 
 function ManageMovie() {
   const [movies, setMovies] = useState<Movie[]>([])
-  const [form, setForm] = useState<MovieForm>(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [antdForm] = Form.useForm<MovieFormFields>()
 
   const sortedMovies = useMemo(
     () => [...movies].sort((a, b) => a.title.localeCompare(b.title)),
@@ -115,9 +151,8 @@ function ManageMovie() {
     try {
       const data = await getMovies()
       setMovies(data)
-      setError('')
     } catch {
-      setError('Khong the tai danh sach phim.')
+      void message.error('Không thể tải danh sách phim.')
     } finally {
       setIsLoading(false)
     }
@@ -127,26 +162,21 @@ function ManageMovie() {
     void loadMovies()
   }, [])
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleSubmit = async (values: MovieFormFields) => {
     setIsSaving(true)
-    setMessage('')
-    setError('')
-
     try {
       if (editingId) {
-        await updateMovie(editingId, toPayload(form))
-        setMessage('Da cap nhat phim.')
+        await updateMovie(editingId, toPayload(values))
+        void message.success('Đã cập nhật phim thành công!')
       } else {
-        await createMovie(toPayload(form))
-        setMessage('Da them phim moi.')
+        await createMovie(toPayload(values))
+        void message.success('Đã thêm phim mới thành công!')
       }
-
-      setForm(emptyForm)
+      antdForm.resetFields()
       setEditingId(null)
       await loadMovies()
     } catch {
-      setError('Lưu phim thất bại. Kiểm tra các trường bắt buộc.')
+      void message.error('Lưu phim thất bại. Vui lòng kiểm tra lại dữ liệu.')
     } finally {
       setIsSaving(false)
     }
@@ -154,255 +184,369 @@ function ManageMovie() {
 
   const handleEdit = (movie: Movie) => {
     setEditingId(movie._id)
-    setForm(toForm(movie))
-    setMessage('')
+    antdForm.setFieldsValue(toFormFields(movie) as MovieFormFields)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleDelete = async (movie: Movie) => {
-    const confirmed = window.confirm(`xóa"${movie.title}"?`)
-
-    if (!confirmed) {
-      return
-    }
-
     try {
       await deleteMovie(movie._id)
-      setMessage('Đã xóa phim.')
+      void message.success(`Đã xóa phim "${movie.title}"`)
       await loadMovies()
     } catch {
-      setError('Xóa phim thất bại.')
+      void message.error('Xóa phim thất bại.')
     }
   }
 
-  const updateField = <Key extends keyof MovieForm>(key: Key, value: MovieForm[Key]) => {
-    setForm((current) => ({ ...current, [key]: value }))
+  const getStatusTag = (status: MovieStatus) => {
+    switch (status) {
+      case 'coming_soon':
+        return <Tag color="blue">Sắp chiếu</Tag>
+      case 'now_showing':
+        return <Tag color="green">Đang chiếu</Tag>
+      case 'ended':
+        return <Tag color="gray">Đã kết thúc</Tag>
+      default:
+        return <Tag>{status}</Tag>
+    }
   }
 
-  return (
-    <section className="admin-page movie-manager">
-      <div className="admin-panel">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">API /movies</p>
-            <h2>{editingId ? 'cập nhật' : 'Thêm phim'}</h2>
-          </div>
-          {editingId && (
-            <button
-              className="ghost-button compact"
-              onClick={() => {
-                setEditingId(null)
-                setForm(emptyForm)
-              }}
-              type="button"
-            >
-              Huy sua
-            </button>
+  const getAgeRatingTag = (rating: Movie['ageRating']) => {
+    switch (rating) {
+      case 'P':
+        return <Tag color="success">P - Mọi lứa tuổi</Tag>
+      case 'K':
+        return <Tag color="processing">K - Dưới 13 tuổi có giám hộ</Tag>
+      case 'T13':
+        return <Tag color="warning">T13 - Trên 13 tuổi</Tag>
+      case 'T16':
+        return <Tag color="orange">T16 - Trên 16 tuổi</Tag>
+      case 'T18':
+        return <Tag color="error">T18 - Trên 18 tuổi</Tag>
+      case 'C':
+        return <Tag color="magenta">C - Cấm phổ biến</Tag>
+      default:
+        return <Tag>{rating}</Tag>
+    }
+  }
+
+  const columns: ColumnsType<Movie> = [
+    {
+      title: 'Phim',
+      key: 'movie',
+      render: (_, record) => (
+        <Space align="start" size={12}>
+          {record.posterUrl && (
+            <img
+              src={record.posterUrl}
+              alt={record.title}
+              style={{ width: 45, height: 65, objectFit: 'cover', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+            />
           )}
-        </div>
-
-        {message && <p className="state-text success-text">{message}</p>}
-        {error && <p className="state-text error-text">{error}</p>}
-
-        <form className="movie-form" onSubmit={handleSubmit}>
-          <label>
-            Tên phim
-            <input
-              required
-              value={form.title}
-              onChange={(event) => updateField('title', event.target.value)}
-            />
-          </label>
-          <label>
-            Tên goc
-            <input
-              value={form.originalTitle}
-              onChange={(event) => updateField('originalTitle', event.target.value)}
-            />
-          </label>
-          <label className="wide">
-            Mô tả
-            <textarea
-              required
-              rows={4}
-              value={form.description}
-              onChange={(event) => updateField('description', event.target.value)}
-            />
-          </label>
-          <label>
-            Thể loại
-            <input
-              placeholder="Action, Drama"
-              value={form.genres}
-              onChange={(event) => updateField('genres', event.target.value)}
-            />
-          </label>
-          <label>
-            Diễn viên
-            <input
-              placeholder="Ten 1, Ten 2"
-              value={form.cast}
-              onChange={(event) => updateField('cast', event.target.value)}
-            />
-          </label>
-          <label>
-            Thời lượng
-            <input
-              min={1}
-              required
-              type="number"
-              value={form.duration}
-              onChange={(event) => updateField('duration', event.target.value)}
-            />
-          </label>
-          <label>
-            Ngày chiếu
-            <input
-              required
-              type="date"
-              value={form.releaseDate}
-              onChange={(event) => updateField('releaseDate', event.target.value)}
-            />
-          </label>
-          <label>
-            Phân loại
-            <select
-              value={form.ageRating}
-              onChange={(event) => updateField('ageRating', event.target.value as MovieForm['ageRating'])}
-            >
-              {['P', 'K', 'T13', 'T16', 'T18', 'C'].map((rating) => (
-                <option key={rating} value={rating}>
-                  {rating}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Trạng thái
-            <select
-              value={form.status}
-              onChange={(event) => updateField('status', event.target.value as MovieStatus)}
-            >
-              <option value="coming_soon">Sap chieu</option>
-              <option value="now_showing">Dang chieu</option>
-              <option value="ended">Da ket thuc</option>
-            </select>
-          </label>
-          <label>
-            Ngôn ngư
-            <input
-              value={form.language}
-              onChange={(event) => updateField('language', event.target.value)}
-            />
-          </label>
-          <label>
-            Đạo diễn
-            <input
-              value={form.director}
-              onChange={(event) => updateField('director', event.target.value)}
-            />
-          </label>
-          <label>
-            Điểm trung bình
-            <input
-              max={5}
-              min={0}
-              step="0.1"
-              type="number"
-              value={form.averageRating}
-              onChange={(event) => updateField('averageRating', event.target.value)}
-            />
-          </label>
-          <label className="wide">
-            Poster URL
-            <input
-              value={form.posterUrl}
-              onChange={(event) => updateField('posterUrl', event.target.value)}
-            />
-          </label>
-          <label className="wide">
-            Backdrop URL
-            <input
-              value={form.backdropUrl}
-              onChange={(event) => updateField('backdropUrl', event.target.value)}
-            />
-          </label>
-          <label className="wide">
-            Trailer URL
-            <input
-              value={form.trailerUrl}
-              onChange={(event) => updateField('trailerUrl', event.target.value)}
-            />
-          </label>
-          <label className="checkbox-label">
-            <input
-              checked={form.isActive}
-              type="checkbox"
-              onChange={(event) => updateField('isActive', event.target.checked)}
-            />
-            Đang hiển thị
-          </label>
-          <button className="primary-button form-submit" disabled={isSaving} type="submit">
-            {isSaving ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Thêm phim'}
-          </button>
-        </form>
-      </div>
-
-      <div className="admin-panel">
-        <div className="panel-heading">
           <div>
-            <p className="eyebrow">Danh sách</p>
-            <h2>Kho phim</h2>
-          </div>
-          <button className="ghost-button compact" onClick={loadMovies} type="button">
-            tải lại
-          </button>
-        </div>
-        {isLoading && <p className="state-text">Đang tải...</p>}
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Phim</th>
-                <th>Trạng thái</th>
-                <th>Ngày chiếu</th>
-                <th>Hiển thị</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedMovies.map((movie) => (
-                <tr key={movie._id}>
-                  <td>
-                    <strong>{movie.title}</strong>
-                    <span>{movie.genres?.join(', ')}</span>
-                  </td>
-                  <td>{movie.status}</td>
-                  <td>{new Date(movie.releaseDate).toLocaleDateString('vi-VN')}</td>
-                  <td>{movie.isActive === false ? 'Ẩn' : 'Hiện'}</td>
-                  <td>
-                    <div className="table-actions">
-                      <button className="text-button" onClick={() => handleEdit(movie)} type="button">
-                        sửa
-                      </button>
-                      <button className="danger-button" onClick={() => handleDelete(movie)} type="button">
-                        xóa
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+            <div style={{ fontWeight: 600, fontSize: '15px' }}>{record.title}</div>
+            {record.originalTitle && (
+              <div style={{ fontSize: '12px', color: '#8c8c8c', fontStyle: 'italic' }}>{record.originalTitle}</div>
+            )}
+            <div style={{ marginTop: 4 }}>
+              {record.genres?.map((g) => (
+                <Tag key={g} style={{ fontSize: '11px', marginInlineEnd: 4 }}>{g}</Tag>
               ))}
-              {!isLoading && sortedMovies.length === 0 && (
-                <tr>
-                  <td colSpan={5}>chưa có phim nào</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+            </div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      render: (status: MovieStatus) => getStatusTag(status),
+    },
+    {
+      title: 'Ngày chiếu',
+      dataIndex: 'releaseDate',
+      key: 'releaseDate',
+      width: 120,
+      render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+    },
+    {
+      title: 'Hiển thị',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      width: 90,
+      render: (isActive?: boolean) => (
+        <Tag color={isActive === false ? 'default' : 'cyan'}>
+          {isActive === false ? 'Ẩn' : 'Hiện'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 120,
+      align: 'center',
+      render: (_, record) => (
+        <Space size="middle">
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ color: '#1890ff' }} />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="Xóa phim"
+            description={`Bạn có chắc chắn muốn xóa phim "${record.title}"?`}
+            onConfirm={() => handleDelete(record)}
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Xóa phim">
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ]
+
+  return (
+    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+      <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        {/* Top: Create/Edit Form */}
+        <Card
+          bordered={false}
+          style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', borderRadius: '12px' }}
+          title={
+            <Space>
+              <VideoCameraOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+              <Title level={4} style={{ margin: 0 }}>
+                {editingId ? 'Cập Nhật Phim' : 'Thêm Phim Mới'}
+              </Title>
+            </Space>
+          }
+          extra={
+            editingId && (
+              <Button
+                icon={<CloseOutlined />}
+                size="small"
+                onClick={() => {
+                  setEditingId(null)
+                  antdForm.resetFields()
+                }}
+              >
+                Hủy sửa
+              </Button>
+            )
+          }
+        >
+          <Form
+            form={antdForm}
+            layout="vertical"
+            initialValues={emptyFormValues}
+            onFinish={handleSubmit}
+            requiredMark="optional"
+          >
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item
+                  label="Tên phim"
+                  name="title"
+                  rules={[{ required: true, message: 'Vui lòng nhập tên phim!' }]}
+                >
+                  <Input placeholder="Ví dụ: Lật Mặt 7" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item label="Tên gốc" name="originalTitle">
+                  <Input placeholder="Ví dụ: Face Off 7" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item label="Trạng thái chiếu" name="status">
+                  <Select>
+                    <Select.Option value="coming_soon">Sắp chiếu</Select.Option>
+                    <Select.Option value="now_showing">Đang chiếu</Select.Option>
+                    <Select.Option value="ended">Đã kết thúc</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item
+              label="Mô tả phim"
+              name="description"
+              rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}
+            >
+              <TextArea rows={3} placeholder="Nhập tóm tắt nội dung phim..." />
+            </Form.Item>
+
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item
+                  label="Thể loại"
+                  name="genres"
+                  help="Phân tách bằng dấu phẩy (,)"
+                >
+                  <Input placeholder="Hành động, Hài hước" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item
+                  label="Diễn viên"
+                  name="cast"
+                  help="Phân tách bằng dấu phẩy (,)"
+                >
+                  <Input placeholder="Diễn viên A, Diễn viên B" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item label="Đạo diễn" name="director">
+                  <Input prefix={<UserOutlined />} placeholder="Tên đạo diễn" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item label="Ngôn ngữ" name="language">
+                  <Input prefix={<GlobalOutlined />} placeholder="Phụ đề Tiếng Việt" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item
+                  label="Thời lượng (phút)"
+                  name="duration"
+                  rules={[{ required: true, message: 'Nhập thời lượng!' }]}
+                >
+                  <InputNumber min={1} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item
+                  label="Ngày khởi chiếu"
+                  name="releaseDate"
+                  rules={[{ required: true, message: 'Chọn ngày chiếu!' }]}
+                >
+                  <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item label="Đánh giá" name="averageRating">
+                  <InputNumber
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    style={{ width: '100%' }}
+                    prefix={<StarOutlined style={{ color: '#fadb14' }} />}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item label="Phân loại độ tuổi" name="ageRating">
+                  <Select>
+                    <Select.Option value="P">P - Mọi lứa tuổi</Select.Option>
+                    <Select.Option value="K">K - Dưới 13 tuổi có giám hộ</Select.Option>
+                    <Select.Option value="T13">T13 - Trên 13 tuổi</Select.Option>
+                    <Select.Option value="T16">T16 - Trên 16 tuổi</Select.Option>
+                    <Select.Option value="T18">T18 - Trên 18 tuổi</Select.Option>
+                    <Select.Option value="C">C - Cấm phổ biến</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Divider style={{ margin: '16px 0' }} />
+
+            <Row gutter={16}>
+              <Col xs={24} md={8}>
+                <Form.Item label="Poster URL" name="posterUrl">
+                  <Input prefix={<LinkOutlined />} placeholder="https://domain.com/poster.jpg" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item label="Backdrop URL" name="backdropUrl">
+                  <Input prefix={<LinkOutlined />} placeholder="https://domain.com/backdrop.jpg" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item label="Trailer URL (Youtube)" name="trailerUrl">
+                  <Input prefix={<LinkOutlined />} placeholder="https://youtube.com/..." />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={24} align="bottom" style={{ marginTop: '16px' }}>
+              <Col xs={24} sm={8} md={6}>
+                <Form.Item
+                  name="isActive"
+                  valuePropName="checked"
+                  label="Hiển thị phim"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" style={{ width: '70px' }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={16} md={18}>
+                <Form.Item style={{ marginBottom: 0 }}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    icon={<SaveOutlined />}
+                    loading={isSaving}
+                    block
+                    size="large"
+                  >
+                    {isSaving ? 'Đang lưu phim...' : editingId ? 'Cập Nhật Thay Đổi' : 'Thêm Phim Mới'}
+                  </Button>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Card>
+
+        {/* Bottom: Movies List */}
+        <Card
+          bordered={false}
+          style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', borderRadius: '12px' }}
+          title={
+            <Space>
+              <CalendarOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+              <Title level={4} style={{ margin: 0 }}>
+                Danh Sách Kho Phim
+              </Title>
+            </Space>
+          }
+          extra={
+            <Button
+              type="text"
+              icon={<ReloadOutlined spin={isLoading} />}
+              onClick={loadMovies}
+            >
+              Tải lại
+            </Button>
+          }
+        >
+          <Table
+            dataSource={sortedMovies}
+            columns={columns}
+            rowKey="_id"
+            loading={isLoading}
+            pagination={{ pageSize: 8, showSizeChanger: true, pageSizeOptions: ['5', '8', '15', '30'] }}
+            scroll={{ x: true }}
+          />
+        </Card>
+      </Space>
+    </div>
   )
 }
 
 export default ManageMovie
+

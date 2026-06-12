@@ -1,18 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMovies } from '../../features/movie/movie.service'
-import type { Movie } from '../../features/movie/movie.types'
+import type { Movie, MovieStatus } from '../../features/movie/movie.types'
+import {
+  Card,
+  Row,
+  Col,
+  Statistic,
+  Table,
+  Tag,
+  Button,
+  Typography,
+  Space,
+  message,
+} from 'antd'
+import {
+  VideoCameraOutlined,
+  PlayCircleOutlined,
+  CalendarOutlined,
+  EyeInvisibleOutlined,
+  RightOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons'
+import type { ColumnsType } from 'antd/es/table'
+import dayjs from 'dayjs'
+
+const { Title, Text } = Typography
 
 function Dashboard() {
   const [movies, setMovies] = useState<Movie[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
 
   useEffect(() => {
     getMovies()
       .then((data) => {
         setMovies(data)
-        setError('')
       })
       .catch(() => setError('Không thể lấy dữ liệu từ Dashboard'))
       .finally(() => setIsLoading(false))
@@ -43,8 +65,19 @@ function Dashboard() {
         ))}
       </div>
 
-      <div className="admin-panel">
-        <div className="panel-heading">
+  const columns: ColumnsType<Movie> = [
+    {
+      title: 'Phim',
+      key: 'movie',
+      render: (_, record) => (
+        <Space size={12}>
+          {record.posterUrl && (
+            <img
+              src={record.posterUrl}
+              alt={record.title}
+              style={{ width: 35, height: 50, objectFit: 'cover', borderRadius: 4 }}
+            />
+          )}
           <div>
             <p className="eyebrow">Dữ liệu từ API</p>
             <h2>Phim mới cập nhật</h2>
