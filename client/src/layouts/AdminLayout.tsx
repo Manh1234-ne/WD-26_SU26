@@ -1,8 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { HomeOutlined, DashboardOutlined, VideoCameraOutlined } from '@ant-design/icons'
 
 const adminLinks = [
-  { to: '/admin', label: 'Tong quan', end: true },
-  { to: '/admin/movies', label: 'Quan ly phim' },
+  { to: '/admin', label: 'Tổng quan', icon: <DashboardOutlined />, end: true },
+  { to: '/admin/movies', label: 'Quản lý phim', icon: <VideoCameraOutlined /> },
 ]
 
 function AdminLayout() {
@@ -15,8 +16,14 @@ function AdminLayout() {
         </NavLink>
         <nav className="admin-nav">
           {adminLinks.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end}>
-              {item.label}
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {item.icon}
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -27,7 +34,12 @@ function AdminLayout() {
             <p className="eyebrow">Bảng điều khiển</p>
             <h1>Quản trị Lumora</h1>
           </div>
-          <NavLink className="secondary-link" to="/">
+          <NavLink
+            className="secondary-link"
+            to="/"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <HomeOutlined />
             Xem trang chủ
           </NavLink>
         </header>
