@@ -1,0 +1,68 @@
+import { type FormEvent } from 'react'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../auth.store'
+import { login } from '../services/auth.service'
+
+function LoginForm() {
+  const navigate = useNavigate()
+  const setAuth = useAuthStore((state) => state.setAuth)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+
+    try {
+      const data = await login({ email, password })
+      setAuth(data.token, data.user)
+      navigate(data.user.role === 'admin' ? '/admin' : '/')
+    } catch {
+      setError('Đăng nhập thất bại. Kiểm tra email hoặc mật khẩu.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="auth-form" onSubmit={handleSubmit}>
+      <div>
+        <p className="eyebrow">Đăng Nhập</p>
+        <h2>Chào mừng trở lại</h2>
+      </div>
+      {error && <p className="state-text error-text">{error}</p>}
+      <label>
+        Email
+        <input
+          autoComplete="email"
+          required
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </label>
+      <label>
+        Mật khẩu
+        <input
+          autoComplete="current-password"
+          required
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
+      <button className="primary-button" disabled={isSubmitting} type="submit">
+        {isSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}
+      </button>
+      <p className="auth-switch">
+        chưa có tài khoản <Link to="/register">Đăng ký ngay</Link>
+      </p>
+    </form>
+  )
+}
+
+export default LoginForm
