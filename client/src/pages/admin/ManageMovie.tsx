@@ -27,7 +27,6 @@ import {
   Divider,
 } from 'antd'
 import {
-  PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   ReloadOutlined,
@@ -39,12 +38,11 @@ import {
   LinkOutlined,
   CloseOutlined,
   SaveOutlined,
-  InfoCircleOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 const { TextArea } = Input
 
 type MovieFormFields = {
@@ -248,9 +246,10 @@ function ManageMovie() {
             {record.originalTitle && (
               <div style={{ fontSize: '12px', color: '#8c8c8c', fontStyle: 'italic' }}>{record.originalTitle}</div>
             )}
-            <div style={{ marginTop: 4 }}>
+            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {getAgeRatingTag(record.ageRating)}
               {record.genres?.map((g) => (
-                <Tag key={g} style={{ fontSize: '11px', marginInlineEnd: 4 }}>{g}</Tag>
+                <Tag key={g} style={{ fontSize: '11px', marginInlineEnd: 0 }}>{g}</Tag>
               ))}
             </div>
           </div>
@@ -292,7 +291,7 @@ function ManageMovie() {
           <Tooltip title="Chỉnh sửa">
             <Button
               type="text"
-              icon={<EditOutlined style={{ color: '#1890ff' }} />}
+              icon={<EditOutlined style={{ color: '#e11d48' }} />}
               onClick={() => handleEdit(record)}
             />
           </Tooltip>
@@ -326,7 +325,7 @@ function ManageMovie() {
           style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', borderRadius: '12px' }}
           title={
             <Space>
-              <VideoCameraOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+              <VideoCameraOutlined style={{ color: '#e11d48', fontSize: '20px' }} />
               <Title level={4} style={{ margin: 0 }}>
                 {editingId ? 'Cập Nhật Phim' : 'Thêm Phim Mới'}
               </Title>
@@ -518,7 +517,7 @@ function ManageMovie() {
           style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', borderRadius: '12px' }}
           title={
             <Space>
-              <CalendarOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+              <CalendarOutlined style={{ color: '#e11d48', fontSize: '20px' }} />
               <Title level={4} style={{ margin: 0 }}>
                 Danh Sách Kho Phim
               </Title>

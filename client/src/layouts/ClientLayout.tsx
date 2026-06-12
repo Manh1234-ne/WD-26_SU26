@@ -23,7 +23,7 @@ function ClientLayout() {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      color: '#ff4757',
+      color: '#e11d48',
       fontWeight: 700,
       fontSize: '20px',
       cursor: 'pointer',
@@ -49,7 +49,7 @@ function ClientLayout() {
       transition: 'all 0.3s ease',
     },
     navLinkActive: {
-      color: '#ff4757',
+      color: '#e11d48',
     },
     navRight: {
       display: 'flex',
@@ -64,7 +64,7 @@ function ClientLayout() {
       transition: 'all 0.3s ease',
     },
     cartBtn: {
-      background: '#ff4757',
+      background: '#e11d48',
       color: 'white',
       border: 'none',
       borderRadius: '6px',
@@ -77,8 +77,8 @@ function ClientLayout() {
       fontSize: '14px',
     },
     signInBtn: {
-      color: '#ff4757',
-      border: '2px solid #ff4757',
+      color: '#e11d48',
+      border: '2px solid #e11d48',
       borderRadius: '6px',
       padding: '6px 16px',
       fontWeight: 600,
@@ -90,7 +90,7 @@ function ClientLayout() {
       alignItems: 'center',
     },
     signUpBtn: {
-      background: '#ff4757',
+      background: '#e11d48',
       color: 'white',
       border: 'none',
       borderRadius: '6px',
@@ -107,8 +107,8 @@ function ClientLayout() {
       color: '#262626',
     },
     adminBtn: {
-      color: '#ff4757',
-      border: '2px solid #ff4757',
+      color: '#e11d48',
+      border: '2px solid #e11d48',
       borderRadius: '6px',
       padding: '6px 16px',
       fontWeight: 600,
@@ -125,7 +125,6 @@ function ClientLayout() {
   const {
     isAuthenticated,
     user,
-    token,
     clearAuth,
   } = useAuth();
 
@@ -191,7 +190,7 @@ function ClientLayout() {
               </NavLink>
             </>
           ) : (
-            <Button type="primary" style={{ cursor: "pointer", backgroundColor: '#ff4757' }} onClick={handleLogout}>
+            <Button type="primary" style={{ cursor: "pointer" }} onClick={handleLogout}>
               Đăng xuất
             </Button>
           )}

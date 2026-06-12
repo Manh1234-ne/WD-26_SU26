@@ -2,9 +2,10 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { HomeOutlined, DashboardOutlined, VideoCameraOutlined } from '@ant-design/icons'
 
 const adminLinks = [
-  { to: '/admin', label: 'Tổng Quát', end: true },
-  { to: '/admin/movies', label: 'Quản lý phim' },
+  { to: '/admin', label: 'Tổng Quát', end: true, icon: <DashboardOutlined /> },
+  { to: '/admin/movies', label: 'Quản lý phim', icon: <VideoCameraOutlined /> },
 ]
+
 
 function AdminLayout() {
   return (
