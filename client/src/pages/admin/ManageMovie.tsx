@@ -25,6 +25,8 @@ import {
   message,
   Tooltip,
   Divider,
+  Modal,
+  Descriptions,
 } from 'antd'
 import {
   EditOutlined,
@@ -38,6 +40,7 @@ import {
   LinkOutlined,
   CloseOutlined,
   SaveOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
@@ -49,7 +52,7 @@ type MovieFormFields = {
   title: string
   originalTitle: string
   description: string
-  genres: string
+  genres: string[]
   duration: number
   releaseDate: dayjs.Dayjs
   ageRating: MoviePayload['ageRating']
@@ -68,7 +71,7 @@ const emptyFormValues = {
   title: '',
   originalTitle: '',
   description: '',
-  genres: '',
+  genres: [],
   duration: 90,
   releaseDate: dayjs(),
   ageRating: 'P' as const,
@@ -95,7 +98,7 @@ function toPayload(formValues: MovieFormFields): MoviePayload {
     title: formValues.title.trim(),
     originalTitle: formValues.originalTitle?.trim() || '',
     description: formValues.description.trim(),
-    genres: toList(formValues.genres),
+    genres: formValues.genres,
     duration: formValues.duration,
     releaseDate: formValues.releaseDate.format('YYYY-MM-DD'),
     ageRating: formValues.ageRating,
@@ -116,7 +119,7 @@ function toFormFields(movie: Movie): Partial<MovieFormFields> {
     title: movie.title,
     originalTitle: movie.originalTitle || '',
     description: movie.description,
-    genres: movie.genres?.join(', ') || '',
+    genres: movie.genres || [],
     duration: movie.duration,
     releaseDate: dayjs(movie.releaseDate),
     ageRating: movie.ageRating,
@@ -138,6 +141,18 @@ function ManageMovie() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [antdForm] = Form.useForm<MovieFormFields>()
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+
+  const handleOpenDetails = (movie: Movie) => {
+    setSelectedMovie(movie)
+    setIsDetailsOpen(true)
+  }
+
+  const handleCloseDetails = () => {
+    setSelectedMovie(null)
+    setIsDetailsOpen(false)
+  }
 
   const sortedMovies = useMemo(
     () => [...movies].sort((a, b) => a.title.localeCompare(b.title)),
@@ -173,8 +188,9 @@ function ManageMovie() {
       antdForm.resetFields()
       setEditingId(null)
       await loadMovies()
-    } catch {
-      void message.error('Lưu phim thất bại. Vui lòng kiểm tra lại dữ liệu.')
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || 'Lưu phim thất bại. Vui lòng kiểm tra lại dữ liệu.'
+      void message.error(errMsg)
     } finally {
       setIsSaving(false)
     }
@@ -284,10 +300,17 @@ function ManageMovie() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 120,
+      width: 150,
       align: 'center',
       render: (_, record) => (
         <Space size="middle">
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined style={{ color: '#0ea5e9' }} />}
+              onClick={() => handleOpenDetails(record)}
+            />
+          </Tooltip>
           <Tooltip title="Chỉnh sửa">
             <Button
               type="text"
@@ -392,9 +415,20 @@ function ManageMovie() {
                 <Form.Item
                   label="Thể loại"
                   name="genres"
-                  help="Phân tách bằng dấu phẩy (,)"
+                  rules={[{ required: true, message: 'Vui lòng chọn thể loại!' }]}
                 >
-                  <Input placeholder="Hành động, Hài hước" />
+                  <Select mode="multiple" placeholder="Chọn thể loại">
+                    <Select.Option value="Hành động">Hành động</Select.Option>
+                    <Select.Option value="Tình cảm">Tình cảm</Select.Option>
+                    <Select.Option value="Kinh dị">Kinh dị</Select.Option>
+                    <Select.Option value="Hài hước">Hài hước</Select.Option>
+                    <Select.Option value="Viễn tưởng">Viễn tưởng</Select.Option>
+                    <Select.Option value="Kỳ ảo">Kỳ ảo</Select.Option>
+                    <Select.Option value="Tâm lý">Tâm lý</Select.Option>
+                    <Select.Option value="Tội phạm">Tội phạm</Select.Option>
+                    <Select.Option value="Chiến tranh">Chiến tranh</Select.Option>
+                    <Select.Option value="Xã hội">Xã hội</Select.Option>
+                  </Select>
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={6}>
@@ -543,6 +577,187 @@ function ManageMovie() {
           />
         </Card>
       </Space>
+
+      {/* Modal chi tiết phim */}
+      <Modal
+        title={
+          <Space>
+            <VideoCameraOutlined style={{ color: '#e11d48', fontSize: '18px' }} />
+            <span>Chi Tiết Phim</span>
+          </Space>
+        }
+        open={isDetailsOpen}
+        onCancel={handleCloseDetails}
+        footer={[
+          <Button key="close" onClick={handleCloseDetails}>
+            Đóng
+          </Button>
+        ]}
+        width={800}
+        destroyOnClose
+        styles={{ body: { padding: '12px 0' } }}
+      >
+        {selectedMovie && (
+          <div style={{ overflowX: 'hidden' }}>
+            {selectedMovie.backdropUrl && (
+              <div
+                style={{
+                  width: '100%',
+                  height: '200px',
+                  backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.85)), url(${selectedMovie.backdropUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  padding: '16px',
+                  color: '#fff',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '22px', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
+                    {selectedMovie.title}
+                  </div>
+                  {selectedMovie.originalTitle && (
+                    <div style={{ fontSize: '13px', fontStyle: 'italic', opacity: 0.85, textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                      {selectedMovie.originalTitle}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div style={{ padding: '0 16px' }}>
+              <Row gutter={[24, 24]}>
+                <Col xs={24} sm={8} style={{ textAlign: 'center' }}>
+                  {selectedMovie.posterUrl ? (
+                    <img
+                      src={selectedMovie.posterUrl}
+                      alt={selectedMovie.title}
+                      style={{
+                        width: '100%',
+                        maxWidth: '220px',
+                        maxHeight: '280px',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        marginBottom: '12px',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        maxWidth: '220px',
+                        height: '240px',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#bfbfbf',
+                        marginBottom: '12px',
+                        margin: '0 auto',
+                      }}
+                    >
+                      Không có ảnh poster
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <StarOutlined style={{ color: '#fadb14', fontSize: '16px', marginInlineEnd: '4px' }} />
+                    <span style={{ fontSize: '15px', fontWeight: 'bold' }}>
+                      {selectedMovie.averageRating || 0}/5
+                    </span>
+                    <span style={{ color: '#8c8c8c', fontSize: '11px', display: 'block' }}>
+                      Đánh giá trung bình
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '16px' }}>
+                    {getAgeRatingTag(selectedMovie.ageRating)}
+                    {getStatusTag(selectedMovie.status)}
+                  </div>
+                </Col>
+
+                <Col xs={24} sm={16} style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
+                  {!selectedMovie.backdropUrl && (
+                    <div style={{ marginBottom: '12px', wordWrap: 'break-word' }}>
+                      <h2 style={{ margin: 0, fontSize: '20px' }}>{selectedMovie.title}</h2>
+                      {selectedMovie.originalTitle && (
+                        <p style={{ margin: '2px 0 0 0', color: '#8c8c8c', fontStyle: 'italic' }}>
+                          {selectedMovie.originalTitle}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px 0', color: '#262626', fontWeight: 600 }}>Tóm tắt nội dung:</h4>
+                    <div style={{ color: '#595959', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', backgroundColor: '#fafafa', padding: '10px 14px', borderRadius: '8px', borderLeft: '4px solid #e11d48', maxHeight: '160px', overflowY: 'auto', fontSize: '14px' }}>
+                      {selectedMovie.description}
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+
+              <div style={{ marginTop: '24px', overflowX: 'auto', width: '100%' }}>
+                <Descriptions bordered column={1} size="small" style={{ minWidth: '300px', wordBreak: 'break-word' }}>
+                  <Descriptions.Item label="Thời lượng" labelStyle={{ width: '150px' }}>
+                    <strong>{selectedMovie.duration} phút</strong>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Khởi chiếu">
+                    {dayjs(selectedMovie.releaseDate).format('DD/MM/YYYY')}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Đạo diễn">
+                    {selectedMovie.director || 'Chưa cập nhật'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Ngôn ngữ">
+                    {selectedMovie.language || 'Chưa cập nhật'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Thể loại">
+                    <Space size={4} wrap>
+                      {selectedMovie.genres && selectedMovie.genres.length > 0 ? (
+                        selectedMovie.genres.map((g) => (
+                          <Tag key={g} color="magenta" style={{ marginInlineEnd: 0 }}>{g}</Tag>
+                        ))
+                      ) : (
+                        <span>Chưa cập nhật</span>
+                      )}
+                    </Space>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Diễn viên">
+                    <div style={{ maxHeight: 80, overflowY: "auto" }}>
+                      <Space size={4} wrap>
+                        {selectedMovie.cast?.length ? (
+                          selectedMovie.cast.map((c) => (
+                            <Tag key={c} style={{ marginInlineEnd: 0 }}>{c}</Tag>
+                          ))
+                        ) : (
+                          <span>Chưa cập nhật</span>
+                        )}
+                      </Space>
+                    </div>
+                  </Descriptions.Item>
+                  {selectedMovie.trailerUrl && (
+                    <Descriptions.Item label="Trailer">
+                      <a href={selectedMovie.trailerUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#e11d48', fontWeight: 600, wordBreak: 'break-all' }}>
+                        <LinkOutlined /> Xem Trailer
+                      </a>
+                    </Descriptions.Item>
+                  )}
+                  <Descriptions.Item label="Trạng thái">
+                    <Tag color={selectedMovie.isActive === false ? 'default' : 'cyan'}>
+                      {selectedMovie.isActive === false ? 'Ẩn' : 'Hiện'}
+                    </Tag>
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
