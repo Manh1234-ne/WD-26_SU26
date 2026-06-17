@@ -147,7 +147,7 @@ function ManageMovie() {
   const loadMovies = async () => {
     setIsLoading(true)
     try {
-      const data = await getMovies()
+      const data = await getMovies({ isActive: 'all', limit: '100' })
       setMovies(data)
     } catch {
       void message.error('Không thể tải danh sách phim.')
@@ -174,7 +174,7 @@ function ManageMovie() {
       setEditingId(null)
       await loadMovies()
     } catch {
-      void message.error('Lưu phim thất bại. Vui lòng kiểm tra lại dữ liệu.')
+      void message.error('Lưu phim thất bại. ')
     } finally {
       setIsSaving(false)
     }

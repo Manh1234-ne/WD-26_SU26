@@ -10,7 +10,7 @@ import LoginForm from './features/auth/components/LoginForm'
 import RegisterForm from './features/auth/components/RegisterForm'
 import AuthLayout from './layouts/AuthLayout'
 import ChangePasswordForm from './features/auth/components/ChangePasswordForm'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, App as AntdApp } from 'antd'
 
 function App() {
   return (
@@ -21,25 +21,27 @@ function App() {
         },
       }}
     >
-      <BrowserRouter>
-        <Routes>
-          {/* Auth routes */}
-          <Route element={<AuthLayout />}>
-            <Route path="signIn" element={<LoginForm />} />
-            <Route path="signUp" element={<RegisterForm />} />
-            <Route path="forgot-password" element={<ChangePasswordForm />} />
-          </Route>
-          <Route element={<ClientLayout />}>
-            <Route index element={<Home />} />
-            <Route path="movies/:id" element={<MovieDetail />} />
-          </Route>
-          <Route path="admin" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="movies" element={<ManageMovie />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <AntdApp>
+        <BrowserRouter>
+          <Routes>
+            {/* Auth routes */}
+            <Route element={<AuthLayout />}>
+              <Route path="signIn" element={<LoginForm />} />
+              <Route path="signUp" element={<RegisterForm />} />
+              <Route path="forgot-password" element={<ChangePasswordForm />} />
+            </Route>
+            <Route element={<ClientLayout />}>
+              <Route index element={<Home />} />
+              <Route path="movies/:id" element={<MovieDetail />} />
+            </Route>
+            <Route path="admin" element={<AdminLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="movies" element={<ManageMovie />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AntdApp>
     </ConfigProvider>
   )
 }

@@ -132,7 +132,7 @@ function Home() {
                 <h3>{movie.title}</h3>
                 <p>{movie.genres?.join(', ') || 'Cinema'}</p>
                 <div className="movie-card-footer">
-                  <span>{movie.duration} phut</span>
+                  <span>{movie.duration} phút</span>
                   <span>{movie.ageRating}</span>
                 </div>
               </div>

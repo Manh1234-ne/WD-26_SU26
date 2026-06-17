@@ -25,18 +25,6 @@ const movieSchema = new mongoose.Schema(
       {
         type: String,
         trim: true,
-        enum: [
-          "Hành động",
-          "Tình cảm",
-          "Kinh dị",
-          "Hài hước",
-          "Viễn tưởng",
-          "Kỳ ảo",
-          "Tâm lý",
-          "Tội phạm",
-          "Chiến tranh",
-          "Xã hội",
-        ],
       },
     ],
     duration: {

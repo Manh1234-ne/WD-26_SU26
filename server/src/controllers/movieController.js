@@ -20,10 +20,10 @@ class MovieController {
       }
 
       // Filter theo isActive
-      if (isActive !== undefined) {
-        query.isActive = isActive === "true";
-      } else {
+      if (isActive === undefined) {
         query.isActive = true; // Mặc định chỉ lấy phim active
+      } else if (isActive !== "all") {
+        query.isActive = isActive === "true";
       }
 
       // Tìm kiếm
@@ -102,6 +102,7 @@ class MovieController {
 
   async createMovie(req, res) {
     try {
+      console.log("=== CREATE MOVIE REQUEST BODY ===", JSON.stringify(req.body, null, 2));
       const {
         title,
         originalTitle,
@@ -118,6 +119,8 @@ class MovieController {
         trailerUrl,
         status,
         categoryId,
+        averageRating,
+        isActive,
       } = req.body;
 
       // Validate bắt buộc
@@ -198,6 +201,8 @@ class MovieController {
         trailerUrl: trailerUrl || "",
         status: status || "coming_soon",
         categoryId: categoryId || null,
+        averageRating: averageRating || 0,
+        isActive: isActive !== undefined ? isActive : true,
       });
 
       await movie.save();
@@ -209,6 +214,13 @@ class MovieController {
         message: "Tạo phim thành công",
       });
     } catch (error) {
+      console.error("=== CREATE MOVIE ERROR ===");
+      console.error("Error message:", error.message);
+      console.error("Error name:", error.name);
+      if (error.errors) {
+        console.error("Validation errors:", JSON.stringify(error.errors, null, 2));
+      }
+      console.error("Request body:", JSON.stringify(req.body, null, 2));
       res.status(400).json({
         success: false,
         message: error.message,
@@ -324,6 +336,13 @@ class MovieController {
         message: "Cập nhật phim thành công",
       });
     } catch (error) {
+      console.error("=== UPDATE MOVIE ERROR ===");
+      console.error("Error message:", error.message);
+      console.error("Error name:", error.name);
+      if (error.errors) {
+        console.error("Validation errors:", JSON.stringify(error.errors, null, 2));
+      }
+      console.error("Request body:", JSON.stringify(req.body, null, 2));
       res.status(400).json({
         success: false,
         message: error.message,
