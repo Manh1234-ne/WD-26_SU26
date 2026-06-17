@@ -15,6 +15,10 @@ export async function changePassword(payload: ChangePassword) {
   const response = await api.post<AuthResponse>('/auth/change-password', payload)
   return response.data
 }
+export async function googleSignIn(payload: any) {
+  const response = await api.post<AuthResponse>('/auth/google_signIn', payload)
+  return response.data
+}
 
 export async function logout() {
   await api.post('/auth/signOut')
