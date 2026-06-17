@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import router from "./src/routes/index.js";
+import { startBookingTimeoutCheck } from "./src/utils/cronJob.js";
 
 
 dotenv.config();
@@ -26,6 +27,7 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("Ket noi CSDL thanh cong");
+    startBookingTimeoutCheck();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

@@ -47,6 +47,7 @@ export const createBookingService = async ({
     totalSeatPrice,
     finalAmount: totalSeatPrice,
     status: "pending",
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
   });
 
   const bookingSeats = seats.map((seat) => ({
