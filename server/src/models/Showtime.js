@@ -60,3 +60,4 @@ showtimeSchema.index({ movie: 1, startTime: 1 });
 showtimeSchema.index({ room: 1, startTime: 1 }, { unique: true });
 
 export default mongoose.model("Showtime", showtimeSchema);
+
