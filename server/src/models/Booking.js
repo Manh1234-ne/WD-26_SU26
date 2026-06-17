@@ -59,3 +59,4 @@ bookingSchema.index({ user: 1, createdAt: -1 });
 bookingSchema.index({ showtime: 1 });
 
 export default mongoose.model("Booking", bookingSchema);
+
