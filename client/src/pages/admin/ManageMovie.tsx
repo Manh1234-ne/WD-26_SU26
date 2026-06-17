@@ -163,7 +163,21 @@ function ManageMovie() {
     setIsLoading(true)
     try {
       const data = await getMovies()
-      setMovies(data)
+      // Tự động cập nhật trạng thái dựa vào ngày hiện tại và ngày chiếu
+      const computedData = data.map((movie: Movie) => {
+        let computedStatus = movie.status;
+        const today = dayjs().startOf('day').valueOf();
+        const release = dayjs(movie.releaseDate).startOf('day').valueOf();
+        
+        if (computedStatus === 'coming_soon' && today >= release) {
+          computedStatus = 'now_showing';
+        } else if (computedStatus === 'now_showing' && today < release) {
+          computedStatus = 'coming_soon';
+        }
+        
+        return { ...movie, status: computedStatus };
+      });
+      setMovies(computedData)
     } catch {
       void message.error('Không thể tải danh sách phim.')
     } finally {
