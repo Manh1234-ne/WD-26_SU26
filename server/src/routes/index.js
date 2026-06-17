@@ -7,7 +7,8 @@ import roomRoutes from "./roomRoutes.js";
 import seatRoutes from "./seatRoutes.js";
 import bookingRoutes from "./bookingRoutes.js";
 import showtimeRoutes from "./showtimeRoutes.js";
-
+import paymentRoutes from "./paymentRoutes.js";
+import mockMomoRoutes from "./mockMomoRoutes.js";
 const router = express.Router();
 
 // API Routes
@@ -19,6 +20,8 @@ router.use("/rooms", roomRoutes);
 router.use("/seats", seatRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/showtimes", showtimeRoutes);
+router.use("/payments", paymentRoutes);
+router.use("/mock-momo", mockMomoRoutes);
 
 // Health check - Kiểm tra API còn chạy không
 router.get("/health", (req, res) => {
