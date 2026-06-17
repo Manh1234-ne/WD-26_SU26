@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { register } from '../services/auth.service'
+import { googleSignIn, register } from '../services/auth.service'
 import type { RegisterPayload } from '../auth.types'
 import { toast } from 'react-toastify'
-
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google"
+import { useAuthStore } from '../auth.store'
 function RegisterForm() {
     const navigate = useNavigate()
     const [fullName, setFullName] = useState('')
+    const setAuth = useAuthStore((state) => state.setAuth)
     const [email, setEmail] = useState('')
     const [phone, setPhone] = useState('')
     const [password, setPassword] = useState('')
@@ -96,6 +98,23 @@ function RegisterForm() {
                     placeholder='..........'
                 />
             </label>
+            <GoogleOAuthProvider clientId="446988791872-h543v17pph0lm1rr9cknokd3aa5hf17v.apps.googleusercontent.com">
+                <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                        try {
+                            const data = await googleSignIn({ token: credentialResponse.credential })
+                            setAuth(data.token, data.user)
+                            navigate(data.user.role === 'admin' ? '/admin' : '/')
+                            toast.success('đăng nhập thành công');
+                        } catch (error: any) {
+                            toast.error(error.message)
+                        }
+                    }}
+                    onError={() => {
+                        console.log('Login Failed');
+                    }}
+                />
+            </GoogleOAuthProvider>
             <button className="primary-button" disabled={isSubmitting} type="submit">
                 {isSubmitting ? 'Đang xử lý...' : 'Đăng ký'}
             </button>

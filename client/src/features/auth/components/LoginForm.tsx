@@ -2,9 +2,9 @@ import { type FormEvent } from 'react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../auth.store'
-import { login } from '../services/auth.service'
+import { googleSignIn, login } from '../services/auth.service'
 import { toast } from 'react-toastify'
-
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 function LoginForm() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -59,6 +59,25 @@ function LoginForm() {
           placeholder='..........'
         />
       </label>
+      <div className='flex justify-center'>
+        <GoogleOAuthProvider clientId="446988791872-h543v17pph0lm1rr9cknokd3aa5hf17v.apps.googleusercontent.com">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                const data = await googleSignIn({ token: credentialResponse.credential })
+                setAuth(data.token, data.user)
+                navigate(data.user.role === 'admin' ? '/admin' : '/')
+                toast.success('đăng nhập thành công');
+              } catch (error: any) {
+                toast.error(error.message)
+              }
+            }}
+            onError={() => {
+              console.log('Login Failed');
+            }}
+          />
+        </GoogleOAuthProvider>
+      </div>
       <button className="primary-button" disabled={isSubmitting} type="submit">
         {isSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}
       </button>
