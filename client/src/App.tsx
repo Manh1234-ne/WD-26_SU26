@@ -5,6 +5,7 @@ import Dashboard from './pages/admin/Dashboard'
 import ManageMovie from './pages/admin/ManageMovie'
 import Home from './pages/client/Home'
 import MovieDetail from './pages/client/MovieDetail'
+import Payment from './pages/client/Payment'
 import './App.css'
 import LoginForm from './features/auth/components/LoginForm'
 import RegisterForm from './features/auth/components/RegisterForm'
@@ -32,6 +33,8 @@ function App() {
           <Route element={<ClientLayout />}>
             <Route index element={<Home />} />
             <Route path="movies/:id" element={<MovieDetail />} />
+            <Route path="payment" element={<Payment />} />
+            <Route path="payment-success" element={<Payment />} />
           </Route>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
