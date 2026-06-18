@@ -63,7 +63,7 @@ type MovieFormFields = {
   backdropUrl: string
   trailerUrl: string
   status: MovieStatus
-  averageRating: number
+  endDate: dayjs.Dayjs
   isActive: boolean
 }
 
@@ -82,7 +82,7 @@ const emptyFormValues = {
   backdropUrl: '',
   trailerUrl: '',
   status: 'coming_soon' as const,
-  averageRating: 0,
+  endDate: dayjs().add(14, 'day'),
   isActive: true,
 }
 
@@ -109,7 +109,7 @@ function toPayload(formValues: MovieFormFields): MoviePayload {
     backdropUrl: formValues.backdropUrl.trim(),
     trailerUrl: formValues.trailerUrl.trim(),
     status: formValues.status,
-    averageRating: formValues.averageRating,
+    endDate: formValues.endDate.format('YYYY-MM-DD'),
     isActive: formValues.isActive,
   }
 }
@@ -130,7 +130,7 @@ function toFormFields(movie: Movie): Partial<MovieFormFields> {
     backdropUrl: movie.backdropUrl || '',
     trailerUrl: movie.trailerUrl || '',
     status: movie.status,
-    averageRating: movie.averageRating || 0,
+    endDate: dayjs(movie.endDate),
     isActive: movie.isActive ?? true,
   }
 }
@@ -168,10 +168,13 @@ function ManageMovie() {
         let computedStatus = movie.status;
         const today = dayjs().startOf('day').valueOf();
         const release = dayjs(movie.releaseDate).startOf('day').valueOf();
+        const end = dayjs(movie.endDate).endOf('day').valueOf();
         
-        if (computedStatus === 'coming_soon' && today >= release) {
+        if (today > end) {
+          computedStatus = 'ended';
+        } else if (today >= release && today <= end) {
           computedStatus = 'now_showing';
-        } else if (computedStatus === 'now_showing' && today < release) {
+        } else if (today < release) {
           computedStatus = 'coming_soon';
         }
         
@@ -486,14 +489,22 @@ function ManageMovie() {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Đánh giá" name="averageRating">
-                  <InputNumber
-                    min={0}
-                    max={5}
-                    step={0.1}
-                    style={{ width: '100%' }}
-                    prefix={<StarOutlined style={{ color: '#fadb14' }} />}
-                  />
+                <Form.Item
+                  label="Ngày kết thúc"
+                  name="endDate"
+                  rules={[
+                    { required: true, message: 'Chọn ngày kết thúc!' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || !getFieldValue('releaseDate') || value.isAfter(getFieldValue('releaseDate')) || value.isSame(getFieldValue('releaseDate'))) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error('Ngày kết thúc phải sau hoặc bằng ngày chiếu!'));
+                      },
+                    }),
+                  ]}
+                >
+                  <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={6}>
@@ -680,12 +691,12 @@ function ManageMovie() {
                   )}
 
                   <div style={{ marginBottom: '12px' }}>
-                    <StarOutlined style={{ color: '#fadb14', fontSize: '16px', marginInlineEnd: '4px' }} />
+                    <CalendarOutlined style={{ color: '#e11d48', fontSize: '16px', marginInlineEnd: '4px' }} />
                     <span style={{ fontSize: '15px', fontWeight: 'bold' }}>
-                      {selectedMovie.averageRating || 0}/5
+                      {dayjs(selectedMovie.endDate).format('DD/MM/YYYY')}
                     </span>
                     <span style={{ color: '#8c8c8c', fontSize: '11px', display: 'block' }}>
-                      Đánh giá trung bình
+                      Ngày kết thúc
                     </span>
                   </div>
 

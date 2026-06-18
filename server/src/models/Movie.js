@@ -103,11 +103,9 @@ const movieSchema = new mongoose.Schema(
       ref: "Category",
       default: null,
     },
-    averageRating: {
-      type: Number,
-      min: [0, "Đánh giá không thể nhỏ hơn 0"],
-      max: [5, "Đánh giá không thể lớn hơn 5"],
-      default: 0,
+    endDate: {
+      type: Date,
+      required: [true, "Ngày kết thúc là bắt buộc"],
     },
     isActive: {
       type: Boolean,

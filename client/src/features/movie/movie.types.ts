@@ -16,7 +16,7 @@ export type Movie = {
   backdropUrl?: string
   trailerUrl?: string
   status: MovieStatus
-  averageRating?: number
+  endDate: string
   isActive?: boolean
   createdAt?: string
   updatedAt?: string
