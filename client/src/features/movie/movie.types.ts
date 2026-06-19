@@ -10,6 +10,7 @@ export type Movie = {
   releaseDate: string
   ageRating: 'P' | 'K' | 'T13' | 'T16' | 'T18' | 'C'
   language?: string
+  country?: string
   director?: string
   cast?: string[]
   posterUrl?: string

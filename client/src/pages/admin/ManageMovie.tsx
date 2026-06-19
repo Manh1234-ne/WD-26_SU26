@@ -57,6 +57,7 @@ type MovieFormFields = {
   releaseDate: dayjs.Dayjs
   ageRating: MoviePayload['ageRating']
   language: string
+  country: string
   director: string
   cast: string
   posterUrl: string
@@ -75,7 +76,8 @@ const emptyFormValues = {
   duration: 90,
   releaseDate: dayjs(),
   ageRating: 'P' as const,
-  language: 'Vietnamese',
+  language: 'Tiếng Việt',
+  country: '',
   director: '',
   cast: '',
   posterUrl: '',
@@ -102,7 +104,8 @@ function toPayload(formValues: MovieFormFields): MoviePayload {
     duration: formValues.duration,
     releaseDate: formValues.releaseDate.format('YYYY-MM-DD'),
     ageRating: formValues.ageRating,
-    language: formValues.language.trim(),
+    language: formValues.language?.trim() || 'Tiếng Việt',
+    country: formValues.country?.trim() || '',
     director: formValues.director.trim(),
     cast: toList(formValues.cast),
     posterUrl: formValues.posterUrl.trim(),
@@ -123,7 +126,8 @@ function toFormFields(movie: Movie): Partial<MovieFormFields> {
     duration: movie.duration,
     releaseDate: dayjs(movie.releaseDate),
     ageRating: movie.ageRating,
-    language: movie.language || 'Vietnamese',
+    language: movie.language || 'Tiếng Việt',
+    country: movie.country || '',
     director: movie.director || '',
     cast: movie.cast?.join(', ') || '',
     posterUrl: movie.posterUrl || '',
@@ -169,7 +173,7 @@ function ManageMovie() {
         const today = dayjs().startOf('day').valueOf();
         const release = dayjs(movie.releaseDate).startOf('day').valueOf();
         const end = dayjs(movie.endDate).endOf('day').valueOf();
-        
+
         if (today > end) {
           computedStatus = 'ended';
         } else if (today >= release && today <= end) {
@@ -177,7 +181,7 @@ function ManageMovie() {
         } else if (today < release) {
           computedStatus = 'coming_soon';
         }
-        
+
         return { ...movie, status: computedStatus };
       });
       setMovies(computedData)
@@ -463,13 +467,23 @@ function ManageMovie() {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Ngôn ngữ" name="language">
-                  <Input prefix={<GlobalOutlined />} placeholder="Phụ đề Tiếng Việt" />
+                <Form.Item label="Quốc gia" name="country">
+                  <Input prefix={<GlobalOutlined />} placeholder="Ví dụ: Việt Nam, Mỹ..." />
                 </Form.Item>
               </Col>
             </Row>
 
             <Row gutter={16}>
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item label=" Phụ Đề " name="language">
+                  <Select placeholder="Chọn Phụ Đề">
+                    <Select.Option value="Tiếng Anh">Tiếng Anh</Select.Option>
+                    <Select.Option value="Tiếng Việt">Tiếng Việt</Select.Option>
+                    <Select.Option value="Tiếng Trung">Tiếng Trung</Select.Option>
+                    <Select.Option value="Tiếng Hàn">Tiếng Hàn</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
               <Col xs={24} sm={12} md={6}>
                 <Form.Item
                   label="Thời lượng (phút)"
@@ -740,6 +754,9 @@ function ManageMovie() {
                   </Descriptions.Item>
                   <Descriptions.Item label="Ngôn ngữ">
                     {selectedMovie.language || 'Chưa cập nhật'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Quốc gia">
+                    {selectedMovie.country || 'Chưa cập nhật'}
                   </Descriptions.Item>
                   <Descriptions.Item label="Thể loại">
                     <Space size={4} wrap>

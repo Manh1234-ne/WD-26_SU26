@@ -63,6 +63,11 @@ const movieSchema = new mongoose.Schema(
       default: "Tiếng Việt",
       maxlength: [50, "Ngôn ngữ không vượt quá 50 ký tự"],
     },
+    country: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Quốc gia không vượt quá 100 ký tự"],
+    },
     director: {
       type: String,
       trim: true,
