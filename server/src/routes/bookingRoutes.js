@@ -5,6 +5,7 @@ import {
   getBookingById,
   getBookingsByUser,
   cancelBooking,
+  completeBooking,
 } from "../controllers/bookingController.js";
 
 const routerBooking = express.Router();
@@ -21,6 +22,11 @@ routerBooking.get("/:id", getBookingById);
 routerBooking.patch(
   "/:id/cancel",
   cancelBooking
+);
+
+routerBooking.patch(
+  "/:id/complete",
+  completeBooking
 );
 
 export default routerBooking;

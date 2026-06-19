@@ -79,6 +79,36 @@ export const getBookingsByUser = asyncHandler(
   }
 );
 
+export const completeBooking = asyncHandler(
+  async (req, res) => {
+    const booking = await Booking.findById(
+      req.params.id
+    );
+
+    if (!booking) {
+      return fail(
+        res,
+        404,
+        "Không tìm thấy booking"
+      );
+    }
+
+    if (booking.status !== "confirmed") {
+      return fail(
+        res,
+        400,
+        "Chỉ booking đã thanh toán mới được hoàn thành"
+      );
+    }
+
+    booking.status = "completed";
+
+    await booking.save();
+
+    return ok(res, booking);
+  }
+);
+
 export const cancelBooking = asyncHandler(
   async (req, res) => {
     const booking = await Booking.findById(
@@ -102,3 +132,4 @@ export const cancelBooking = asyncHandler(
     return ok(res, booking);
   }
 );
+
