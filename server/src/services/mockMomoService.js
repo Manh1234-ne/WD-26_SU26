@@ -8,9 +8,13 @@ import BookingSeat from "../models/BookingSeat.js";
 export const createMockMomoPayment = async ({ bookingId }) => {
   const booking = await Booking.findById(bookingId);
 
-  if (!booking) throw new Error("Không tìm thấy booking");
+  if (!booking) {
+    throw new Error("Không tìm thấy booking");
+  }
 
-  let payment = await Payment.findOne({ booking: bookingId });
+  let payment = await Payment.findOne({
+    booking: bookingId,
+  });
 
   if (!payment) {
     payment = await Payment.create({
@@ -24,5 +28,92 @@ export const createMockMomoPayment = async ({ bookingId }) => {
 
   const payUrl = `http://localhost:5000/api/mock-momo/pay?paymentId=${payment._id}`;
 
-  return { payment, payUrl };
+  return {
+    payment,
+    payUrl,
+  };
+};
+
+/**
+ * Xác nhận thanh toán Mock MoMo
+ * Tương tự verifyVnPayReturnService
+ */
+export const verifyMockMomoPayment = async (paymentId) => {
+  const payment = await Payment.findById(paymentId);
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  const booking = await Booking.findById(payment.booking);
+
+  if (!booking) {
+    throw new Error("Booking not found");
+  }
+
+  // tránh xử lý nhiều lần
+  if (payment.status === "pending") {
+    return {
+      payment,
+      booking,
+    };
+  }
+
+  payment.status = "paid";
+  payment.transactionId = `MOCK_${Date.now()}`;
+  payment.paidAt = new Date();
+
+  booking.status = "confirmed";
+
+  await BookingSeat.updateMany(
+    { booking: booking._id },
+    { status: "booked" }
+  );
+
+  await payment.save();
+  await booking.save();
+
+  return {
+    payment,
+    booking,
+  };
+};
+
+/**
+ * Thanh toán thất bại
+ */
+export const failMockMomoPayment = async (paymentId) => {
+  const payment = await Payment.findById(paymentId);
+  if (payment.status !== "pending") {
+  return {
+    payment,
+    booking,
+  };
+}
+
+  
+
+  const booking = await Booking.findById(payment.booking);
+
+  if (!booking) {
+    throw new Error("Booking not found");
+  }
+
+  payment.status = "failed";
+  payment.note = "Mock payment failed";
+
+  booking.status = "cancelled";
+
+  await BookingSeat.updateMany(
+    { booking: booking._id },
+    { status: "cancelled" }
+  );
+
+  await payment.save();
+  await booking.save();
+
+  return {
+    payment,
+    booking,
+  };
 };

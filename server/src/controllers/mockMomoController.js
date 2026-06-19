@@ -1,15 +1,28 @@
- import { createMockMomoPayment } from "../services/mockMomoService.js";
-import Payment from "../models/Payment.js";
+
+import {
+  createMockMomoPayment,
+  verifyMockMomoPayment,
+  failMockMomoPayment,
+} from "../services/mockMomoService.js";
+
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
 import QRCode from "qrcode";
 
-// tạo payment
+import { generateQR } from "../utils/qrCode.js";
+import { sendMail } from "../utils/sendMail.js";
+import User from "../models/User.js";
+
+/**
+ * Tạo payment mock momo
+ */
 export const createMockMomo = async (req, res) => {
   try {
     const { bookingId } = req.body;
 
-    const result = await createMockMomoPayment({ bookingId });
+    const result = await createMockMomoPayment({
+      bookingId,
+    });
 
     res.json({
       success: true,
@@ -23,11 +36,14 @@ export const createMockMomo = async (req, res) => {
   }
 };
 
-// trang mock payment
+/**
+ * Trang thanh toán mock
+ */
 export const mockMomoPage = async (req, res) => {
   const { paymentId } = req.query;
 
-  const payUrl = `http://localhost:5000/api/mock-momo/success?paymentId=${paymentId}`;
+  const payUrl =
+    `http://localhost:5000/api/mock-momo/success?paymentId=${paymentId}`;
 
   const qrImage = await QRCode.toDataURL(payUrl);
 
@@ -59,59 +75,141 @@ export const mockMomoPage = async (req, res) => {
     </html>
   `);
 };
-// success
+
+/**
+ * THANH TOÁN THÀNH CÔNG
+ */
 export const mockMomoSuccess = async (req, res) => {
-  const { paymentId } = req.query;
+  try {
+    const { paymentId } = req.query;
 
-  const payment = await Payment.findById(paymentId);
+    const { booking } =
+      await verifyMockMomoPayment(paymentId);
 
-  if (!payment) return res.send("Payment not found");
+    const fullBooking = await Booking.findById(booking._id)
+      .populate("user")
+      .populate({
+        path: "showtime",
+        populate: [
+          {
+            path: "movie",
+          },
+          {
+            path: "cinema",
+          },
+          {
+            path: "room",
+          },
+        ],
+      });
 
-  payment.status = "paid";
-  payment.transactionId = "MOCK_" + Date.now();
-  payment.paidAt = new Date();
+    const seats = await BookingSeat.find({
+      booking: booking._id,
+    });
 
-  await payment.save();
+    const ticketData = {
+      bookingId: fullBooking._id,
+      bookingCode: fullBooking.bookingCode,
 
-  const booking = await Booking.findById(payment.booking);
+      movie: fullBooking.showtime?.movie?.title,
+      cinema: fullBooking.showtime?.cinema?.name,
+      room: fullBooking.showtime?.room?.name,
+      time: fullBooking.showtime?.startTime,
 
-  booking.status = "confirmed";
-  await booking.save();
+      seats: seats.map((s) => s.seatCode),
+    };
 
-  await BookingSeat.updateMany(
-    { booking: booking._id },
-    { status: "booked" }
-  );
+    const qr = await generateQR(ticketData);
+    const qrBase64 = qr.replace(
+      /^data:image\/png;base64,/,
+      ""
+    );
 
-  res.redirect(
-    `http://localhost:5173/payment-success?status=success&bookingId=${booking._id}`
-  );
+    const user = fullBooking.user;
+
+    if (user) {
+      await sendMail({
+        to: user.email,
+        subject: "🎬 Vé xem phim của bạn đã được xác nhận",
+
+        attachments: [
+          {
+            filename: "ticket-qr.png",
+            content: qrBase64,
+            encoding: "base64",
+            cid: "ticketqr",
+          },
+        ],
+
+        html: `
+<div style="font-family:Arial">
+  <h2>🎉 Đặt vé thành công!</h2>
+
+  <p><b>Mã booking:</b> ${fullBooking.bookingCode}</p>
+
+  <p><b>Phim:</b> ${fullBooking.showtime?.movie?.title || ""}</p>
+
+  <p><b>Rạp:</b> ${fullBooking.showtime?.cinema?.name || ""}</p>
+
+  <p><b>Phòng:</b> ${fullBooking.showtime?.room?.name || ""}</p>
+
+  <p><b>Giờ chiếu:</b>
+    ${
+      fullBooking.showtime?.startTime
+        ? new Date(
+            fullBooking.showtime.startTime
+          ).toLocaleString("vi-VN")
+        : ""
+    }
+  </p>
+
+  <p><b>Ghế:</b> ${seats
+    .map((s) => s.seatCode)
+    .join(", ")}</p>
+
+  <h3>📌 QR Code vé:</h3>
+
+  <img src="cid:ticketqr" width="220"/>
+
+  <p>Vui lòng đưa QR này khi vào rạp</p>
+</div>
+`,
+      });
+    }
+
+    return res.redirect(
+      `http://localhost:5173/payment-success?status=success&bookingId=${booking._id}`
+    );
+  } catch (err) {
+    console.error("MOCK MOMO SUCCESS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
 
-// fail
+/**
+ * THANH TOÁN THẤT BẠI
+ */
 export const mockMomoFail = async (req, res) => {
-  const { paymentId } = req.query;
+  try {
+    const { paymentId } = req.query;
 
-  const payment = await Payment.findById(paymentId);
+    const { booking } =
+      await failMockMomoPayment(paymentId);
 
-  if (!payment) return res.send("Payment not found");
+    return res.redirect(
+      `http://localhost:5173/payment-success?status=fail&bookingId=${booking._id}`
+    );
+  } catch (err) {
+    console.error("MOCK MOMO FAIL ERROR:", err);
 
-  payment.status = "failed";
-  payment.note = "Mock payment failed";
-
-  await payment.save();
-
-  const booking = await Booking.findById(payment.booking);
-
-  booking.status = "cancelled";
-  await booking.save();
-
-  await BookingSeat.updateMany(
-    { booking: booking._id },
-    { status: "cancelled" }
-  );
-
-  res.redirect(
-    `http://localhost:5173/payment-success?status=fail&bookingId=${booking._id}`
-  );
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
+

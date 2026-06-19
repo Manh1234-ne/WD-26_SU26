@@ -1,12 +1,14 @@
+import dotenv from "dotenv";
+dotenv.config(); // PHẢI LÊN DÒNG 1
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 import router from "./src/routes/index.js";
 import { startBookingTimeoutCheck } from "./src/utils/cronJob.js";
 
 
-dotenv.config();
+// dotenv.config();
 
 const app = express();
 
