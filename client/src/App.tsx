@@ -12,6 +12,8 @@ import AuthLayout from './layouts/AuthLayout'
 import ChangePasswordForm from './features/auth/components/ChangePasswordForm'
 import { ConfigProvider } from 'antd'
 import ManageCinema from './pages/admin/ManageCinema'
+import ManageRoom from './pages/admin/ManageRoom'
+import ManageSeat from './pages/admin/ManageSeat'
 
 function App() {
   return (
@@ -38,6 +40,8 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="movies" element={<ManageMovie />} />
             <Route path="cinemas" element={<ManageCinema />} />
+            <Route path="rooms" element={<ManageRoom />} />
+            <Route path="seats" element={<ManageSeat />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
