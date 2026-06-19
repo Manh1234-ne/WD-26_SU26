@@ -1,11 +1,12 @@
 import crypto from "crypto";
 import moment from "moment";
+
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
 
 /**
- * Sort object theo alphabet key (VNPay requirement)
+ * SORT OBJECT
  */
 function sortObject(obj) {
   return Object.keys(obj)
@@ -17,12 +18,15 @@ function sortObject(obj) {
 }
 
 /**
- * TẠO LINK THANH TOÁN VNPay
+ * =========================
+ * CREATE VNPay URL
+ * =========================
  */
 export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
   const booking = await Booking.findById(bookingId);
 
   if (!booking) throw new Error("Không tìm thấy booking");
+
   if (booking.status !== "pending") {
     throw new Error("Booking không ở trạng thái chờ thanh toán");
   }
@@ -45,17 +49,14 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
   const returnUrl = process.env.vnp_ReturnUrl;
 
   if (!tmnCode || !secretKey || !vnpUrl || !returnUrl) {
-    throw new Error("Thiếu cấu hình VNPay trong .env");
+    throw new Error("Thiếu cấu hình VNPay");
   }
 
   const createDate = moment().utcOffset(7).format("YYYYMMDDHHmmss");
 
-  let cleanIp = ipAddr;
-  if (!cleanIp || cleanIp.includes("::")) {
-    cleanIp = "127.0.0.1";
-  }
+  const cleanIp =
+    !ipAddr || ipAddr.includes("::") ? "127.0.0.1" : ipAddr;
 
-  // 🔥 1. Build params
   let vnp_Params = {
     vnp_Version: "2.1.0",
     vnp_Command: "pay",
@@ -71,61 +72,44 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
     vnp_Locale: "vn",
   };
 
-  // 🔥 2. sort params
   vnp_Params = sortObject(vnp_Params);
 
-  // 🔥 3. build sign data (QUAN TRỌNG: KHÔNG custom encode)
   const signData = new URLSearchParams(vnp_Params).toString();
 
-  // 🔥 4. create signature
   const hmac = crypto.createHmac("sha512", secretKey);
   const signed = hmac.update(signData, "utf-8").digest("hex");
 
-  // 🔥 5. attach signature
   vnp_Params.vnp_SecureHash = signed;
 
-  // 🔥 6. build payment URL
   const paymentUrl =
     vnpUrl + "?" + new URLSearchParams(vnp_Params).toString();
 
-  return {
-    paymentUrl,
-    payment,
-  };
+  return { paymentUrl, payment };
 };
 
 /**
- * VERIFY RETURN / IPN VNPay
+ * =========================
+ * VERIFY VNPay
+ * =========================
  */
 export const verifyVnPayReturnService = async (vnp_Params) => {
   const secureHash = vnp_Params.vnp_SecureHash;
 
-  if (!secureHash) {
-    throw new Error("Thiếu chữ ký VNPay");
-  }
+  if (!secureHash) throw new Error("Thiếu chữ ký VNPay");
 
-  // remove hash fields
   delete vnp_Params.vnp_SecureHash;
   delete vnp_Params.vnp_SecureHashType;
 
   const secretKey = process.env.vnp_HashSecret;
 
-  if (!secretKey) {
-    throw new Error("Thiếu VNPay secret key");
-  }
-
-  // 🔥 sort lại params
   const sortedParams = sortObject(vnp_Params);
-
-  // 🔥 build sign string (KHÔNG encode custom)
   const signData = new URLSearchParams(sortedParams).toString();
 
   const hmac = crypto.createHmac("sha512", secretKey);
   const signed = hmac.update(signData, "utf-8").digest("hex");
 
-  // ❌ sai chữ ký
   if (secureHash !== signed) {
-    throw new Error("Sai chữ ký VNPay (code 70)");
+    throw new Error("Sai chữ ký VNPay");
   }
 
   const payment = await Payment.findById(vnp_Params.vnp_TxnRef);
@@ -134,14 +118,12 @@ export const verifyVnPayReturnService = async (vnp_Params) => {
   const booking = await Booking.findById(payment.booking);
   if (!booking) throw new Error("Không tìm thấy booking");
 
-  // tránh xử lý lại
   if (payment.status !== "pending") {
     return { payment, booking };
   }
 
   const responseCode = vnp_Params.vnp_ResponseCode;
 
-  // ✔ SUCCESS
   if (responseCode === "00") {
     payment.status = "paid";
     payment.transactionId = vnp_Params.vnp_TransactionNo;
@@ -153,14 +135,11 @@ export const verifyVnPayReturnService = async (vnp_Params) => {
       { booking: booking._id },
       { status: "booked" }
     );
-  }
-  // ❌ FAILED
-  else {
+  } else {
     payment.status = "failed";
     payment.note = `VNPay error: ${responseCode}`;
 
     booking.status = "cancelled";
-    booking.cancelledAt = new Date();
 
     await BookingSeat.updateMany(
       { booking: booking._id },
