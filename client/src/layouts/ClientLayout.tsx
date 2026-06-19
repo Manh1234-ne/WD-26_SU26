@@ -3,6 +3,7 @@ import { HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined, 
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { Button } from 'antd'
 import { logout } from '../features/auth/services/auth.service'
+import Swal from "sweetalert2"
 function ClientLayout() {
   const styles = {
     shell: {
@@ -137,6 +138,28 @@ function ClientLayout() {
       console.log(error)
     }
   }
+
+  const handleConfirmLogout = async () => {
+    const result = Swal.fire({
+      title: "bạn có chắc muốn đăng xuất không",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#05803bff",
+      cancelButtonColor: "#dc2626",
+      confirmButtonText: "Đăng xuất",
+      cancelButtonText: "Hủy"
+    })
+    if ((await result).isConfirmed) {
+      handleLogout();
+      Swal.fire({
+        title: "đăng xuất thành công",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false
+      })
+    }
+  }
+
   return (
     <div style={styles.shell}>
       <header style={styles.header}>
@@ -190,7 +213,7 @@ function ClientLayout() {
               </NavLink>
             </>
           ) : (
-            <Button type="primary" style={{ cursor: "pointer" }} onClick={handleLogout}>
+            <Button type="primary" style={{ cursor: "pointer" }} onClick={handleConfirmLogout}>
               Đăng xuất
             </Button>
           )}

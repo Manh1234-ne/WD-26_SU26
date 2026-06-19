@@ -11,7 +11,8 @@ import RegisterForm from './features/auth/components/RegisterForm'
 import AuthLayout from './layouts/AuthLayout'
 import ChangePasswordForm from './features/auth/components/ChangePasswordForm'
 import { ConfigProvider, App as AntdApp } from 'antd'
-
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 function App() {
   return (
     <ConfigProvider
@@ -24,27 +25,30 @@ function App() {
       <AntdApp>
         <BrowserRouter>
           <Routes>
-            {/* Auth routes */}
+
             <Route element={<AuthLayout />}>
               <Route path="signIn" element={<LoginForm />} />
               <Route path="signUp" element={<RegisterForm />} />
               <Route path="forgot-password" element={<ChangePasswordForm />} />
             </Route>
+
             <Route element={<ClientLayout />}>
               <Route index element={<Home />} />
               <Route path="movies/:id" element={<MovieDetail />} />
             </Route>
+
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="movies" element={<ManageMovie />} />
             </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+
+        <ToastContainer position="top-center" autoClose={3000} />
       </AntdApp>
     </ConfigProvider>
   )
 }
-
 export default App
-
