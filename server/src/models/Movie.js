@@ -101,6 +101,10 @@ const movieSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    reviewCount: {
+      type: Number,
+      default: 0
+    }
   },
   {
     timestamps: true,
