@@ -1,11 +1,24 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { HomeOutlined, DashboardOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { NavLink, Outlet } from "react-router-dom";
+import {
+  HomeOutlined,
+  DashboardOutlined,
+  VideoCameraOutlined,
+} from "@ant-design/icons";
 
 const adminLinks = [
-  { to: '/admin', label: 'Tổng Quát', end: true, icon: <DashboardOutlined /> },
-  { to: '/admin/movies', label: 'Quản lý phim', icon: <VideoCameraOutlined /> },
-]
-
+  { to: "/admin", label: "Tổng Quát", end: true, icon: <DashboardOutlined /> },
+  { to: "/admin/movies", label: "Quản lý phim", icon: <VideoCameraOutlined /> },
+  {
+    to: "/admin/bookings",
+    label: "Quản lý đặt vé",
+    icon: <VideoCameraOutlined />,
+  },
+  {
+    to: "/admin/users",
+    label: "Quản lý người dùng",
+    icon: <VideoCameraOutlined />,
+  },
+];
 
 function AdminLayout() {
   return (
@@ -21,7 +34,7 @@ function AdminLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
               {item.icon}
               <span>{item.label}</span>
@@ -38,7 +51,7 @@ function AdminLayout() {
           <NavLink
             className="secondary-link"
             to="/"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
             <HomeOutlined />
             Xem trang chủ
@@ -47,7 +60,7 @@ function AdminLayout() {
         <Outlet />
       </div>
     </div>
-  )
+  );
 }
 
-export default AdminLayout
+export default AdminLayout;

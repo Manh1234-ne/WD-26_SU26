@@ -11,16 +11,10 @@ const routerBooking = express.Router();
 
 routerBooking.post("/", createBooking);
 
-routerBooking.get(
-  "/user/:userId",
-  getBookingsByUser
-);
+routerBooking.get("/user/:userId", getBookingsByUser);
 
 routerBooking.get("/:id", getBookingById);
 
-routerBooking.patch(
-  "/:id/cancel",
-  cancelBooking
-);
+routerBooking.patch("/:id/cancel", cancelBooking);
 
 export default routerBooking;

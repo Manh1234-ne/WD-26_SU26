@@ -1,23 +1,25 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import AdminLayout from './layouts/AdminLayout'
-import ClientLayout from './layouts/ClientLayout'
-import Dashboard from './pages/admin/Dashboard'
-import ManageMovie from './pages/admin/ManageMovie'
-import Home from './pages/client/Home'
-import MovieDetail from './pages/client/MovieDetail'
-import './App.css'
-import LoginForm from './features/auth/components/LoginForm'
-import RegisterForm from './features/auth/components/RegisterForm'
-import AuthLayout from './layouts/AuthLayout'
-import ChangePasswordForm from './features/auth/components/ChangePasswordForm'
-import { ConfigProvider, App as AntdApp } from 'antd'
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import AdminLayout from "./layouts/AdminLayout";
+import ClientLayout from "./layouts/ClientLayout";
+import Dashboard from "./pages/admin/Dashboard";
+import ManageMovie from "./pages/admin/ManageMovie";
+import Home from "./pages/client/Home";
+import MovieDetail from "./pages/client/MovieDetail";
+import "./App.css";
+import LoginForm from "./features/auth/components/LoginForm";
+import RegisterForm from "./features/auth/components/RegisterForm";
+import AuthLayout from "./layouts/AuthLayout";
+import ChangePasswordForm from "./features/auth/components/ChangePasswordForm";
+import { ConfigProvider, App as AntdApp } from "antd";
+import ManageBooking from "./pages/admin/ManageBooking";
+import ManageUser from "./pages/admin/ManageUser";
 
 function App() {
   return (
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#e11d48',
+          colorPrimary: "#e11d48",
         },
       }}
     >
@@ -37,14 +39,15 @@ function App() {
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="movies" element={<ManageMovie />} />
+              <Route path="bookings" element={<ManageBooking />} />
+              <Route path="users" element={<ManageUser />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AntdApp>
     </ConfigProvider>
-  )
+  );
 }
 
-export default App
-
+export default App;
