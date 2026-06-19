@@ -8,6 +8,7 @@ import router from "./src/routes/index.js";
 import { startBookingTimeoutCheck } from "./src/utils/cronJob.js";
 
 
+
 // dotenv.config();
 
 const app = express();
@@ -37,3 +38,5 @@ mongoose
   .catch((error) => {
     console.log("Ket noi CSDL that bai:", error.message);
   });
+
+  

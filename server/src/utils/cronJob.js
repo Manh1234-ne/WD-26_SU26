@@ -2,34 +2,69 @@ import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
 
 export const startBookingTimeoutCheck = () => {
-  console.log("⏰ Trình quét đặt vé hết hạn đã được kích hoạt (1 phút/lần)...");
-  
+  console.log(
+    "⏰ Trình quét booking đã được kích hoạt..."
+  );
+
   setInterval(async () => {
     try {
-      // Tìm các đơn hàng 'pending' và có expiresAt nhỏ hơn thời gian hiện tại
+      /**
+       * =========================
+       * HỦY BOOKING HẾT HẠN
+       * =========================
+       */
       const expiredBookings = await Booking.find({
         status: "pending",
-        expiresAt: { $lt: new Date() }
+        expiresAt: { $lt: new Date() },
       });
 
       if (expiredBookings.length > 0) {
-        console.log(`🧹 Phát hiện ${expiredBookings.length} đơn hàng hết hạn. Đang tự động hủy...`);
-        
-        for (let booking of expiredBookings) {
+        console.log(
+          `🧹 Phát hiện ${expiredBookings.length} booking hết hạn`
+        );
+
+        for (const booking of expiredBookings) {
           booking.status = "cancelled";
           booking.cancelledAt = new Date();
+
           await booking.save();
-          
-          // Giải phóng các ghế đang bị giữ (held -> cancelled)
+
           await BookingSeat.updateMany(
             { booking: booking._id },
             { status: "cancelled" }
           );
         }
-        console.log("✅ Đã giải phóng ghế và hủy các đơn hàng hết hạn thành công.");
+      }
+
+      /**
+       * =========================
+       * AUTO COMPLETED
+       * =========================
+       */
+      const confirmedBookings = await Booking.find({
+        status: "confirmed",
+      }).populate("showtime");
+
+      for (const booking of confirmedBookings) {
+        if (
+          booking.showtime &&
+          booking.showtime.endTime &&
+          booking.showtime.endTime < new Date()
+        ) {
+          booking.status = "completed";
+
+          await booking.save();
+
+          console.log(
+            `✅ Booking ${booking.bookingCode} completed`
+          );
+        }
       }
     } catch (error) {
-      console.error("❌ Lỗi trong quá trình quét tự động hủy đặt vé:", error.message);
+      console.error(
+        "❌ Cron Job Error:",
+        error.message
+      );
     }
-  }, 60000); // 60000ms = 1 phút
+  }, 60000);
 };
