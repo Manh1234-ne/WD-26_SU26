@@ -67,6 +67,28 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
   return ok(res, bookings);
 });
 
+export const completeBooking = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (booking.status !== "confirmed") {
+    return fail(
+      res,
+      400,
+      "Chỉ booking đã thanh toán mới được hoàn thành"
+    );
+  }
+
+  booking.status = "completed";
+
+  await booking.save();
+
+  return ok(res, booking);
+});
+
 export const cancelBooking = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id);
 
@@ -74,41 +96,6 @@ export const cancelBooking = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy booking");
   }
 
-export const completeBooking = asyncHandler(
-  async (req, res) => {
-    const booking = await Booking.findById(
-      req.params.id
-    );
-
-    if (!booking) {
-      return fail(
-        res,
-        404,
-        "Không tìm thấy booking"
-      );
-    }
-
-    if (booking.status !== "confirmed") {
-      return fail(
-        res,
-        400,
-        "Chỉ booking đã thanh toán mới được hoàn thành"
-      );
-    }
-
-    booking.status = "completed";
-
-    await booking.save();
-
-    return ok(res, booking);
-  }
-);
-
-export const cancelBooking = asyncHandler(
-  async (req, res) => {
-    const booking = await Booking.findById(
-      req.params.id
-    );
   booking.status = "cancelled";
   booking.cancelledAt = new Date();
 
@@ -116,19 +103,8 @@ export const cancelBooking = asyncHandler(
 
   await BookingSeat.updateMany(
     { booking: booking._id },
-    { status: "cancelled" },
+    { status: "cancelled" }
   );
-
-    await booking.save();
-
-    await BookingSeat.updateMany(
-      { booking: booking._id },
-      { status: "cancelled" }
-    );
-
-    return ok(res, booking);
-  }
-);
 
   return ok(res, booking);
 });
