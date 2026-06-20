@@ -1,9 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { HomeOutlined, DashboardOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { HomeOutlined, DashboardOutlined, VideoCameraOutlined, BankOutlined, ApartmentOutlined, AppstoreOutlined } from '@ant-design/icons'
 
 const adminLinks = [
   { to: '/admin', label: 'Tổng Quát', end: true, icon: <DashboardOutlined /> },
   { to: '/admin/movies', label: 'Quản lý phim', icon: <VideoCameraOutlined /> },
+  { to: '/admin/cinemas', label: 'Quản lý rạp', icon: <BankOutlined /> },
+  { to: '/admin/rooms', label: 'Quản lý phòng chiếu', icon: <ApartmentOutlined /> },
+  { to: '/admin/seats', label: 'Quản lý sơ đồ ghế', icon: <AppstoreOutlined /> },
 ]
 
 

@@ -121,6 +121,8 @@ class MovieController {
         categoryId,
         averageRating,
         isActive,
+        endDate,
+        country,
       } = req.body;
 
       // Validate bắt buộc
@@ -166,6 +168,13 @@ class MovieController {
         });
       }
 
+      if (!endDate) {
+        return res.status(400).json({
+          success: false,
+          message: "Ngày kết thúc không được để trống",
+        });
+      }
+
       // Validate enum fields
       if (status && !["coming_soon", "now_showing", "ended"].includes(status)) {
         return res.status(400).json({
@@ -203,6 +212,8 @@ class MovieController {
         categoryId: categoryId || null,
         averageRating: averageRating || 0,
         isActive: isActive !== undefined ? isActive : true,
+        endDate,
+        country: country?.trim() || "",
       });
 
       await movie.save();
@@ -248,6 +259,8 @@ class MovieController {
         trailerUrl,
         status,
         categoryId,
+        endDate,
+        country,
         isActive,
       } = req.body;
 
@@ -325,6 +338,8 @@ class MovieController {
       if (trailerUrl !== undefined) movie.trailerUrl = trailerUrl || "";
       if (status !== undefined) movie.status = status;
       if (categoryId !== undefined) movie.categoryId = categoryId || null;
+      if (endDate !== undefined) movie.endDate = endDate;
+      if (country !== undefined) movie.country = country?.trim() || "";
       if (isActive !== undefined) movie.isActive = isActive;
 
       await movie.save();

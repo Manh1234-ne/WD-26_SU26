@@ -13,6 +13,11 @@ import ChangePasswordForm from './features/auth/components/ChangePasswordForm'
 import { ConfigProvider, App as AntdApp } from 'antd'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { ConfigProvider } from 'antd'
+import ManageCinema from './pages/admin/ManageCinema'
+import ManageRoom from './pages/admin/ManageRoom'
+import ManageSeat from './pages/admin/ManageSeat'
+
 function App() {
   return (
     <ConfigProvider
@@ -22,32 +27,28 @@ function App() {
         },
       }}
     >
-      <AntdApp>
-        <BrowserRouter>
-          <Routes>
-
-            <Route element={<AuthLayout />}>
-              <Route path="signIn" element={<LoginForm />} />
-              <Route path="signUp" element={<RegisterForm />} />
-              <Route path="forgot-password" element={<ChangePasswordForm />} />
-            </Route>
-
-            <Route element={<ClientLayout />}>
-              <Route index element={<Home />} />
-              <Route path="movies/:id" element={<MovieDetail />} />
-            </Route>
-
-            <Route path="admin" element={<AdminLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="movies" element={<ManageMovie />} />
-            </Route>
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-
-        <ToastContainer position="top-center" autoClose={3000} />
-      </AntdApp>
+      <BrowserRouter>
+        <Routes>
+          {/* Auth routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="signIn" element={<LoginForm />} />
+            <Route path="signUp" element={<RegisterForm />} />
+            <Route path="forgot-password" element={<ChangePasswordForm />} />
+          </Route>
+          <Route element={<ClientLayout />}>
+            <Route index element={<Home />} />
+            <Route path="movies/:id" element={<MovieDetail />} />
+          </Route>
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="movies" element={<ManageMovie />} />
+            <Route path="cinemas" element={<ManageCinema />} />
+            <Route path="rooms" element={<ManageRoom />} />
+            <Route path="seats" element={<ManageSeat />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </ConfigProvider>
   )
 }
