@@ -166,10 +166,6 @@ function ManageMovie() {
   const loadMovies = async () => {
     setIsLoading(true)
     try {
-<<<<<<< HEAD
-      const data = await getMovies({ isActive: 'all', limit: '100' })
-      setMovies(data)
-=======
       const data = await getMovies()
       // Tự động cập nhật trạng thái dựa vào ngày hiện tại và ngày chiếu
       const computedData = data.map((movie: Movie) => {
@@ -189,7 +185,6 @@ function ManageMovie() {
         return { ...movie, status: computedStatus };
       });
       setMovies(computedData)
->>>>>>> d4bd2165f4e6bb426f03b336bdb38213b7e61820
     } catch {
       void message.error('Không thể tải danh sách phim.')
     } finally {
@@ -214,14 +209,9 @@ function ManageMovie() {
       antdForm.resetFields()
       setEditingId(null)
       await loadMovies()
-<<<<<<< HEAD
-    } catch {
-      void message.error('Lưu phim thất bại. ')
-=======
     } catch (err: any) {
       const errMsg = err.response?.data?.message || 'Lưu phim thất bại. Vui lòng kiểm tra lại dữ liệu.'
       void message.error(errMsg)
->>>>>>> d4bd2165f4e6bb426f03b336bdb38213b7e61820
     } finally {
       setIsSaving(false)
     }
