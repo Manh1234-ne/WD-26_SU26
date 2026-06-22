@@ -71,9 +71,14 @@ function MovieDetail() {
             <dd>{movie.ageRating}</dd>
           </div>
         </dl>
-        <Link className="primary-button" to="/">
-          Quay lại
-        </Link>
+        <div className="hero-actions">
+          <Link className="primary-button" to={`/movies/${movie._id}/showtimes`}>
+            Đặt vé ngay
+          </Link>
+          <Link className="ghost-button" to="/">
+            Quay lại
+          </Link>
+        </div>
       </div>
     </section>
   )

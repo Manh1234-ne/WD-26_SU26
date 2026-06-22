@@ -18,6 +18,8 @@ import ManageUser from "./pages/admin/ManageUser";
 
 import Home from "./pages/client/Home";
 import MovieDetail from "./pages/client/MovieDetail";
+import Showtime from "./pages/client/Showtime";
+import SeatSelection from "./pages/client/SeatSelection";
 
 import LoginForm from "./features/auth/components/LoginForm";
 import RegisterForm from "./features/auth/components/RegisterForm";
@@ -49,6 +51,8 @@ function App() {
             <Route element={<ClientLayout />}>
               <Route index element={<Home />} />
               <Route path="movies/:id" element={<MovieDetail />} />
+              <Route path="movies/:movieId/showtimes" element={<Showtime />} />
+              <Route path="booking/:showtimeId" element={<SeatSelection />} />
             </Route>
 
             {/* Admin */}
