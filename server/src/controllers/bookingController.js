@@ -24,7 +24,7 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds } = req.body;
+    const { user, showtime, seatIds, voucherCode } = req.body;
 
     if (!user || !showtime || !seatIds?.length) {
       return fail(
@@ -38,6 +38,7 @@ export const createBooking = asyncHandler(
       user,
       showtime,
       seatIds,
+      voucherCode,
     });
 
     return created(res, booking);

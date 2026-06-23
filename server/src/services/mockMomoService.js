@@ -65,6 +65,17 @@ export const verifyMockMomoPayment = async (paymentId) => {
 
   booking.status = "confirmed";
 
+  if (booking.voucher) {
+  await Voucher.findByIdAndUpdate(
+    booking.voucher,
+    {
+      $inc: {
+        usedCount: 1,
+      },
+    }
+  );
+}
+
   await BookingSeat.updateMany(
     { booking: booking._id },
     { status: "booked" }
