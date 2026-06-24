@@ -403,6 +403,10 @@ td span {
   background: #0f172a;
   color: #fff;
   padding: 22px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .admin-brand {
@@ -1220,11 +1224,32 @@ button:disabled {
   border: 1px solid #cbd5e1;
 }
 
-.legend-box.standard { background: #f1f5f9; border-color: #cbd5e1; }
-.legend-box.vip { background: #fff1f2; border-color: #fecdd3; }
-.legend-box.couple { background: #fdf2f8; border-color: #fbcfe8; width: 32px; }
-.legend-box.selected { background: #10b981; border-color: #10b981; }
-.legend-box.occupied { background: #334155; border-color: #334155; opacity: 0.35; }
+.legend-box.standard {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.legend-box.vip {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.legend-box.couple {
+  background: #fdf2f8;
+  border-color: #fbcfe8;
+  width: 32px;
+}
+
+.legend-box.selected {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.legend-box.occupied {
+  background: #334155;
+  border-color: #334155;
+  opacity: 0.35;
+}
 
 .booking-summary-panel {
   background: #ffffff;
