@@ -7,7 +7,7 @@ import type { Movie } from '../../features/movie/movie.types'
 import { getCinemas } from '../../features/cinema/cinema.service'
 import type { Cinema } from '../../features/cinema/cinema.types'
 
-import { createShowtime, getAllShowtimes, updateShowtime } from '../../features/showtime/showtime.service'
+import { createShowtime, deleteShowtime, getAllShowtimes, updateShowtime } from '../../features/showtime/showtime.service'
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { getRooms } from '../../features/room/room.service'
 import type { Room } from '../../features/room/room.types'
@@ -30,6 +30,7 @@ import {
     message,
     Divider,
     Alert,
+    Popconfirm,
 } from 'antd'
 import {
     CalendarOutlined,
@@ -75,7 +76,7 @@ function ManageShowtime() {
     const [rooms, setRooms] = useState<Room[]>([])
     const [showtimes, setShowtimes] = useState<Showtime[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
-
+    const [deletingId, setDeletingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isLoadingRooms, setIsLoadingRooms] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -200,7 +201,8 @@ function ManageShowtime() {
                 setShowtimes((prev) => prev.map((s) => (s._id === editingId ? updated : s)))
                 void message.success('Cập nhật lịch chiếu thành công!')
                 setEditingId(null)
-            } else {
+            }
+            else {
                 const created = await createShowtime(payload)
                 setShowtimes((prev) => [created, ...prev])
                 void message.success('Tạo lịch chiếu thành công!')
@@ -241,8 +243,17 @@ function ManageShowtime() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    const handleDelete = (showtime: Showtime) => {
-
+    const handleDelete = async (showtime: Showtime) => {
+        setDeletingId(showtime._id);
+        try {
+            await deleteShowtime(showtime._id)
+            void message.success('Đã xóa lịch chiếu thành công')
+            loadShowtimes()
+        } catch {
+            void message.error('Xóa lịch chiếu thất bại')
+        } finally {
+            setDeletingId(null)
+        }
     }
 
     const selectedMovie = movies.find((m) => m._id === selectedMovieId)
@@ -328,11 +339,20 @@ function ManageShowtime() {
                         icon={<EditOutlined style={{ color: '#e11d48' }} />}
                         onClick={() => void handleEdit(record)}
                     />
-                    <Button
-                        type="text"
-                        icon={<DeleteOutlined style={{ color: '#e11d48' }} />}
-                        onClick={() => void handleDelete(record)}
-                    />
+                    <Popconfirm
+                        title="xóa"
+                        description="bạn có chắc muốn xóa không"
+                        onConfirm={() => void handleDelete(record)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ danger: true }}
+                    >
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined style={{ color: '#e11d48' }} />}
+                        />
+                    </Popconfirm>
+
                 </Space>
 
             ),
