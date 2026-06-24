@@ -169,7 +169,22 @@ if (!seat) {
 return fail(res, 404, "không tìm thấy ghế");
 }
 
+const roomId = seat.room;
+const row = seat.row;
+
 await Seat.findByIdAndDelete(id);
+
+// Sắp xếp lại số lượng ghế trên hàng theo số tự nhiên tăng dần
+const remainingSeats = await Seat.find({ room: roomId, row }).sort({ number: 1 });
+
+for (let i = 0; i < remainingSeats.length; i++) {
+  const correctNumber = i + 1;
+  if (remainingSeats[i].number !== correctNumber) {
+    remainingSeats[i].number = correctNumber;
+    remainingSeats[i].code = `${row}${correctNumber}`;
+    await remainingSeats[i].save();
+  }
+}
 
 return ok(res, seat);
 });

@@ -51,6 +51,11 @@ const movieSchema = new mongoose.Schema(
       default: "Tiếng Việt",
       maxlength: [50, "Ngôn ngữ không vượt quá 50 ký tự"],
     },
+    country: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Quốc gia không vượt quá 100 ký tự"],
+    },
     director: {
       type: String,
       trim: true,
@@ -91,11 +96,9 @@ const movieSchema = new mongoose.Schema(
       ref: "Category",
       default: null,
     },
-    averageRating: {
-      type: Number,
-      min: [0, "Đánh giá không thể nhỏ hơn 0"],
-      max: [5, "Đánh giá không thể lớn hơn 5"],
-      default: 0,
+    endDate: {
+      type: Date,
+      required: [true, "Ngày kết thúc là bắt buộc"],
     },
     isActive: {
       type: Boolean,

@@ -10,13 +10,14 @@ export type Movie = {
   releaseDate: string
   ageRating: 'P' | 'K' | 'T13' | 'T16' | 'T18' | 'C'
   language?: string
+  country?: string
   director?: string
   cast?: string[]
   posterUrl?: string
   backdropUrl?: string
   trailerUrl?: string
   status: MovieStatus
-  averageRating?: number
+  endDate: string
   isActive?: boolean
   createdAt?: string
   updatedAt?: string

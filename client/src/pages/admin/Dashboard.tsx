@@ -1,8 +1,7 @@
-
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { getMovies } from '../../features/movie/movie.service'
-import type { Movie } from '../../features/movie/movie.types'
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { getMovies } from "../../features/movie/movie.service";
+import type { Movie } from "../../features/movie/movie.types";
 
 import {
   Card,
@@ -14,7 +13,7 @@ import {
   Button,
   Typography,
   Space,
-} from 'antd'
+} from "antd";
 
 import {
   VideoCameraOutlined,
@@ -23,68 +22,62 @@ import {
   EyeInvisibleOutlined,
   RightOutlined,
   ClockCircleOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
 
-import type { ColumnsType } from 'antd/es/table'
-import dayjs from 'dayjs'
+import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 function Dashboard() {
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     getMovies()
       .then((data) => {
-        setMovies(data)
+        setMovies(data);
       })
       .catch(() => {
-        setError('Không thể lấy dữ liệu từ Dashboard')
+        setError("Không thể lấy dữ liệu từ Dashboard");
       })
       .finally(() => {
-        setIsLoading(false)
-      })
-  }, [])
+        setIsLoading(false);
+      });
+  }, []);
 
   const stats = useMemo(
     () => [
       {
-        label: 'Tổng phim',
+        label: "Tổng phim",
         value: movies.length,
         icon: <VideoCameraOutlined />,
       },
       {
-        label: 'Đang chiếu',
-        value: movies.filter(
-          (movie) => movie.status === 'now_showing'
-        ).length,
+        label: "Đang chiếu",
+        value: movies.filter((movie) => movie.status === "now_showing").length,
         icon: <PlayCircleOutlined />,
       },
       {
-        label: 'Sắp chiếu',
-        value: movies.filter(
-          (movie) => movie.status === 'coming_soon'
-        ).length,
+        label: "Sắp chiếu",
+        value: movies.filter((movie) => movie.status === "coming_soon").length,
         icon: <CalendarOutlined />,
       },
       {
-        label: 'Tạm ẩn',
-        value: movies.filter(
-          (movie) => movie.isActive === false
-        ).length,
+        label: "Tạm ẩn",
+        value: movies.filter((movie) => movie.isActive === false).length,
         icon: <EyeInvisibleOutlined />,
       },
     ],
-    [movies]
-  )
+    [movies],
+  );
 
   const columns: ColumnsType<Movie> = [
     {
-      title: 'Poster',
-      dataIndex: 'posterUrl',
-      key: 'posterUrl',
+      title: "Poster",
+      dataIndex: "posterUrl",
+      key: "posterUrl",
       width: 90,
       render: (posterUrl, record) => (
         <img
@@ -93,38 +86,38 @@ function Dashboard() {
           style={{
             width: 50,
             height: 70,
-            objectFit: 'cover',
+            objectFit: "cover",
             borderRadius: 6,
           }}
         />
       ),
     },
     {
-      title: 'Tên phim',
-      dataIndex: 'title',
-      key: 'title',
+      title: "Tên phim",
+      dataIndex: "title",
+      key: "title",
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
       render: (status) => {
         switch (status) {
-          case 'now_showing':
-            return <Tag color="green">Đang chiếu</Tag>
+          case "now_showing":
+            return <Tag color="green">Đang chiếu</Tag>;
 
-          case 'coming_soon':
-            return <Tag color="blue">Sắp chiếu</Tag>
+          case "coming_soon":
+            return <Tag color="blue">Sắp chiếu</Tag>;
 
           default:
-            return <Tag>Khác</Tag>
+            return <Tag>Khác</Tag>;
         }
       },
     },
     {
-      title: 'Thời lượng',
-      dataIndex: 'duration',
-      key: 'duration',
+      title: "Thời lượng",
+      dataIndex: "duration",
+      key: "duration",
       render: (duration) => (
         <Space>
           <ClockCircleOutlined />
@@ -133,28 +126,25 @@ function Dashboard() {
       ),
     },
     {
-      title: 'Ngày chiếu',
-      dataIndex: 'releaseDate',
-      key: 'releaseDate',
-      render: (date) =>
-        dayjs(date).format('DD/MM/YYYY'),
+      title: "Ngày chiếu",
+      dataIndex: "releaseDate",
+      key: "releaseDate",
+      render: (date) => dayjs(date).format("DD/MM/YYYY"),
     },
-  ]
+  ];
 
   return (
     <section style={{ padding: 24 }}>
       <Space
         style={{
-          width: '100%',
-          justifyContent: 'space-between',
+          width: "100%",
+          justifyContent: "space-between",
           marginBottom: 24,
         }}
       >
         <div>
           <Title level={2}>Dashboard</Title>
-          <Text type="secondary">
-            Thống kê hệ thống quản lý phim
-          </Text>
+          <Text type="secondary">Thống kê hệ thống quản lý phim</Text>
         </div>
 
         <Link to="/admin/movies">
@@ -185,10 +175,7 @@ function Dashboard() {
         ))}
       </Row>
 
-      <Card
-        title="Phim mới cập nhật"
-        style={{ marginTop: 24 }}
-      >
+      <Card title="Phim mới cập nhật" style={{ marginTop: 24 }}>
         <Table<Movie>
           rowKey="_id"
           columns={columns}
@@ -198,8 +185,7 @@ function Dashboard() {
         />
       </Card>
     </section>
-  )
+  );
 }
 
-export default Dashboard
-
+export default Dashboard;
