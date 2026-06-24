@@ -7,7 +7,7 @@ import type { Movie } from '../../features/movie/movie.types'
 import { getCinemas } from '../../features/cinema/cinema.service'
 import type { Cinema } from '../../features/cinema/cinema.types'
 
-import { createShowtime, getAllShowtimes } from '../../features/showtime/showtime.service'
+import { createShowtime, getAllShowtimes, updateShowtime } from '../../features/showtime/showtime.service'
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { getRooms } from '../../features/room/room.service'
 import type { Room } from '../../features/room/room.types'
@@ -36,6 +36,9 @@ import {
     PlusOutlined,
     ClockCircleOutlined,
     ReloadOutlined,
+    EditOutlined,
+    CloseOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -45,7 +48,7 @@ const { Option } = Select
 
 const FORMAT_OPTIONS = ['2D', '3D', 'IMAX', '4DX', 'ScreenX']
 
-interface CreateShowtimePayload {
+interface ShowtimePayload {
     movieId: string
     cinemaId: string
     roomId: string
@@ -71,6 +74,7 @@ function ManageShowtime() {
     const [cinemas, setCinemas] = useState<Cinema[]>([])
     const [rooms, setRooms] = useState<Room[]>([])
     const [showtimes, setShowtimes] = useState<Showtime[]>([])
+    const [editingId, setEditingId] = useState<string | null>(null)
 
     const [isLoading, setIsLoading] = useState(false)
     const [isLoadingRooms, setIsLoadingRooms] = useState(false)
@@ -83,7 +87,7 @@ function ManageShowtime() {
         reset,
         control,
         formState: { errors },
-    } = useForm<CreateShowtimePayload>({
+    } = useForm<ShowtimePayload>({
         defaultValues: {
             movieId: '',
             cinemaId: '',
@@ -102,7 +106,6 @@ function ManageShowtime() {
     const selectedMovieId = watch('movieId')
     const startTimeValue = watch('startTime')
 
-    // Auto-calculate end time from movie duration
     useEffect(() => {
         if (!selectedMovieId || !startTimeValue) return
         const movie = movies.find((m) => m._id === selectedMovieId)
@@ -118,7 +121,6 @@ function ManageShowtime() {
         setValue('endTime', endStr)
     }, [selectedMovieId, startTimeValue, movies, setValue])
 
-    // Load rooms when cinema changes
     useEffect(() => {
         if (!selectedCinemaId) {
             setRooms([])
@@ -174,7 +176,7 @@ function ManageShowtime() {
         }
     }
 
-    const onSubmit = async (data: CreateShowtimePayload) => {
+    const onSubmit = async (data: ShowtimePayload) => {
         if (new Date(data.endTime) <= new Date(data.startTime)) {
             void message.error('Giờ kết thúc phải sau giờ bắt đầu')
             return
@@ -193,16 +195,54 @@ function ManageShowtime() {
                 basePrice: data.basePrice,
                 status: data.status,
             }
-            const created = await createShowtime(payload)
-            setShowtimes((prev) => [created, ...prev])
-            void message.success('Tạo lịch chiếu thành công!')
+            if (editingId) {
+                const updated = await updateShowtime(editingId, payload)
+                setShowtimes((prev) => prev.map((s) => (s._id === editingId ? updated : s)))
+                void message.success('Cập nhật lịch chiếu thành công!')
+                setEditingId(null)
+            } else {
+                const created = await createShowtime(payload)
+                setShowtimes((prev) => [created, ...prev])
+                void message.success('Tạo lịch chiếu thành công!')
+            }
             reset()
         } catch (error) {
             console.error(error)
-            void message.error('Tạo lịch chiếu thất bại. Vui lòng kiểm tra lại dữ liệu.')
+            void message.error(editingId ? 'Cập nhật lịch chiếu thất bại.' : 'Tạo lịch chiếu thất bại. Vui lòng kiểm tra lại dữ liệu.')
         } finally {
             setIsSaving(false)
         }
+    }
+
+    const handleEdit = async (showtime: Showtime) => {
+        setEditingId(showtime._id)
+
+        try {
+            const roomsData = await getRooms({ cinema: showtime.cinema._id })
+            setRooms(roomsData)
+        } catch {
+
+        }
+        const pad = (n: number) => String(n).padStart(2, '0')
+        const toLocalStr = (d: Date | string) => {
+            const dt = new Date(d)
+            return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+        }
+        setValue('movieId', showtime.movie._id)
+        setValue('cinemaId', showtime.cinema._id)
+        setValue('roomId', showtime.room._id)
+        setValue('startTime', toLocalStr(showtime.startTime))
+        setValue('endTime', toLocalStr(showtime.endTime))
+        setValue('format', showtime.format)
+        setValue('language', showtime.language)
+        setValue('subtitle', showtime.subtitle)
+        setValue('basePrice', showtime.basePrice)
+        setValue('status', showtime.status)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const handleDelete = (showtime: Showtime) => {
+
     }
 
     const selectedMovie = movies.find((m) => m._id === selectedMovieId)
@@ -214,18 +254,9 @@ function ManageShowtime() {
             key: 'movie',
             width: 220,
             render: (_, record) => (
-                <Space size={10}>
-                    {record.movie.imageUrl && (
-                        <img
-                            src={record.movie.imageUrl}
-                            alt=""
-                            style={{ width: 32, height: 44, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
-                        />
-                    )}
-                    <Text strong style={{ fontSize: 13 }}>
-                        {record.movie.title}
-                    </Text>
-                </Space>
+                <Text strong style={{ fontSize: 13 }}>
+                    {record.movie.title}
+                </Text>
             ),
         },
         {
@@ -285,6 +316,27 @@ function ManageShowtime() {
                 <Tag color={status ? 'green' : 'default'}>{status ? 'Đang chiếu' : 'Ngừng chiếu'}</Tag>
             ),
         },
+        {
+            title: 'Thao tác',
+            key: 'actions',
+            width: 100,
+            align: 'center' as const,
+            render: (_: unknown, record: Showtime) => (
+                <Space>
+                    <Button
+                        type="text"
+                        icon={<EditOutlined style={{ color: '#e11d48' }} />}
+                        onClick={() => void handleEdit(record)}
+                    />
+                    <Button
+                        type="text"
+                        icon={<DeleteOutlined style={{ color: '#e11d48' }} />}
+                        onClick={() => void handleDelete(record)}
+                    />
+                </Space>
+
+            ),
+        },
     ]
 
     return (
@@ -298,9 +350,23 @@ function ManageShowtime() {
                         <Space>
                             <CalendarOutlined style={{ color: '#e11d48', fontSize: '20px' }} />
                             <Title level={4} style={{ margin: 0 }}>
-                                Thêm Lịch Chiếu Mới
+                                {editingId ? 'Cập Nhật Lịch Chiếu' : 'Thêm Lịch Chiếu Mới'}
                             </Title>
                         </Space>
+                    }
+                    extra={
+                        editingId && (
+                            <Button
+                                icon={<CloseOutlined />}
+                                size="small"
+                                onClick={() => {
+                                    setEditingId(null)
+                                    reset()
+                                }}
+                            >
+                                Hủy sửa
+                            </Button>
+                        )
                     }
                 >
                     <form onSubmit={handleSubmit(onSubmit)}>
@@ -562,7 +628,11 @@ function ManageShowtime() {
                                     size="large"
                                     onClick={handleSubmit(onSubmit)}
                                 >
-                                    {isSaving ? 'Đang tạo...' : 'Tạo Lịch Chiếu'}
+                                    {isSaving
+                                        ? 'Đang lưu...'
+                                        : editingId
+                                            ? 'Cập Nhật Lịch Chiếu'
+                                            : 'Tạo Lịch Chiếu'}
                                 </Button>
                             </Col>
                         </Row>
