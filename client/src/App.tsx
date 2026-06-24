@@ -18,10 +18,13 @@ import ManageUser from "./pages/admin/ManageUser";
 
 import Home from "./pages/client/Home";
 import MovieDetail from "./pages/client/MovieDetail";
+import Showtime from "./pages/client/Showtime";
+import SeatSelection from "./pages/client/SeatSelection";
 
 import LoginForm from "./features/auth/components/LoginForm";
 import RegisterForm from "./features/auth/components/RegisterForm";
 import ChangePasswordForm from "./features/auth/components/ChangePasswordForm";
+import ManageShowtime from "./pages/admin/ManageShowtime";
 
 function App() {
   return (
@@ -49,6 +52,8 @@ function App() {
             <Route element={<ClientLayout />}>
               <Route index element={<Home />} />
               <Route path="movies/:id" element={<MovieDetail />} />
+              <Route path="movies/:movieId/showtimes" element={<Showtime />} />
+              <Route path="booking/:showtimeId" element={<SeatSelection />} />
             </Route>
 
             {/* Admin */}
@@ -60,6 +65,7 @@ function App() {
               <Route path="seats" element={<ManageSeat />} />
               <Route path="bookings" element={<ManageBooking />} />
               <Route path="users" element={<ManageUser />} />
+              <Route path="showtimes" element={<ManageShowtime />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

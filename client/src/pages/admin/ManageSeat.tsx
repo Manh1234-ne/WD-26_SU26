@@ -22,7 +22,6 @@ import {
   Empty,
   Row,
   Col,
-  Tag,
   Modal,
   Form,
   InputNumber,
@@ -43,13 +42,13 @@ const { Title, Text } = Typography
 function ManageSeat() {
   const [cinemas, setCinemas] = useState<Cinema[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
-  
+
   const [selectedCinema, setSelectedCinema] = useState<string | null>(null)
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
-  
+
   const [currentRoomInfo, setCurrentRoomInfo] = useState<Room | null>(null)
   const [seats, setSeats] = useState<Seat[]>([])
-  
+
   const [isLoadingCinemas, setIsLoadingCinemas] = useState(true)
   const [isLoadingRooms, setIsLoadingRooms] = useState(false)
   const [isLoadingSeats, setIsLoadingSeats] = useState(false)
@@ -143,7 +142,7 @@ function ManageSeat() {
   const seatGrid = useMemo(() => {
     if (!seats.length) return []
     const rowsMap = new Map<string, Seat[]>()
-    
+
     // Sort seats just in case
     const sortedSeats = [...seats].sort((a, b) => {
       if (a.row === b.row) return a.number - b.number
@@ -210,7 +209,7 @@ function ManageSeat() {
         void message.success(`Cập nhật ghế ${editingSeat.code} thành công.`)
       } else {
         const rowUpper = values.row.toUpperCase()
-        
+
         // Find current max number in this row to continue the sequence
         const rowSeats = seats.filter(s => s.row === rowUpper)
         let maxNumber = 0
@@ -334,8 +333,8 @@ function ManageSeat() {
                 description={<span style={{ color: '#8c8c8c' }}>Phòng này chưa có ghế nào được thiết lập.</span>}
                 style={{ margin: '40px 0' }}
               >
-                <Button 
-                  type="primary" 
+                <Button
+                  type="primary"
                   size="large"
                   onClick={handleGenerateSeats}
                   loading={isGenerating}
@@ -347,19 +346,19 @@ function ManageSeat() {
               <div>
                 {/* Legend */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
-                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#95de64', borderRadius: 4 }}/> Standard</Space>
-                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#fadb14', borderRadius: 4 }}/> VIP</Space>
-                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#ff85c0', borderRadius: 4 }}/> Couple</Space>
-                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#69c0ff', borderRadius: 4 }}/> Disabled</Space>
-                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#d9d9d9', borderRadius: 4 }}/> Bảo trì (Ẩn)</Space>
+                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#95de64', borderRadius: 4 }} /> Standard</Space>
+                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#fadb14', borderRadius: 4 }} /> VIP</Space>
+                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#ff85c0', borderRadius: 4 }} /> Couple</Space>
+                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#69c0ff', borderRadius: 4 }} /> Disabled</Space>
+                  <Space><div style={{ width: 16, height: 16, backgroundColor: '#d9d9d9', borderRadius: 4 }} /> Bảo trì (Ẩn)</Space>
                 </div>
 
                 {/* Screen */}
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                  <div style={{ 
-                    height: '8px', 
-                    background: 'linear-gradient(90deg, transparent, #8c8c8c, transparent)', 
-                    width: '80%', 
+                  <div style={{
+                    height: '8px',
+                    background: 'linear-gradient(90deg, transparent, #8c8c8c, transparent)',
+                    width: '80%',
                     margin: '0 auto 12px auto',
                     borderRadius: '4px'
                   }}></div>
