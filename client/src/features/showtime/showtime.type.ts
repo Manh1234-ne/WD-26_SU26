@@ -13,13 +13,13 @@ export type Showtime = {
         _id: string,
         name: string,
     },
-    startTime: string,
-    endTime: string,
+    startTime: Date,
+    endTime: Date,
     format: string,
     language: string,
     subtitle: string,
     basePrice: number,
-    status: string,
+    status: boolean,
     createdAt: string,
     updatedAt: string,
 }
@@ -29,3 +29,4 @@ export type ApiResponse<T> = {
     data: T
     message?: string
 }
+

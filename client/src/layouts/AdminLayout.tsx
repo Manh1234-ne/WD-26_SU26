@@ -6,6 +6,7 @@ import {
   BankOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
+  FieldTimeOutlined,
 } from "@ant-design/icons";
 
 const adminLinks = [
@@ -13,6 +14,7 @@ const adminLinks = [
   { to: "/admin/movies", label: "Quản lý phim", icon: <VideoCameraOutlined /> },
   { to: "/admin/cinemas", label: "Quản lý rạp", icon: <BankOutlined /> },
   { to: "/admin/rooms", label: "Quản lý phòng chiếu", icon: <ApartmentOutlined /> },
+  { to: "/admin/showtimes", label: "Quản lý lịch chiếu", icon: <FieldTimeOutlined /> },
   { to: "/admin/seats", label: "Quản lý sơ đồ ghế", icon: <AppstoreOutlined /> },
   { to: "/admin/bookings", label: "Quản lý đặt vé", icon: <VideoCameraOutlined /> },
   { to: "/admin/users", label: "Quản lý người dùng", icon: <VideoCameraOutlined /> },

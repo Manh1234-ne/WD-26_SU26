@@ -24,6 +24,7 @@ import SeatSelection from "./pages/client/SeatSelection";
 import LoginForm from "./features/auth/components/LoginForm";
 import RegisterForm from "./features/auth/components/RegisterForm";
 import ChangePasswordForm from "./features/auth/components/ChangePasswordForm";
+import ManageShowtime from "./pages/admin/ManageShowtime";
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
               <Route path="seats" element={<ManageSeat />} />
               <Route path="bookings" element={<ManageBooking />} />
               <Route path="users" element={<ManageUser />} />
+              <Route path="showtimes" element={<ManageShowtime />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
