@@ -28,7 +28,7 @@ function SeatSelection() {
     const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Redirect to login if not authenticated
+
     useEffect(() => {
         if (!isAuthenticated) {
             message.warning('Vui lòng đăng nhập để tiến hành đặt vé.')
@@ -36,7 +36,6 @@ function SeatSelection() {
         }
     }, [isAuthenticated, navigate, message])
 
-    // Fetch showtime details
     const { data: showtime, isLoading: isShowtimeLoading, error: showtimeError } = useQuery({
         queryKey: ['showtime-detail', showtimeId],
         queryFn: () => getShowtimeById(showtimeId || ''),
@@ -45,14 +44,13 @@ function SeatSelection() {
 
     const roomId = showtime?.room?._id
 
-    // Fetch all seats in this room
+
     const { data: seatData, isLoading: isSeatsLoading, error: seatsError } = useQuery({
         queryKey: ['seats-room', roomId],
         queryFn: () => getSeatsByRoom(roomId || ''),
         enabled: !!roomId,
     })
 
-    // Fetch occupied seats for this showtime
     const { data: occupiedSeats, isLoading: isOccupiedLoading, refetch: refetchOccupied } = useQuery({
         queryKey: ['occupied-seats', showtimeId],
         queryFn: async () => {
@@ -84,7 +82,6 @@ function SeatSelection() {
     const seats = seatData.seats || []
     const occupiedSet = new Set(occupiedSeats?.map((os: any) => os.seat) || [])
 
-    // Group seats by row
     const groupedSeats = seats.reduce((acc, seat) => {
         if (!seat.isActive) return acc
         if (!acc[seat.row]) {
@@ -94,12 +91,11 @@ function SeatSelection() {
         return acc
     }, {} as Record<string, Seat[]>)
 
-    // Sort each row's seats by seat number ascending
     Object.keys(groupedSeats).forEach((row) => {
         groupedSeats[row].sort((a, b) => a.number - b.number)
     })
 
-    // Sort the row labels alphabetically
+
     const sortedRows = Object.keys(groupedSeats).sort()
 
     const toggleSeat = (seat: Seat) => {
@@ -116,7 +112,6 @@ function SeatSelection() {
         }
     }
 
-    // Calculate total price
     const totalSeatPrice = selectedSeats.reduce((sum, seat) => {
         return sum + showtime.basePrice * seat.priceMultiplier
     }, 0)
@@ -172,7 +167,7 @@ function SeatSelection() {
 
     return (
         <div className="seat-selection-page">
-            {/* Left panel: Screen & Seats Grid */}
+
             <div className="seat-layout-panel">
                 <div className="screen-container">
                     <div className="screen-line" />
@@ -208,7 +203,6 @@ function SeatSelection() {
                     </div>
                 </div>
 
-                {/* Legend */}
                 <div className="seat-legend-bar">
                     <div className="legend-item">
                         <span className="legend-box standard" />
@@ -233,7 +227,6 @@ function SeatSelection() {
                 </div>
             </div>
 
-            {/* Right panel: Booking Summary Panel */}
             <div className="booking-summary-panel">
                 <h3 className="summary-movie-title">{showtime.movie.title}</h3>
 
