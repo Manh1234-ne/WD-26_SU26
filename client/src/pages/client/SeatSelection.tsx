@@ -6,7 +6,6 @@ import { getSeatsByRoom } from '../../features/seat/seat.service'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { api } from '../../services/api'
 import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 
