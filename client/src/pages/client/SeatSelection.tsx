@@ -135,8 +135,8 @@ function SeatSelection() {
                 title: 'Đặt Vé Thành Công!',
                 html: `
           <div style="text-align: left; padding: 10px 0;">
-            <p>Cảm ơn bạn đã lựa chọn dịch vụ của chúng tôi.</p>
-            <p><strong>Mã vé:</strong> <span style="color: #e11d48; font-size: 18px; font-weight: 800;">${res.data.data.bookingCode}</span></p>
+            <p>Hệ thống đã giữ chỗ thành công. Vui lòng hoàn tất thanh toán trong vòng 10 phút để nhận vé.</p>
+            <p><strong>Mã đặt vé:</strong> <span style="color: #e11d48; font-size: 18px; font-weight: 800;">${res.data.data.bookingCode}</span></p>
             <p><strong>Phim:</strong> ${showtime.movie.title}</p>
             <p><strong>Ghế:</strong> ${selectedSeats.map((s) => s.code).join(', ')}</p>
             <p><strong>Phòng:</strong> ${showtime.room.name}</p>
@@ -145,9 +145,9 @@ function SeatSelection() {
         `,
                 icon: 'success',
                 confirmButtonColor: '#e11d48',
-                confirmButtonText: 'Đồng ý',
+                confirmButtonText: 'Tiến hành thanh toán',
             }).then(() => {
-                navigate('/')
+                navigate(`/payment/${res.data.data._id}`)
             })
         } catch (err: any) {
             console.error(err)

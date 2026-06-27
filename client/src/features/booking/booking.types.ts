@@ -15,7 +15,11 @@ export type Booking = {
             title: string,
             posterUrl: string
         },
-        screen: {
+        cinema?: {
+            _id: string,
+            name: string,
+        },
+        screen?: {
             _id: string,
             name: string,
         },
