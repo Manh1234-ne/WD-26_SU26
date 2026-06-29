@@ -1,5 +1,5 @@
 import { api } from "../../services/api"
-import type { ApiResponse, Booking } from "./booking.types"
+import type { ApiResponse, Booking, BookingWithSeats } from "./booking.types"
 
 export const createBooking = async (booking: Booking) => {
     const response = await api.post<ApiResponse<Booking>>('/bookings', booking)
@@ -7,7 +7,7 @@ export const createBooking = async (booking: Booking) => {
 }
 
 export const getBookingById = async (id: string) => {
-    const response = await api.get<ApiResponse<Booking>>(`/bookings/${id}`)
+    const response = await api.get<ApiResponse<BookingWithSeats>>(`/bookings/${id}`)
     return response.data
 }
 

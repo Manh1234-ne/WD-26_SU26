@@ -44,11 +44,25 @@ export type Booking = {
 
 export type User = {
     _id: string,
-    name: string,
+    fullName: string,
     email: string,
     phone: string,
 }
 
+
+export type Seat = {
+    _id: string
+    row: string
+    col: number
+    label: string
+    type: string
+    price: number
+}
+
+export type BookingWithSeats = {
+    booking: Booking
+    seats: Seat[]
+}
 
 export type ApiResponse<T> = {
     success: boolean
