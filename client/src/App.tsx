@@ -27,6 +27,7 @@ import ChangePasswordForm from "./features/auth/components/ChangePasswordForm";
 import ManageShowtime from "./pages/admin/ManageShowtime";
 import Payment from "./pages/client/payment";
 import PaymentSuccess from "./pages/client/payment-success";
+import { AuthGuard } from "./routes/AuthGuard";
 
 function App() {
   return (
@@ -55,8 +56,8 @@ function App() {
               <Route index element={<Home />} />
               <Route path="movies/:id" element={<MovieDetail />} />
               <Route path="movies/:movieId/showtimes" element={<Showtime />} />
-              <Route path="booking/:showtimeId" element={<SeatSelection />} />
-              <Route path="payment/:bookingId" element={<Payment />} />
+              <Route path="booking/:showtimeId" element={<AuthGuard><SeatSelection /></AuthGuard>} />
+              <Route path="payment/:bookingId" element={<AuthGuard><Payment /></AuthGuard>} />
               <Route path="payment-success" element={<PaymentSuccess />} />
             </Route>
 
