@@ -1,0 +1,71 @@
+export type Booking = {
+    _id: string,
+    bookingCode: string,
+    user: {
+        _id: string,
+
+        fullName: string,
+        email: string,
+        phone: string,
+    },
+    showtime: {
+        _id: string,
+        movie: {
+            _id: string,
+            title: string,
+            posterUrl: string
+        },
+        cinema?: {
+            _id: string,
+            name: string,
+        },
+        screen?: {
+            _id: string,
+            name: string,
+        },
+        room: {
+            _id: string,
+            name: string,
+        },
+        startTime: string,
+        endTime: string,
+    },
+    voucher: {
+        code: string,
+        discount: number
+    } | null,
+    totalSeatPrice: number,
+    discountAmount: number,
+    finalAmount: number,
+    status: string,
+    createdAt: string,
+    updatedAt: string,
+}
+
+export type User = {
+    _id: string,
+    fullName: string,
+    email: string,
+    phone: string,
+}
+
+
+export type Seat = {
+    _id: string
+    row: string
+    col: number
+    label: string
+    type: string
+    price: number
+}
+
+export type BookingWithSeats = {
+    booking: Booking
+    seats: Seat[]
+}
+
+export type ApiResponse<T> = {
+    success: boolean
+    data: T
+    message?: string
+}

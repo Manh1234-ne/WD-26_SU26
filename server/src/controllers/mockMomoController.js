@@ -154,18 +154,17 @@ export const mockMomoSuccess = async (req, res) => {
   <p><b>Phòng:</b> ${fullBooking.showtime?.room?.name || ""}</p>
 
   <p><b>Giờ chiếu:</b>
-    ${
-      fullBooking.showtime?.startTime
-        ? new Date(
-            fullBooking.showtime.startTime
-          ).toLocaleString("vi-VN")
-        : ""
-    }
+    ${fullBooking.showtime?.startTime
+            ? new Date(
+              fullBooking.showtime.startTime
+            ).toLocaleString("vi-VN")
+            : ""
+          }
   </p>
 
   <p><b>Ghế:</b> ${seats
-    .map((s) => s.seatCode)
-    .join(", ")}</p>
+            .map((s) => s.seatCode)
+            .join(", ")}</p>
 
   <h3>📌 QR Code vé:</h3>
 

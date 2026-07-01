@@ -6,7 +6,6 @@ import { getSeatsByRoom } from '../../features/seat/seat.service'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { api } from '../../services/api'
 import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 
@@ -28,7 +27,7 @@ function SeatSelection() {
     const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Redirect to login if not authenticated
+
     useEffect(() => {
         if (!isAuthenticated) {
             message.warning('Vui lòng đăng nhập để tiến hành đặt vé.')
@@ -36,7 +35,6 @@ function SeatSelection() {
         }
     }, [isAuthenticated, navigate, message])
 
-    // Fetch showtime details
     const { data: showtime, isLoading: isShowtimeLoading, error: showtimeError } = useQuery({
         queryKey: ['showtime-detail', showtimeId],
         queryFn: () => getShowtimeById(showtimeId || ''),
@@ -45,14 +43,13 @@ function SeatSelection() {
 
     const roomId = showtime?.room?._id
 
-    // Fetch all seats in this room
+
     const { data: seatData, isLoading: isSeatsLoading, error: seatsError } = useQuery({
         queryKey: ['seats-room', roomId],
         queryFn: () => getSeatsByRoom(roomId || ''),
         enabled: !!roomId,
     })
 
-    // Fetch occupied seats for this showtime
     const { data: occupiedSeats, isLoading: isOccupiedLoading, refetch: refetchOccupied } = useQuery({
         queryKey: ['occupied-seats', showtimeId],
         queryFn: async () => {
@@ -84,7 +81,6 @@ function SeatSelection() {
     const seats = seatData.seats || []
     const occupiedSet = new Set(occupiedSeats?.map((os: any) => os.seat) || [])
 
-    // Group seats by row
     const groupedSeats = seats.reduce((acc, seat) => {
         if (!seat.isActive) return acc
         if (!acc[seat.row]) {
@@ -94,12 +90,11 @@ function SeatSelection() {
         return acc
     }, {} as Record<string, Seat[]>)
 
-    // Sort each row's seats by seat number ascending
     Object.keys(groupedSeats).forEach((row) => {
         groupedSeats[row].sort((a, b) => a.number - b.number)
     })
 
-    // Sort the row labels alphabetically
+
     const sortedRows = Object.keys(groupedSeats).sort()
 
     const toggleSeat = (seat: Seat) => {
@@ -116,7 +111,6 @@ function SeatSelection() {
         }
     }
 
-    // Calculate total price
     const totalSeatPrice = selectedSeats.reduce((sum, seat) => {
         return sum + showtime.basePrice * seat.priceMultiplier
     }, 0)
@@ -141,8 +135,8 @@ function SeatSelection() {
                 title: 'Đặt Vé Thành Công!',
                 html: `
           <div style="text-align: left; padding: 10px 0;">
-            <p>Cảm ơn bạn đã lựa chọn dịch vụ của chúng tôi.</p>
-            <p><strong>Mã vé:</strong> <span style="color: #e11d48; font-size: 18px; font-weight: 800;">${res.data.data.bookingCode}</span></p>
+            <p>Hệ thống đã giữ chỗ thành công. Vui lòng hoàn tất thanh toán trong vòng 10 phút để nhận vé.</p>
+            <p><strong>Mã đặt vé:</strong> <span style="color: #e11d48; font-size: 18px; font-weight: 800;">${res.data.data.bookingCode}</span></p>
             <p><strong>Phim:</strong> ${showtime.movie.title}</p>
             <p><strong>Ghế:</strong> ${selectedSeats.map((s) => s.code).join(', ')}</p>
             <p><strong>Phòng:</strong> ${showtime.room.name}</p>
@@ -151,9 +145,9 @@ function SeatSelection() {
         `,
                 icon: 'success',
                 confirmButtonColor: '#e11d48',
-                confirmButtonText: 'Đồng ý',
+                confirmButtonText: 'Tiến hành thanh toán',
             }).then(() => {
-                navigate('/')
+                navigate(`/payment/${res.data.data._id}`)
             })
         } catch (err: any) {
             console.error(err)
@@ -172,7 +166,7 @@ function SeatSelection() {
 
     return (
         <div className="seat-selection-page">
-            {/* Left panel: Screen & Seats Grid */}
+
             <div className="seat-layout-panel">
                 <div className="screen-container">
                     <div className="screen-line" />
@@ -208,7 +202,6 @@ function SeatSelection() {
                     </div>
                 </div>
 
-                {/* Legend */}
                 <div className="seat-legend-bar">
                     <div className="legend-item">
                         <span className="legend-box standard" />
@@ -233,7 +226,6 @@ function SeatSelection() {
                 </div>
             </div>
 
-            {/* Right panel: Booking Summary Panel */}
             <div className="booking-summary-panel">
                 <h3 className="summary-movie-title">{showtime.movie.title}</h3>
 

@@ -52,7 +52,7 @@ export const verifyMockMomoPayment = async (paymentId) => {
   }
 
   // tránh xử lý nhiều lần
-  if (payment.status === "pending") {
+  if (payment.status !== "pending") {
     return {
       payment,
       booking,
@@ -84,19 +84,20 @@ export const verifyMockMomoPayment = async (paymentId) => {
  */
 export const failMockMomoPayment = async (paymentId) => {
   const payment = await Payment.findById(paymentId);
-  if (payment.status !== "pending") {
-  return {
-    payment,
-    booking,
-  };
-}
-
-  
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
 
   const booking = await Booking.findById(payment.booking);
-
   if (!booking) {
     throw new Error("Booking not found");
+  }
+
+  if (payment.status !== "pending") {
+    return {
+      payment,
+      booking,
+    };
   }
 
   payment.status = "failed";

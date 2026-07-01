@@ -1220,11 +1220,32 @@ button:disabled {
   border: 1px solid #cbd5e1;
 }
 
-.legend-box.standard { background: #f1f5f9; border-color: #cbd5e1; }
-.legend-box.vip { background: #fff1f2; border-color: #fecdd3; }
-.legend-box.couple { background: #fdf2f8; border-color: #fbcfe8; width: 32px; }
-.legend-box.selected { background: #10b981; border-color: #10b981; }
-.legend-box.occupied { background: #334155; border-color: #334155; opacity: 0.35; }
+.legend-box.standard {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.legend-box.vip {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.legend-box.couple {
+  background: #fdf2f8;
+  border-color: #fbcfe8;
+  width: 32px;
+}
+
+.legend-box.selected {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.legend-box.occupied {
+  background: #334155;
+  border-color: #334155;
+  opacity: 0.35;
+}
 
 .booking-summary-panel {
   background: #ffffff;
@@ -1295,4 +1316,315 @@ button:disabled {
 
 .summary-checkout-btn {
   width: 100%;
+}
+
+.payment-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 0;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 32px;
+}
+
+@media (max-width: 992px) {
+  .payment-page-container {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.payment-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.payment-timer-banner {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  color: #be123c;
+}
+
+.payment-timer-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.payment-timer-countdown {
+  font-family: monospace;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.payment-methods-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.payment-method-item {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.payment-method-item:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.payment-method-item.selected {
+  border-color: #e11d48;
+  background: #fff5f6;
+}
+
+.payment-method-item.momo.selected {
+  border-color: #a5106c;
+  background: #fdf2f8;
+}
+
+.payment-method-item.vnpay.selected {
+  border-color: #005baa;
+  background: #f0f7ff;
+}
+
+.payment-method-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.payment-method-item.selected .payment-method-radio {
+  border-color: #e11d48;
+}
+
+.payment-method-item.momo.selected .payment-method-radio {
+  border-color: #a5106c;
+}
+
+.payment-method-item.vnpay.selected .payment-method-radio {
+  border-color: #005baa;
+}
+
+.payment-method-radio::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.payment-method-item.selected .payment-method-radio::after {
+  background: #e11d48;
+}
+
+.payment-method-item.momo.selected .payment-method-radio::after {
+  background: #a5106c;
+}
+
+.payment-method-item.vnpay.selected .payment-method-radio::after {
+  background: #005baa;
+}
+
+.payment-method-logo-wrapper {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.payment-method-logo {
+  max-width: 80%;
+  max-height: 80%;
+  object-fit: contain;
+}
+
+.payment-method-details {
+  flex: 1;
+}
+
+.payment-method-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.payment-method-desc {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Payment Success & Failure Styles */
+.payment-result-card {
+  max-width: 580px;
+  margin: 40px auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-status-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.result-status-icon-wrapper.success {
+  background: #ecfdf5;
+  color: #10b981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.result-status-icon-wrapper.fail {
+  background: #fef2f2;
+  color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+.result-status-icon {
+  font-size: 40px;
+}
+
+.result-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.result-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin-bottom: 32px;
+}
+
+.result-ticket-details {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.result-detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.result-detail-row:last-child {
+  margin-bottom: 0;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.result-detail-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.result-detail-val {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+}
+
+.result-detail-val.highlight {
+  color: #e11d48;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.result-email-banner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.result-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.result-actions button,
+.result-actions a {
+  flex: 1;
+  max-width: 200px;
 }
