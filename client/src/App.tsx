@@ -28,6 +28,7 @@ import ManageShowtime from "./pages/admin/ManageShowtime";
 import Payment from "./pages/client/payment";
 import PaymentSuccess from "./pages/client/payment-success";
 import { AuthGuard } from "./routes/AuthGuard";
+import { AdminRoute } from "./routes/AdminRoute";
 
 function App() {
   return (
@@ -62,7 +63,8 @@ function App() {
             </Route>
 
             {/* Admin */}
-            <Route path="admin" element={<AdminLayout />}>
+            <Route path="admin" element={
+              <AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="movies" element={<ManageMovie />} />
               <Route path="cinemas" element={<ManageCinema />} />
