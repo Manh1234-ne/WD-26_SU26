@@ -1,9 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined, ShoppingCartOutlined, BgColorsOutlined } from '@ant-design/icons'
+import { HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined, ShoppingCartOutlined, BgColorsOutlined, UserOutlined, HistoryOutlined, LogoutOutlined, DashboardOutlined } from '@ant-design/icons'
 import { useAuth } from '../features/auth/hooks/useAuth'
-import { Button } from 'antd'
+import { Button, Dropdown, Avatar, Space, Typography } from 'antd'
 import { logout } from '../features/auth/services/auth.service'
 import Swal from "sweetalert2"
+
+const { Text } = Typography;
+
 function ClientLayout() {
   const styles = {
     shell: {
@@ -160,6 +163,35 @@ function ClientLayout() {
     }
   }
 
+  const userMenuItems = [
+    ...(user?.role === 'admin' ? [
+      {
+        key: 'admin',
+        icon: <DashboardOutlined />,
+        label: <NavLink to="/admin">Kênh quản trị</NavLink>,
+      },
+      { type: 'divider' as const },
+    ] : []),
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: <NavLink to="/profile">Thông tin người dùng</NavLink>,
+    },
+    {
+      key: 'history',
+      icon: <HistoryOutlined />,
+      label: <NavLink to="/history">Lịch sử đặt vé</NavLink>,
+    },
+    { type: 'divider' as const },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      danger: true,
+      onClick: handleConfirmLogout
+    },
+  ];
+
   return (
     <div style={styles.shell}>
       <header style={styles.header}>
@@ -189,21 +221,22 @@ function ClientLayout() {
         </nav>
 
         <div style={styles.navRight}>
-          {user?.role == "admin" && (
-            <NavLink to="/admin" style={styles.adminBtn}>
-              <span>Kênh quản trị</span>
-            </NavLink>
 
-          )}
-          {isAuthenticated &&
+
+          {isAuthenticated && (
             <>
-              <BgColorsOutlined style={styles.themeIcon} />
-              <button style={styles.cartBtn}>
-                <ShoppingCartOutlined />
-                Mua Vé
-              </button>
-            </>}
-          {!isAuthenticated ? (
+
+
+              <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                <Space size="middle" style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', border: '1px solid #f0f0f0', background: '#fafafa' }}>
+                  <Avatar size={42} style={{ backgroundColor: '#e11d48' }} icon={<UserOutlined style={{ fontSize: '20px' }} />} />
+                  <Text strong style={{ fontSize: '15px' }}>{user?.fullName || user?.email?.split('@')[0] || 'User'}</Text>
+                </Space>
+              </Dropdown>
+            </>
+          )}
+
+          {!isAuthenticated && (
             <>
               <NavLink to="/signIn" style={styles.signInBtn}>
                 Đăng nhập
@@ -212,10 +245,6 @@ function ClientLayout() {
                 Đăng ký
               </NavLink>
             </>
-          ) : (
-            <Button type="primary" style={{ cursor: "pointer" }} onClick={handleConfirmLogout}>
-              Đăng xuất
-            </Button>
           )}
         </div>
       </header>
