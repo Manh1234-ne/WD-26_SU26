@@ -102,7 +102,7 @@ function Payment() {
             }
         } catch (error) {
             console.error(error)
-            message.error(error?.message || "Có lỗi xảy ra khi khởi tạo giao dịch thanh toán.")
+            message.error((error as any)?.message || "Có lỗi xảy ra khi khởi tạo giao dịch thanh toán.")
             setIsProcessing(false)
         }
     }

@@ -25,7 +25,7 @@ import LoginForm from "./features/auth/components/LoginForm";
 import RegisterForm from "./features/auth/components/RegisterForm";
 import ChangePasswordForm from "./features/auth/components/ChangePasswordForm";
 import ManageShowtime from "./pages/admin/ManageShowtime";
-import Payment from "./pages/client/payment";
+import Payment from "./pages/client/Payment";
 import PaymentSuccess from "./pages/client/payment-success";
 import { AuthGuard } from "./routes/AuthGuard";
 import { AdminRoute } from "./routes/AdminRoute";

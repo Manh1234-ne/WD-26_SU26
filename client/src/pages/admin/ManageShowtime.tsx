@@ -76,7 +76,6 @@ function ManageShowtime() {
     const [rooms, setRooms] = useState<Room[]>([])
     const [showtimes, setShowtimes] = useState<Showtime[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
-    const [deletingId, setDeletingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isLoadingRooms, setIsLoadingRooms] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -244,15 +243,12 @@ function ManageShowtime() {
     }
 
     const handleDelete = async (showtime: Showtime) => {
-        setDeletingId(showtime._id);
         try {
             await deleteShowtime(showtime._id)
             void message.success('Đã xóa lịch chiếu thành công')
             loadShowtimes()
         } catch {
             void message.error('Xóa lịch chiếu thất bại')
-        } finally {
-            setDeletingId(null)
         }
     }
 

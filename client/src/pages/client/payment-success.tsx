@@ -19,7 +19,6 @@ function PaymentSuccess() {
     const [paymentStatus, setPaymentStatus] = useState<"success" | "fail">("fail")
     const [booking, setBooking] = useState<any>(null)
     const [seats, setSeats] = useState<any[]>([])
-    const [paymentDetail, setPaymentDetail] = useState<any>(null)
     useEffect(() => {
         const handleVerify = async () => {
 
@@ -35,7 +34,6 @@ function PaymentSuccess() {
                     const res = await verifyVnPayReturn(params)
                     if (res.success && res.data?.payment?.status === "paid") {
                         setPaymentStatus("success")
-                        setPaymentDetail(res.data.payment)
 
                         const bookingRes = await getBookingById(res.data.booking._id)
                         setBooking(bookingRes.data.booking)
