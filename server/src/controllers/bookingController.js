@@ -41,7 +41,14 @@ export const createBooking = asyncHandler(async (req, res) => {
 export const getBookingById = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id)
     .populate("user")
-    .populate("showtime");
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "cinema" },
+        { path: "room" }
+      ]
+    });
 
   if (!booking) {
     return fail(res, 404, "Không tìm thấy booking");
