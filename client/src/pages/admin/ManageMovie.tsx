@@ -34,7 +34,6 @@ import {
   ReloadOutlined,
   VideoCameraOutlined,
   CalendarOutlined,
-  StarOutlined,
   GlobalOutlined,
   UserOutlined,
   LinkOutlined,

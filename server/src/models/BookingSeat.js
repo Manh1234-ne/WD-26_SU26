@@ -44,7 +44,7 @@ const bookingSeatSchema = new mongoose.Schema(
   }
 );
 
-bookingSeatSchema.index({ showtime: 1, seat: 1 }, { unique: true });
+bookingSeatSchema.index({ showtime: 1, seat: 1 }, { unique: true, partialFilterExpression: { status: "booked" } });
 bookingSeatSchema.index({ booking: 1 });
 
 export default mongoose.model("BookingSeat", bookingSeatSchema);

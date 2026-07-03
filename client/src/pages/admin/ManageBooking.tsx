@@ -224,7 +224,7 @@ function ManageBooking() {
       title: "Hành động",
       key: "action",
       width: 130,
-      render: (_, record) => (
+      render: () => (
         <Space>
           <Button size="small" danger icon={<CloseCircleOutlined />}>
             Huỷ

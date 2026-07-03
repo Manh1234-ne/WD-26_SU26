@@ -1,7 +1,7 @@
 
 import { useMemo, useState } from 'react'
 import { Button, Card, Col, Input, Row, Select, Space, Table, Tag, Typography } from 'antd'
-import { ReloadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons'
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
 
@@ -63,13 +63,13 @@ const roleOptions = [
   { label: 'Tất cả vai trò', value: 'all' },
   { label: 'Admin', value: 'admin' },
   { label: 'Khách hàng', value: 'customer' },
-] as const
+]
 
 const statusOptions = [
   { label: 'Tất cả trạng thái', value: 'all' },
   { label: 'Hoạt động', value: 'active' },
   { label: 'Vô hiệu hoá', value: 'inactive' },
-] as const
+]
 
 const roleTag = (role: UserRole) => {
   return role === 'admin' ? <Tag color="volcano">Admin</Tag> : <Tag color="blue">Khách hàng</Tag>
