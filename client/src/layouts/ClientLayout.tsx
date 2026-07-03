@@ -198,10 +198,10 @@ function ClientLayout() {
           {isAuthenticated &&
             <>
               <BgColorsOutlined style={styles.themeIcon} />
-              <button style={styles.cartBtn}>
+              <NavLink to="/booking-history" style={styles.cartBtn}>
                 <ShoppingCartOutlined />
-                Mua Vé
-              </button>
+                Xem lịch sử
+              </NavLink>
             </>}
           {!isAuthenticated ? (
             <>
