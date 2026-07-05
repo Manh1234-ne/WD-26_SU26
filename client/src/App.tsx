@@ -27,6 +27,7 @@ import ChangePasswordForm from "./features/auth/components/ChangePasswordForm";
 import ManageShowtime from "./pages/admin/ManageShowtime";
 import Payment from "./pages/client/Payment";
 import PaymentSuccess from "./pages/client/payment-success";
+import BookingHistory from "./pages/client/BookingHistory";
 import { AuthGuard } from "./routes/AuthGuard";
 import { AdminRoute } from "./routes/AdminRoute";
 
@@ -60,6 +61,7 @@ function App() {
               <Route path="booking/:showtimeId" element={<AuthGuard><SeatSelection /></AuthGuard>} />
               <Route path="payment/:bookingId" element={<AuthGuard><Payment /></AuthGuard>} />
               <Route path="payment-success" element={<PaymentSuccess />} />
+              <Route path="booking-history" element={<AuthGuard><BookingHistory /></AuthGuard>} />
             </Route>
 
             {/* Admin */}

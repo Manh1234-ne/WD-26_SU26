@@ -154,7 +154,7 @@ function PaymentSuccess() {
                         <Link className="ghost-button" to="/" style={{ display: "inline-flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
                             <HomeOutlined /> Trang chủ
                         </Link>
-                        <Link className="primary-button" to="/profile" style={{ display: "inline-flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
+                        <Link className="primary-button" to="/booking-history" style={{ display: "inline-flex", alignItems: "center", gap: "6px", justifyContent: "center" }}>
                             <HistoryOutlined /> Lịch sử đặt vé
                         </Link>
                     </div>
