@@ -374,31 +374,57 @@ function ManageSeat() {
                           {rowName}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          {rowSeats.map((seat) => (
-                            <div
-                              key={seat._id}
-                              onClick={() => openEditModal(seat)}
-                              style={{
-                                width: seat.type === 'couple' ? '70px' : '32px',
-                                height: '32px',
-                                backgroundColor: getSeatColor(seat),
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: seat.isActive ? '#000' : '#8c8c8c',
-                                fontWeight: 600,
-                                fontSize: '11px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                border: '1px solid rgba(0,0,0,0.1)',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                              }}
-                              title={`Ghế ${seat.code} - ${seat.type}`}
-                            >
-                              {seat.number}
-                            </div>
-                          ))}
+                          {rowSeats.map((seat) => {
+                            const isCouple = seat.type === 'couple';
+                            return (
+                              <div
+                                key={seat._id}
+                                onClick={() => openEditModal(seat)}
+                                style={{
+                                  width: isCouple ? '72px' : '32px',
+                                  height: '32px',
+                                  backgroundColor: getSeatColor(seat),
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: seat.isActive ? '#000' : '#8c8c8c',
+                                  fontWeight: 600,
+                                  fontSize: '11px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  border: '1px solid rgba(0,0,0,0.1)',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                  overflow: 'hidden',
+                                }}
+                                title={`Ghế ${seat.code} - ${seat.type}`}
+                              >
+                                {isCouple ? (
+                                  <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+                                    <div style={{ 
+                                      flex: 1, 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center', 
+                                      borderRight: '2px solid rgba(255,255,255,0.7)' 
+                                    }}>
+                                      {seat.number}
+                                    </div>
+                                    <div style={{ 
+                                      flex: 1, 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center' 
+                                    }}>
+                                      <span style={{ opacity: 0.6 }}>{seat.number}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  seat.number
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                         <div style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', color: '#595959' }}>
                           {rowName}

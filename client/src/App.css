@@ -640,6 +640,10 @@ td span {
   background: #0f172a;
   color: #fff;
   padding: 22px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .admin-brand {
