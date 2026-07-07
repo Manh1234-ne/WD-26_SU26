@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons"
 import { format } from "date-fns"
 import { App as AntdApp } from "antd"
+import Loading from "../../components/Loading/Loading"
 function PaymentSuccess() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
@@ -83,9 +84,7 @@ function PaymentSuccess() {
     }, [searchParams, navigate, message])
     if (loading) {
         return (
-            <div className="page-state">
-                <p className="state-text">Đang kiểm tra và xác thực giao dịch thanh toán...</p>
-            </div>
+            <Loading text="Đang kiểm tra và xác thực giao dịch thanh toán..." />
         )
     }
     const showtime = booking?.showtime
