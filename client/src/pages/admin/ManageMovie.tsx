@@ -55,7 +55,6 @@ type MovieFormFields = {
   duration: number
   releaseDate: dayjs.Dayjs
   ageRating: MoviePayload['ageRating']
-  language: string
   country: string
   director: string
   cast: string
@@ -75,7 +74,6 @@ const emptyFormValues = {
   duration: 90,
   releaseDate: dayjs(),
   ageRating: 'P' as const,
-  language: 'Tiếng Việt',
   country: '',
   director: '',
   cast: '',
@@ -103,7 +101,6 @@ function toPayload(formValues: MovieFormFields): MoviePayload {
     duration: formValues.duration,
     releaseDate: formValues.releaseDate.format('YYYY-MM-DD'),
     ageRating: formValues.ageRating,
-    language: formValues.language?.trim() || 'Tiếng Việt',
     country: formValues.country?.trim() || '',
     director: formValues.director.trim(),
     cast: toList(formValues.cast),
@@ -125,7 +122,6 @@ function toFormFields(movie: Movie): Partial<MovieFormFields> {
     duration: movie.duration,
     releaseDate: dayjs(movie.releaseDate),
     ageRating: movie.ageRating,
-    language: movie.language || 'Tiếng Việt',
     country: movie.country || '',
     director: movie.director || '',
     cast: movie.cast?.join(', ') || '',
@@ -474,16 +470,6 @@ function ManageMovie() {
 
             <Row gutter={16}>
               <Col xs={24} sm={12} md={6}>
-                <Form.Item label=" Phụ Đề " name="language">
-                  <Select placeholder="Chọn Phụ Đề">
-                    <Select.Option value="Tiếng Anh">Tiếng Anh</Select.Option>
-                    <Select.Option value="Tiếng Việt">Tiếng Việt</Select.Option>
-                    <Select.Option value="Tiếng Trung">Tiếng Trung</Select.Option>
-                    <Select.Option value="Tiếng Hàn">Tiếng Hàn</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
                 <Form.Item
                   label="Thời lượng (phút)"
                   name="duration"
@@ -751,9 +737,7 @@ function ManageMovie() {
                   <Descriptions.Item label="Đạo diễn">
                     {selectedMovie.director || 'Chưa cập nhật'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Ngôn ngữ">
-                    {selectedMovie.language || 'Chưa cập nhật'}
-                  </Descriptions.Item>
+
                   <Descriptions.Item label="Quốc gia">
                     {selectedMovie.country || 'Chưa cập nhật'}
                   </Descriptions.Item>

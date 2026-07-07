@@ -111,7 +111,6 @@ class MovieController {
         duration,
         releaseDate,
         ageRating,
-        language,
         director,
         cast,
         posterUrl,
@@ -202,7 +201,6 @@ class MovieController {
         duration,
         releaseDate,
         ageRating: ageRating || "P",
-        language: language?.trim() || "Tiếng Việt",
         director: director?.trim() || "",
         cast: cast || [],
         posterUrl: posterUrl || "",
@@ -251,7 +249,6 @@ class MovieController {
         duration,
         releaseDate,
         ageRating,
-        language,
         director,
         cast,
         posterUrl,
@@ -330,7 +327,6 @@ class MovieController {
       if (duration !== undefined) movie.duration = duration;
       if (releaseDate !== undefined) movie.releaseDate = releaseDate;
       if (ageRating !== undefined) movie.ageRating = ageRating;
-      if (language !== undefined) movie.language = language?.trim() || "Tiếng Việt";
       if (director !== undefined) movie.director = director?.trim() || "";
       if (cast !== undefined) movie.cast = cast || [];
       if (posterUrl !== undefined) movie.posterUrl = posterUrl || "";
