@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMovies } from '../../features/movie/movie.service'
 import type { Movie, MovieStatus } from '../../features/movie/movie.types'
+import Loading from '../../components/Loading/Loading'
 
 const statusTabs: Array<{ label: string; value: MovieStatus | 'all' }> = [
   { label: 'Tất cả', value: 'all' },
@@ -36,7 +37,7 @@ function Home() {
       })
       .catch(() => {
         if (isMounted) {
-          setError('Không thể tải danh sách phim. Hãy kiểm tra server backend.')
+          setError("không thể kết nối với server")
         }
       })
       .finally(() => {
@@ -111,10 +112,10 @@ function Home() {
           ))}
         </div>
 
-        {isLoading && <p className="state-text">Đang tải phim</p>}
+        {isLoading && <Loading text="Đang tải phim..." />}
         {error && <p className="state-text error-text">{error}</p>}
         {!isLoading && !error && movies.length === 0 && (
-          <p className="state-text">Chưa có phim nào phù hợp.</p>
+          <p className="state-text">Không tìm thấy phim nào.</p>
         )}
 
         <div className="movie-grid">

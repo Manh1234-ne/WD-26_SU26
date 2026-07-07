@@ -6,6 +6,7 @@ import { getAllShowtimes } from '../../features/showtime/showtime.service'
 import { format, addDays, isSameDay } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import type { Showtime as ShowtimeType } from '../../features/showtime/showtime.type'
+import Loading from '../../components/Loading/Loading'
 
 function Showtime() {
     const { movieId } = useParams()
@@ -27,11 +28,7 @@ function Showtime() {
     })
 
     if (isMovieLoading || isShowtimesLoading) {
-        return (
-            <div className="page-state">
-                <p className="state-text">Đang tải thông tin lịch chiếu...</p>
-            </div>
-        )
+        return <Loading fullScreen text="Đang tải lịch chiếu..." />
     }
 
     if (movieError || showtimesError || !movie) {

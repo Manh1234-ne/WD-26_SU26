@@ -8,6 +8,7 @@ import { api } from '../../services/api'
 import { format } from 'date-fns'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
+import Loading from '../../components/Loading/Loading'
 
 interface Seat {
     _id: string
@@ -60,11 +61,7 @@ function SeatSelection() {
     })
 
     if (isShowtimeLoading || isSeatsLoading || isOccupiedLoading) {
-        return (
-            <div className="page-state">
-                <p className="state-text">Đang tải phòng chiếu và sơ đồ ghế...</p>
-            </div>
-        )
+        return <Loading fullScreen text="Đang tải phòng chiếu và sơ đồ ghế..." />
     }
 
     if (showtimeError || seatsError || !showtime || !seatData) {
