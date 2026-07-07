@@ -220,7 +220,7 @@ function BookingHistory() {
       )}
 
       {!loading && !error && filteredBookings.length > 0 && (
-        <div className="booking-history-list" style={{ marginTop: "20px", background: "#fff", borderRadius: "16px", padding: "8px", boxShadow: "0 6px 20px rgba(0,0,0,0.05)" }}>
+        <div className="booking-history-list" style={{ marginTop: "20px", background: "#fff", borderRadius: "16px", padding: "8px", boxShadow: "0 6px 20px rgba(0,0,0,0.05)", width: "100%" }}>
           <Table
             columns={columns}
             dataSource={tableData}
@@ -228,7 +228,8 @@ function BookingHistory() {
             bordered={false}
             size="middle"
             locale={{ emptyText: "Không có dữ liệu" }}
-            style={{ borderRadius: "12px" }}
+            style={{ width: "100%", borderRadius: "12px" }}
+            scroll={{ x: true }}
           />
         </div>
       )}

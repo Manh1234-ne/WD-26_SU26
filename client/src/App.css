@@ -421,9 +421,8 @@ td span {
 }
 
 .booking-history-list {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  width: 100%;
+  display: block;
 }
 
 .booking-card {
