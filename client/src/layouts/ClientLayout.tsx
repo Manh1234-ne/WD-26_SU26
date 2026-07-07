@@ -220,7 +220,7 @@ function ClientLayout() {
     {
       key: 'history',
       icon: <HistoryOutlined />,
-      label: <NavLink to="/history">Lịch sử đặt vé</NavLink>,
+      label: <NavLink to="/booking-history">Lịch sử đặt vé</NavLink>,
     },
     { type: 'divider' as const },
     {
