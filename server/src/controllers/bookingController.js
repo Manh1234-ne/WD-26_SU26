@@ -68,7 +68,13 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({
     user: req.params.userId,
   })
-    .populate("showtime")
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "cinema" },
+      ],
+    })
     .sort({ createdAt: -1 });
 
   return ok(res, bookings);
