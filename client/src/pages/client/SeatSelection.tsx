@@ -94,23 +94,76 @@ function SeatSelection() {
 
     const sortedRows = Object.keys(groupedSeats).sort()
 
+    const hasIsolatedSeat = (rowSeats: Seat[], occupied: Set<string>, selected: Set<string>) => {
+        const states = rowSeats.map((s) => {
+            if (occupied.has(s._id)) return 'used'
+            if (selected.has(s._id)) return 'used'
+            return 'empty'
+        })
+        for (let i = 0; i < states.length; i++) {
+            if (
+                states[i] === 'empty' &&
+                i > 0 &&
+                i < states.length - 1 &&
+                states[i - 1] === 'used' &&
+                states[i + 1] === 'used'
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
+    const checkAllRowsForIsolation = (selected: Seat[]) => {
+        const selectedSet = new Set(selected.map((s) => s._id))
+        const occupiedSeatSet = new Set<string>((occupiedSeats ?? []).map((os: any) => os.seat))
+        return Object.values(groupedSeats).some((rowSeats) =>
+            hasIsolatedSeat(rowSeats, occupiedSeatSet, selectedSet)
+        )
+    }
+
     const toggleSeat = (seat: Seat) => {
         if (occupiedSet.has(seat._id)) return
 
-        if (selectedSeats.some((s) => s._id === seat._id)) {
-            setSelectedSeats(selectedSeats.filter((s) => s._id !== seat._id))
-        } else {
-            if (selectedSeats.length >= 8) {
-                message.warning('Bạn chỉ được chọn tối đa 8 ghế trong một lượt đặt.')
-                return
-            }
-            setSelectedSeats([...selectedSeats, seat])
+        const isAlreadySelected = selectedSeats.some((s) => s._id === seat._id)
+        const newSelected = isAlreadySelected
+            ? selectedSeats.filter((s) => s._id !== seat._id)
+            : [...selectedSeats, seat]
+
+        if (!isAlreadySelected && selectedSeats.length >= 8) {
+            Swal.fire({
+                title: "Thông báo",
+                text: "Bạn chỉ được chọn tối đa 8 ghế trong một lần đặt.",
+                icon: "warning",
+                confirmButtonColor: "#e11d48"
+            })
         }
+
+        if (checkAllRowsForIsolation(newSelected)) {
+            Swal.fire({
+                title: "Thông báo",
+                text: "Việc chọn vị trí ghế của bạn không được để trống 1 ghế ở bên trái, giữa hoặc bên phải trên cùng hàng ghế mà bạn vừa chọn.",
+                icon: "warning",
+                confirmButtonColor: "#e11d48"
+            })
+            return
+        }
+
+        setSelectedSeats(newSelected)
     }
 
     const totalSeatPrice = selectedSeats.reduce((sum, seat) => {
         return sum + showtime.basePrice * seat.priceMultiplier
     }, 0)
+
+    const handleSingleSeat = (
+        seat: Seat[],
+        occupied: Set<string>,
+        selected: Set<string>
+    ) => {
+        return hasIsolatedSeat(seat, occupied, selected)
+    }
+
 
     const handleBookingSubmit = async () => {
         if (selectedSeats.length === 0) {
@@ -171,7 +224,7 @@ function SeatSelection() {
                 </div>
 
                 <div className="seats-area-wrapper">
-                    <div className="seats-rows-grid">
+                    <div className="seats-rows-grid" >
                         {sortedRows.map((row) => (
                             <div key={row} className="seat-row-line">
                                 <span className="row-label">{row}</span>
@@ -262,7 +315,7 @@ function SeatSelection() {
 
                 <button
                     className="primary-button summary-checkout-btn"
-                    disabled={selectedSeats.length === 0 || isSubmitting}
+                    disabled={selectedSeats.length === 0 || handleSingleSeat(seats, new Set(occupiedSeats.map(s => s.seat._id)), new Set(selectedSeats.map(s => s._id))) || isSubmitting}
                     onClick={handleBookingSubmit}
                     type="button"
                 >
