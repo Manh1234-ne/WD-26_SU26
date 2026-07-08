@@ -22,8 +22,24 @@ const fail = (res, status, message) =>
     message,
   });
 
-export const createBooking = asyncHandler(async (req, res) => {
-  const { user, showtime, seatIds } = req.body;
+export const createBooking = asyncHandler(
+  async (req, res) => {
+    const { user, showtime, seatIds, voucherCode } = req.body;
+
+    if (!user || !showtime || !seatIds?.length) {
+      return fail(
+        res,
+        400,
+        "Vui lòng cung cấp đầy đủ thông tin"
+      );
+    }
+
+    const booking = await createBookingService({
+      user,
+      showtime,
+      seatIds,
+      voucherCode,
+    });
 
   if (!user || !showtime || !seatIds?.length) {
     return fail(res, 400, "Vui lòng cung cấp đầy đủ thông tin");
@@ -68,7 +84,13 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({
     user: req.params.userId,
   })
-    .populate("showtime")
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "cinema" },
+      ],
+    })
     .sort({ createdAt: -1 });
 
   return ok(res, bookings);
