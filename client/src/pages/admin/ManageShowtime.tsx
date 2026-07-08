@@ -196,16 +196,15 @@ function ManageShowtime() {
                 status: data.status,
             }
             if (editingId) {
-                const updated = await updateShowtime(editingId, payload)
-                setShowtimes((prev) => prev.map((s) => (s._id === editingId ? updated : s)))
+                await updateShowtime(editingId, payload)
                 void message.success('Cập nhật lịch chiếu thành công!')
                 setEditingId(null)
             }
             else {
-                const created = await createShowtime(payload)
-                setShowtimes((prev) => [created, ...prev])
+                await createShowtime(payload)
                 void message.success('Tạo lịch chiếu thành công!')
             }
+            await loadShowtimes()
             reset()
         } catch (error) {
             console.error(error)
@@ -316,12 +315,24 @@ function ManageShowtime() {
         },
         {
             title: 'Trạng thái',
-            dataIndex: 'status',
             key: 'status',
             width: 130,
-            render: (status: boolean) => (
-                <Tag color={status ? 'green' : 'default'}>{status ? 'Đang chiếu' : 'Ngừng chiếu'}</Tag>
-            ),
+            render: (_, record: Showtime) => {
+                if (!record.status) {
+                    return <Tag color="default">Ngừng chiếu</Tag>
+                }
+                const now = new Date()
+                const start = new Date(record.startTime)
+                const end = new Date(record.endTime)
+
+                if (now < start) {
+                    return <Tag color="blue">Sắp chiếu</Tag>
+                } else if (now >= start && now <= end) {
+                    return <Tag color="green">Đang chiếu</Tag>
+                } else {
+                    return <Tag color="orange">Đã chiếu</Tag>
+                }
+            },
         },
         {
             title: 'Thao tác',
