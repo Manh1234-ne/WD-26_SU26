@@ -41,17 +41,7 @@ export const createBooking = asyncHandler(
       voucherCode,
     });
 
-  if (!user || !showtime || !seatIds?.length) {
-    return fail(res, 400, "Vui lòng cung cấp đầy đủ thông tin");
-  }
-
-  const booking = await createBookingService({
-    user,
-    showtime,
-    seatIds,
-  });
-
-  return created(res, booking);
+    return created(res, booking);
 });
 
 export const getBookingById = asyncHandler(async (req, res) => {
