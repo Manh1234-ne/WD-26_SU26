@@ -7,6 +7,7 @@ import Swal from "sweetalert2";
 import { createMockMomoPayment, createVnPayUrl } from "../../features/payment/payment.service";
 import { ArrowLeftOutlined, ClockCircleOutlined, SafetyCertificateOutlined, VideoCameraOutlined, WalletOutlined } from "@ant-design/icons";
 import { format } from "date-fns";
+import Loading from "../../components/Loading/Loading";
 
 
 
@@ -109,7 +110,7 @@ function Payment() {
     if (isLoading) {
         return (
             <div className="page-state">
-                <p className="state-text">Đang tải hóa đơn đặt vé...</p>
+                <Loading text="Đang tải..." />
             </div>
         )
     }
