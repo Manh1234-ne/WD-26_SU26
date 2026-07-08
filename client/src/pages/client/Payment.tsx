@@ -25,6 +25,7 @@ function Payment() {
     const [discountAmount, setDiscountAmount] = useState(0);
     const [finalAmount, setFinalAmount] = useState(0);
     const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+    const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
 
 
     const { data: responseData, isLoading, error } = useQuery({
@@ -42,6 +43,22 @@ function Payment() {
             setFinalAmount(booking.finalAmount)
         }
     }, [booking])
+
+    useEffect(() => {
+        const loadVouchers = async () => {
+            try {
+                const res = await api.get("/vouchers")
+                if (res.data?.success) {
+                    const activeVouchers = (res.data.data || []).filter((item: any) => item.isActive !== false)
+                    setAvailableVouchers(activeVouchers)
+                }
+            } catch (error) {
+                console.error("Failed to load vouchers", error)
+            }
+        }
+
+        void loadVouchers()
+    }, [])
 
     useEffect(() => {
         if (!booking || booking.status !== "pending") return
@@ -265,6 +282,30 @@ function Payment() {
                             Đã áp dụng voucher <strong>{appliedVoucher.code}</strong>
                         </div>
                     )}
+                    <div style={{ marginTop: "10px" }}>
+                        <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "6px" }}>Voucher đang có:</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                            {availableVouchers.length > 0 ? (
+                                availableVouchers.map((item) => (
+                                    <button
+                                        key={item._id}
+                                        type="button"
+                                        onClick={() => {
+                                            setVoucherCode(item.code)
+                                            setAppliedVoucher(null)
+                                            setDiscountAmount(0)
+                                            setFinalAmount(booking.finalAmount)
+                                        }}
+                                        style={{ border: "1px solid #e11d48", borderRadius: "999px", padding: "6px 10px", background: "white", color: "#e11d48", cursor: "pointer", fontSize: "12px" }}
+                                    >
+                                        {item.code} - {item.discountType === "percent" ? `${item.discountValue}%` : `${item.discountValue.toLocaleString("vi-VN")}đ`}
+                                    </button>
+                                ))
+                            ) : (
+                                <span style={{ fontSize: "13px", color: "#64748b" }}>Hiện không có voucher nào.</span>
+                            )}
+                        </div>
+                    </div>
                 </div>
                 <button
                     className="primary-button"
