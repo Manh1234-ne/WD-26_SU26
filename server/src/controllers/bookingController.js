@@ -22,8 +22,24 @@ const fail = (res, status, message) =>
     message,
   });
 
-export const createBooking = asyncHandler(async (req, res) => {
-  const { user, showtime, seatIds } = req.body;
+export const createBooking = asyncHandler(
+  async (req, res) => {
+    const { user, showtime, seatIds, voucherCode } = req.body;
+
+    if (!user || !showtime || !seatIds?.length) {
+      return fail(
+        res,
+        400,
+        "Vui lòng cung cấp đầy đủ thông tin"
+      );
+    }
+
+    const booking = await createBookingService({
+      user,
+      showtime,
+      seatIds,
+      voucherCode,
+    });
 
   if (!user || !showtime || !seatIds?.length) {
     return fail(res, 400, "Vui lòng cung cấp đầy đủ thông tin");
