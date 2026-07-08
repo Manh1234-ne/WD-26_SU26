@@ -31,6 +31,18 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
     throw new Error("Booking không ở trạng thái chờ thanh toán");
   }
 
+  const bookingSeats = await BookingSeat.find({ booking: bookingId });
+  const seatIds = bookingSeats.map((bs) => bs.seat);
+  const alreadyBooked = await BookingSeat.findOne({
+    showtime: booking.showtime,
+    seat: { $in: seatIds },
+    status: "booked",
+  });
+
+  if (alreadyBooked) {
+    throw new Error("Ghế đã được thanh toán bởi khách hàng khác. Vui lòng chọn ghế khác.");
+  }
+
   let payment = await Payment.findOne({ booking: bookingId });
 
   if (!payment) {
@@ -125,6 +137,29 @@ export const verifyVnPayReturnService = async (vnp_Params) => {
   const responseCode = vnp_Params.vnp_ResponseCode;
 
   if (responseCode === "00") {
+    const bookingSeats = await BookingSeat.find({ booking: booking._id });
+    const seatIds = bookingSeats.map((bs) => bs.seat);
+    const alreadyBooked = await BookingSeat.findOne({
+      showtime: booking.showtime,
+      seat: { $in: seatIds },
+      status: "booked",
+    });
+
+    if (alreadyBooked) {
+      payment.status = "failed";
+      payment.note = "Ghế đã được người khác thanh toán trước.";
+      booking.status = "cancelled";
+
+      await BookingSeat.updateMany(
+        { booking: booking._id },
+        { status: "cancelled" }
+      );
+
+      await payment.save();
+      await booking.save();
+      throw new Error("Ghế đã được người khác thanh toán trước.");
+    }
+
     payment.status = "paid";
     payment.transactionId = vnp_Params.vnp_TransactionNo;
     payment.paidAt = new Date();

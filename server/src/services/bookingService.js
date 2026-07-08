@@ -29,7 +29,7 @@ export const createBookingService = async ({
   const bookedSeats = await BookingSeat.find({
     showtime,
     seat: { $in: seatIds },
-    status: { $in: ["held", "booked"] },
+    status: "booked",
   });
 
   if (bookedSeats.length > 0) {

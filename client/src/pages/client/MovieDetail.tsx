@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getMovieById } from '../../features/movie/movie.service'
 import type { Movie } from '../../features/movie/movie.types'
+import Loading from '../../components/Loading/Loading'
 
 function MovieDetail() {
   const { id } = useParams()
@@ -25,7 +26,7 @@ function MovieDetail() {
   }, [id])
 
   if (isLoading) {
-    return <p className="state-text page-state">loading...</p>
+    return <Loading fullScreen text="Đang tải thông tin phim..." />
   }
 
   if (error || !movie) {
@@ -71,9 +72,14 @@ function MovieDetail() {
             <dd>{movie.ageRating}</dd>
           </div>
         </dl>
-        <Link className="primary-button" to="/">
-          Quay lại
-        </Link>
+        <div className="hero-actions">
+          <Link className="primary-button" to={`/movies/${movie._id}/showtimes`}>
+            Đặt vé ngay
+          </Link>
+          <Link className="ghost-button" to="/">
+            Quay lại
+          </Link>
+        </div>
       </div>
     </section>
   )

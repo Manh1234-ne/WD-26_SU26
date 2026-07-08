@@ -76,9 +76,7 @@ export const getOccupiedSeats =
     const occupiedSeats =
       await BookingSeat.find({
         showtime: req.params.showtimeId,
-        status: {
-          $in: ["held", "booked"],
-        },
+        status: "booked",
       })
         .select(
           "seat seatCode seatType status price"

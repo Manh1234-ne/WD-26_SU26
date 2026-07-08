@@ -41,96 +41,99 @@ export const createBooking = asyncHandler(
       voucherCode,
     });
 
-    return created(res, booking);
+  if (!user || !showtime || !seatIds?.length) {
+    return fail(res, 400, "Vui lòng cung cấp đầy đủ thông tin");
   }
-);
 
-export const getBookingById = asyncHandler(
-  async (req, res) => {
-    const booking = await Booking.findById(
-      req.params.id
-    )
-      .populate("user")
-      .populate("showtime");
+  const booking = await createBookingService({
+    user,
+    showtime,
+    seatIds,
+  });
 
-    if (!booking) {
-      return fail(res, 404, "Không tìm thấy booking");
-    }
+  return created(res, booking);
+});
 
-    const seats = await BookingSeat.find({
-      booking: booking._id,
+export const getBookingById = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id)
+    .populate("user")
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "cinema" },
+        { path: "room" }
+      ]
     });
 
-    return ok(res, {
-      booking,
-      seats,
-    });
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
   }
-);
 
-export const getBookingsByUser = asyncHandler(
-  async (req, res) => {
-    const bookings = await Booking.find({
-      user: req.params.userId,
+  const seats = await BookingSeat.find({
+    booking: booking._id,
+  });
+
+  return ok(res, {
+    booking,
+    seats,
+  });
+});
+
+export const getBookingsByUser = asyncHandler(async (req, res) => {
+  const bookings = await Booking.find({
+    user: req.params.userId,
+  })
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "cinema" },
+      ],
     })
-      .populate("showtime")
-      .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 });
 
-    return ok(res, bookings);
+  return ok(res, bookings);
+});
+
+export const completeBooking = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
   }
-);
 
-export const completeBooking = asyncHandler(
-  async (req, res) => {
-    const booking = await Booking.findById(
-      req.params.id
+  if (booking.status !== "confirmed") {
+    return fail(
+      res,
+      400,
+      "Chỉ booking đã thanh toán mới được hoàn thành"
     );
-
-    if (!booking) {
-      return fail(
-        res,
-        404,
-        "Không tìm thấy booking"
-      );
-    }
-
-    if (booking.status !== "confirmed") {
-      return fail(
-        res,
-        400,
-        "Chỉ booking đã thanh toán mới được hoàn thành"
-      );
-    }
-
-    booking.status = "completed";
-
-    await booking.save();
-
-    return ok(res, booking);
   }
-);
 
-export const cancelBooking = asyncHandler(
-  async (req, res) => {
-    const booking = await Booking.findById(
-      req.params.id
-    );
+  booking.status = "completed";
 
-    if (!booking) {
-      return fail(res, 404, "Không tìm thấy booking");
-    }
+  await booking.save();
 
-    booking.status = "cancelled";
-    booking.cancelledAt = new Date();
+  return ok(res, booking);
+});
 
-    await booking.save();
+export const cancelBooking = asyncHandler(async (req, res) => {
+  const booking = await Booking.findById(req.params.id);
 
-    await BookingSeat.updateMany(
-      { booking: booking._id },
-      { status: "cancelled" }
-    );
-
-    return ok(res, booking);
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
   }
-);
 
+  booking.status = "cancelled";
+  booking.cancelledAt = new Date();
+
+  await booking.save();
+
+  await BookingSeat.updateMany(
+    { booking: booking._id },
+    { status: "cancelled" }
+  );
+
+  return ok(res, booking);
+});
