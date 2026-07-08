@@ -294,18 +294,18 @@ function ManageVoucher() {
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="discountValue" label="Giá trị giảm" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }]}> 
-                  <InputNumber min={0} style={{ width: '100%' }} />
+                <Form.Item name="discountValue" label="Giá trị giảm thêm (%)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }]}> 
+                  <InputNumber min={0} style={{ width: '100%' }} addonAfter="%" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="maxDiscountAmount" label="Giảm tối đa"> 
-                  <InputNumber min={0} style={{ width: '100%' }} />
+                <Form.Item name="maxDiscountAmount" label="Giảm tối đa (VND)"> 
+                  <InputNumber min={0} style={{ width: '100%' }} addonAfter="VND" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="minOrderAmount" label="Đơn tối thiểu"> 
-                  <InputNumber min={0} style={{ width: '100%' }} />
+                <Form.Item name="minOrderAmount" label="Đơn tối thiểu (VND)"> 
+                  <InputNumber min={0} style={{ width: '100%' }} addonAfter="VND" />
                 </Form.Item>
               </Col>
             </Row>
