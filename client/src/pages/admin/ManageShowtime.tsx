@@ -11,6 +11,18 @@ import { createShowtime, deleteShowtime, getAllShowtimes, updateShowtime } from 
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { getRooms } from '../../features/room/room.service'
 import type { Room } from '../../features/room/room.types'
+import { api } from '../../services/api'
+import { getSeatsByRoom } from '../../features/seat/seat.service'
+
+interface Seat {
+    _id: string
+    code: string
+    row: string
+    number: number
+    type: 'standard' | 'vip' | 'couple' | 'disabled'
+    priceMultiplier: number
+    isActive: boolean
+}
 
 import {
     Card,
@@ -31,6 +43,8 @@ import {
     Divider,
     Alert,
     Popconfirm,
+    Modal,
+    Tooltip,
 } from 'antd'
 import {
     CalendarOutlined,
@@ -40,6 +54,7 @@ import {
     EditOutlined,
     CloseOutlined,
     DeleteOutlined,
+    EyeOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
@@ -78,6 +93,34 @@ function ManageShowtime() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isLoadingRooms, setIsLoadingRooms] = useState(false)
+
+    // States for viewing seats
+    const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
+    const [seats, setSeats] = useState<Seat[]>([])
+    const [occupiedSeatIds, setOccupiedSeatIds] = useState<Set<string>>(new Set())
+    const [isLoadingSeats, setIsLoadingSeats] = useState(false)
+
+    const handleViewSeats = async (showtime: Showtime) => {
+        setViewingShowtime(showtime)
+        setIsLoadingSeats(true)
+        setSeats([])
+        setOccupiedSeatIds(new Set())
+        try {
+            const seatRes = await getSeatsByRoom(showtime.room._id)
+            const seatsList = seatRes?.seats || []
+            setSeats(seatsList)
+
+            const occupiedRes = await api.get(`/booking-seats/showtime/${showtime._id}/occupied`)
+            const occupiedData = occupiedRes.data?.data || []
+            const occupiedIds = new Set<string>(occupiedData.map((os: any) => os.seat?._id || os.seat))
+            setOccupiedSeatIds(occupiedIds)
+        } catch (error) {
+            console.error(error)
+            void message.error('Không thể tải sơ đồ ghế cho lịch chiếu này')
+        } finally {
+            setIsLoadingSeats(false)
+        }
+    }
     const [isSaving, setIsSaving] = useState(false)
 
     const {
@@ -196,16 +239,15 @@ function ManageShowtime() {
                 status: data.status,
             }
             if (editingId) {
-                const updated = await updateShowtime(editingId, payload)
-                setShowtimes((prev) => prev.map((s) => (s._id === editingId ? updated : s)))
+                await updateShowtime(editingId, payload)
                 void message.success('Cập nhật lịch chiếu thành công!')
                 setEditingId(null)
             }
             else {
-                const created = await createShowtime(payload)
-                setShowtimes((prev) => [created, ...prev])
+                await createShowtime(payload)
                 void message.success('Tạo lịch chiếu thành công!')
             }
+            await loadShowtimes()
             reset()
         } catch (error) {
             console.error(error)
@@ -316,25 +358,46 @@ function ManageShowtime() {
         },
         {
             title: 'Trạng thái',
-            dataIndex: 'status',
             key: 'status',
             width: 130,
-            render: (status: boolean) => (
-                <Tag color={status ? 'green' : 'default'}>{status ? 'Đang chiếu' : 'Ngừng chiếu'}</Tag>
-            ),
+            render: (_, record: Showtime) => {
+                if (!record.status) {
+                    return <Tag color="default">Ngừng chiếu</Tag>
+                }
+                const now = new Date()
+                const start = new Date(record.startTime)
+                const end = new Date(record.endTime)
+
+                if (now < start) {
+                    return <Tag color="blue">Sắp chiếu</Tag>
+                } else if (now >= start && now <= end) {
+                    return <Tag color="green">Đang chiếu</Tag>
+                } else {
+                    return <Tag color="orange">Đã chiếu</Tag>
+                }
+            },
         },
         {
             title: 'Thao tác',
             key: 'actions',
-            width: 100,
+            width: 120,
             align: 'center' as const,
             render: (_: unknown, record: Showtime) => (
                 <Space>
-                    <Button
-                        type="text"
-                        icon={<EditOutlined style={{ color: '#e11d48' }} />}
-                        onClick={() => void handleEdit(record)}
-                    />
+                    <Tooltip title="Xem ghế đã đặt">
+                        <Button
+                            type="text"
+                            icon={<EyeOutlined style={{ color: '#0ea5e9' }} />}
+                            onClick={() => void handleViewSeats(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Chỉnh sửa">
+                        <Button
+                            type="text"
+                            icon={<EditOutlined style={{ color: '#e11d48' }} />}
+                            onClick={() => void handleEdit(record)}
+                        />
+                    </Tooltip>
                     <Popconfirm
                         title="xóa"
                         description="bạn có chắc muốn xóa không"
@@ -343,10 +406,12 @@ function ManageShowtime() {
                         cancelText="Hủy"
                         okButtonProps={{ danger: true }}
                     >
-                        <Button
-                            type="text"
-                            icon={<DeleteOutlined style={{ color: '#e11d48' }} />}
-                        />
+                        <Tooltip title="Xóa lịch chiếu">
+                            <Button
+                                type="text"
+                                icon={<DeleteOutlined style={{ color: '#e11d48' }} />}
+                            />
+                        </Tooltip>
                     </Popconfirm>
 
                 </Space>
@@ -691,6 +756,140 @@ function ManageShowtime() {
                     />
                 </Card>
             </Space>
+
+            <Modal
+                title={
+                    <Space>
+                        <CalendarOutlined style={{ color: '#e11d48' }} />
+                        <span>Sơ Đồ Ghế Đã Đặt - {viewingShowtime?.movie.title}</span>
+                    </Space>
+                }
+                open={!!viewingShowtime}
+                onCancel={() => setViewingShowtime(null)}
+                footer={null}
+                width={850}
+                centered
+            >
+                {viewingShowtime && (() => {
+                    const activeSeats = seats.filter(s => s.isActive)
+                    const totalSeatsCount = activeSeats.length
+                    const occupiedSeatsCount = occupiedSeatIds.size
+                    const availableSeatsCount = totalSeatsCount - occupiedSeatsCount
+                    const bookingRate = totalSeatsCount > 0 ? Math.round((occupiedSeatsCount / totalSeatsCount) * 100) : 0
+
+                    return (
+                        <div style={{ padding: '16px 0' }}>
+                            <div style={{ marginBottom: 24, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                                <Row gutter={[16, 12]}>
+                                    <Col xs={24} sm={12}><strong>Rạp:</strong> {viewingShowtime.cinema.name}</Col>
+                                    <Col xs={24} sm={12}><strong>Phòng chiếu:</strong> {viewingShowtime.room.name}</Col>
+                                    <Col xs={24} sm={12}><strong>Thời gian:</strong> {formatDateTime(viewingShowtime.startTime)} - {formatDateTime(viewingShowtime.endTime)}</Col>
+                                    <Col xs={24} sm={12}>
+                                        <strong>Định dạng / Giá gốc:</strong> <Tag color="purple" style={{ marginRight: 8 }}>{viewingShowtime.format}</Tag>
+                                        <span style={{ color: '#d97706', fontWeight: 'bold' }}>{formatPrice(viewingShowtime.basePrice)}</span>
+                                    </Col>
+                                </Row>
+
+                                <Divider style={{ margin: '16px 0' }} />
+
+
+                            </div>
+
+                            {isLoadingSeats ? (
+                                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                                    <ReloadOutlined spin style={{ fontSize: 28, color: '#e11d48', marginBottom: 12 }} />
+                                    <div style={{ color: '#64748b', fontWeight: 500 }}>Đang tải sơ đồ ghế...</div>
+                                </div>
+                            ) : (
+                                <div style={{ width: '100%', margin: '0 auto' }}>
+                                    <div className="seat-layout-panel" style={{ background: '#f8fafc', padding: '32px 16px', borderRadius: 12, border: '1px solid #f1f5f9' }}>
+                                        <div className="screen-container" style={{ margin: '0 auto 40px auto', maxWidth: '400px', textAlign: 'center' }}>
+                                            <div className="screen-line" style={{ height: '4px', background: '#cbd5e1', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+                                            <span className="screen-text" style={{ fontSize: '11px', color: '#94a3b8', letterSpacing: '4px', fontWeight: 700, display: 'block', marginTop: '8px' }}>MÀN HÌNH CHÍNH</span>
+                                        </div>
+
+                                        <div className="seats-area-wrapper" style={{ overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
+                                            <div className="seats-rows-grid" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                                                {(() => {
+                                                    const grouped: Record<string, Seat[]> = {}
+                                                    activeSeats.forEach(seat => {
+                                                        if (!grouped[seat.row]) {
+                                                            grouped[seat.row] = []
+                                                        }
+                                                        grouped[seat.row].push(seat)
+                                                    })
+                                                    const sortedRows = Object.keys(grouped).sort()
+                                                    sortedRows.forEach(row => {
+                                                        grouped[row].sort((a, b) => a.number - b.number)
+                                                    })
+
+                                                    if (sortedRows.length === 0) {
+                                                        return <div style={{ color: '#64748b', padding: '20px 0' }}>Không có sơ đồ ghế hoặc phòng chiếu chưa có ghế</div>
+                                                    }
+
+                                                    return sortedRows.map(row => (
+                                                        <div key={row} className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                            <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
+                                                            {grouped[row].map(seat => {
+                                                                const isOccupied = occupiedSeatIds.has(seat._id)
+                                                                let seatStyle: React.CSSProperties = {}
+                                                                if (isOccupied) {
+                                                                    // Ghế đã đặt: Chữ V màu xanh lá
+                                                                    seatStyle = {
+                                                                        background: '#dcfce7',
+                                                                        borderColor: '#bbf7d0',
+                                                                        color: '#16a34a',
+                                                                        opacity: 1,
+                                                                        textDecoration: 'none',
+                                                                    }
+                                                                } else {
+                                                                    // Ghế chưa đặt (Chung một màu xám nhẹ)
+                                                                    seatStyle = {
+                                                                        background: '#f1f5f9',
+                                                                        borderColor: '#cbd5e1',
+                                                                        color: '#475569',
+                                                                    }
+                                                                }
+
+                                                                return (
+                                                                    <Tooltip
+                                                                        key={seat._id}
+                                                                        title={`${seat.code} (${seat.type.toUpperCase()}) - ${isOccupied ? 'Đã đặt' : 'Còn trống'}`}
+                                                                    >
+                                                                        <button
+                                                                            className="seat-unit"
+                                                                            style={{ cursor: 'default', ...seatStyle }}
+                                                                            type="button"
+                                                                        >
+                                                                            {isOccupied ? 'V' : seat.type === 'disabled' ? '♿' : seat.number}
+                                                                        </button>
+                                                                    </Tooltip>
+                                                                )
+                                                            })}
+                                                            <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
+                                                        </div>
+                                                    ))
+                                                })()}
+                                            </div>
+                                        </div>
+
+                                        <div className="seat-legend-bar" style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '30px', marginTop: '32px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+                                            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div className="seat-unit standard" style={{ cursor: 'default', background: '#f1f5f9', borderColor: '#cbd5e1', color: '#475569' }}>-</div>
+                                                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Chưa đặt (Còn trống)</span>
+                                            </div>
+                                            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div className="seat-unit occupied" style={{ cursor: 'default', background: '#16a34a', borderColor: '#bbf7d0', color: '#16a34a', opacity: 1 }}>V</div>
+                                                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Đã đặt (V)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )
+                })()}
+            </Modal>
         </div>
     )
 }
