@@ -64,7 +64,6 @@ function MovieDetail() {
         <div className="detail-copy">
           <p className="eyebrow">{movie.genres?.join(' / ') || 'LUMORA'}</p>
           <h1>{movie.title}</h1>
-          {movie.originalTitle && <h2>{movie.originalTitle}</h2>}
           <p>{movie.description}</p>
           <dl className="detail-list">
             <div>
@@ -100,15 +99,18 @@ function MovieDetail() {
         </div>
       </section>
       {movie.trailerUrl && (
-        <section id="trailer" className='detail-trailer-section'>
-          <h2 className="section-title">Trailer phim</h2>
-          <div className='ifram-container'>
-            <iframe
-              src={getEmbedUrl(movie.trailerUrl)}
-              title={`${movie.title}`}
-              allowFullScreen
-              allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-            ></iframe>
+        <section id="trailer" className="detail-trailer-section">
+          <h2 className="section-title">Trailer Phim</h2>
+          <div className="detail-trailer">
+            <div className="iframe-container">
+              <iframe
+                src={getEmbedUrl(movie.trailerUrl)}
+                title={movie.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              ></iframe>
+            </div>
           </div>
         </section>
       )}

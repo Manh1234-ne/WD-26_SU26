@@ -204,11 +204,11 @@ img {
 .detail-trailer-section {
   padding: 0 clamp(20px, 5vw, 80px) 72px;
   margin-top: 40px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #d7dbdf;
   padding-top: 52px;
 }
 
-.section-title .detail-trailer-section {
+.detail-trailer-section .section-title {
   font-size: 26px;
   font-weight: 800;
   color: #0f172a;
@@ -217,24 +217,43 @@ img {
   position: relative;
 }
 
-.ifram-container {
-  margin: 0 auto;
+.detail-trailer-section .section-title::after {
+  content: '';
   display: block;
-  width: 800px;
-  aspect-ratio: 16 / 9;
-  max-height: 480px;
-
+  width: 60px;
+  height: 4px;
+  background: #e11d48;
+  margin: 12px auto 0;
+  border-radius: 2px;
 }
 
-.ifram-container iframe {
-  width: 100%;
-  height: 100%;
-  position: relative;
+.detail-trailer {
+  max-width: 860px;
+  margin: 0 auto;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(2, 3, 1, 0.25);
-  filter: drop-shadow(2px 12px 4px rgba(2, 3, 1, 0.25));
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background: #000;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  position: relative;
 }
+
+.detail-trailer .iframe-container {
+  position: relative;
+  width: 100%;
+  padding: 18px;
+  padding-top: 56.25%;
+}
+
+.detail-trailer .iframe-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 
 
 .poster-fallback {
@@ -264,7 +283,7 @@ img {
 
 .movie-section,
 .detail-page {
-  padding: 34px clamp(20px, 5vw, 80px) 72px;
+  padding: 24px clamp(20px, 5vw, 80px) 72px;
 }
 
 .section-heading,
@@ -636,8 +655,8 @@ td span {
 .detail-page {
   align-items: start;
   display: grid;
-  gap: 44px;
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 75px;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
 }
 
 .detail-copy h2 {
