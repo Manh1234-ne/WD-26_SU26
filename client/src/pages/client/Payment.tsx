@@ -39,8 +39,17 @@ function Payment() {
     const seats = bookingData?.seats || []
 
     useEffect(() => {
-        if (booking?.finalAmount) {
-            setFinalAmount(booking.finalAmount)
+        if (booking) {
+            if (booking.finalAmount !== undefined) {
+                setFinalAmount(booking.finalAmount)
+            }
+            if (booking.discountAmount !== undefined) {
+                setDiscountAmount(booking.discountAmount)
+            }
+            if (booking.voucher) {
+                setAppliedVoucher(booking.voucher)
+                setVoucherCode(booking.voucher.code || "")
+            }
         }
     }, [booking])
 
@@ -117,9 +126,8 @@ function Payment() {
 
         setIsCheckingVoucher(true)
         try {
-            const res = await api.post("/vouchers/validate", {
-                code: voucherCode.trim(),
-                orderAmount: booking.totalSeatPrice,
+            const res = await api.patch(`/bookings/${bookingId}/apply-voucher`, {
+                voucherCode: voucherCode.trim(),
             })
 
             if (res.data?.success) {

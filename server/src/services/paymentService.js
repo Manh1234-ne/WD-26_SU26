@@ -4,6 +4,7 @@ import moment from "moment";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import Voucher from "../models/Voucher.js";
 
 /**
  * SORT OBJECT
@@ -53,6 +54,9 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
       method: "vnpay",
       status: "pending",
     });
+  } else if (payment.status === "pending") {
+    payment.amount = booking.finalAmount;
+    await payment.save();
   }
 
   const tmnCode = process.env.vnp_TmnCode;

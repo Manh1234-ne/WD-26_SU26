@@ -1,5 +1,6 @@
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import Voucher from "../models/Voucher.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 import { createBookingService } from "../services/bookingService.js";
 
@@ -47,6 +48,7 @@ export const createBooking = asyncHandler(
 export const getBookingById = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(req.params.id)
     .populate("user")
+    .populate("voucher")
     .populate({
       path: "showtime",
       populate: [
@@ -126,4 +128,127 @@ export const cancelBooking = asyncHandler(async (req, res) => {
   );
 
   return ok(res, booking);
+});
+
+export const applyVoucherToBooking = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { voucherCode } = req.body;
+
+  const booking = await Booking.findById(id);
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (booking.status !== "pending") {
+    return fail(res, 400, "Booking không ở trạng thái chờ thanh toán");
+  }
+
+  if (!voucherCode) {
+    booking.voucher = undefined;
+    booking.discountAmount = 0;
+    booking.finalAmount = booking.totalSeatPrice;
+    await booking.save();
+
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate("user")
+      .populate({
+        path: "showtime",
+        populate: [
+          { path: "movie" },
+          { path: "cinema" },
+          { path: "room" }
+        ]
+      });
+
+    return ok(res, {
+      booking: updatedBooking,
+      voucher: null,
+      discountAmount: 0,
+      finalAmount: updatedBooking.finalAmount
+    });
+  }
+
+  const voucher = await Voucher.findOne({
+    code: voucherCode.toUpperCase(),
+    isActive: true,
+  });
+
+  if (!voucher) {
+    return fail(res, 404, "Voucher không tồn tại hoặc đã bị khóa");
+  }
+
+  const now = new Date();
+  if (now < voucher.startDate) {
+    return fail(res, 400, "Voucher chưa đến thời gian sử dụng");
+  }
+  if (now > voucher.endDate) {
+    return fail(res, 400, "Voucher đã hết hạn");
+  }
+
+  if (
+    voucher.usageLimit != null &&
+    voucher.usedCount >= voucher.usageLimit
+  ) {
+    return fail(res, 400, "Voucher đã hết lượt sử dụng");
+  }
+
+  const pendingBookingCount = await Booking.countDocuments({
+    voucher: voucher._id,
+    status: "pending",
+    _id: { $ne: booking._id },
+  });
+
+  if (
+    voucher.usageLimit != null &&
+    voucher.usedCount + pendingBookingCount >= voucher.usageLimit
+  ) {
+    return fail(res, 400, "Voucher sắp hết lượt sử dụng, vui lòng thử lại sau");
+  }
+
+  if (booking.totalSeatPrice < voucher.minOrderAmount) {
+    return fail(
+      res,
+      400,
+      `Đơn hàng tối thiểu ${voucher.minOrderAmount} để sử dụng voucher`
+    );
+  }
+
+  let discountAmount = 0;
+  if (voucher.discountType === "percent") {
+    discountAmount = (booking.totalSeatPrice * voucher.discountValue) / 100;
+    if (voucher.maxDiscountAmount && discountAmount > voucher.maxDiscountAmount) {
+      discountAmount = voucher.maxDiscountAmount;
+    }
+  } else if (voucher.discountType === "fixed") {
+    discountAmount = voucher.discountValue;
+  }
+
+  if (discountAmount > booking.totalSeatPrice) {
+    discountAmount = booking.totalSeatPrice;
+  }
+
+  booking.voucher = voucher._id;
+  booking.discountAmount = discountAmount;
+  booking.finalAmount = booking.totalSeatPrice - discountAmount;
+
+  await booking.save();
+
+  const updatedBooking = await Booking.findById(booking._id)
+    .populate("user")
+    .populate("voucher")
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "cinema" },
+        { path: "room" }
+      ]
+    });
+
+  return ok(res, {
+    booking: updatedBooking,
+    voucher: updatedBooking.voucher,
+    discountAmount: updatedBooking.discountAmount,
+    finalAmount: updatedBooking.finalAmount
+  });
 });
