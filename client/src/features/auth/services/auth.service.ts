@@ -12,7 +12,7 @@ export async function register(payload: RegisterPayload) {
 }
 
 export async function changePassword(payload: ChangePassword) {
-  const response = await api.post<AuthResponse>('/auth/change-password', payload)
+  const response = await api.post<AuthResponse>('/auth/change_password', payload)
   return response.data
 }
 export async function googleSignIn(payload: any) {
@@ -25,7 +25,7 @@ export async function logout() {
 }
 
 export async function updateProfile(id: string, payload: any) {
-  const response = await api.patch<AuthResponse>(`/auth/updateProfile/${id}`, payload)
+  const response = await api.put<AuthResponse>(`/auth/update-profile/${id}`, payload)
   return response.data
 }
 

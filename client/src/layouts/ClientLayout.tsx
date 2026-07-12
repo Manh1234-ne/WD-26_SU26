@@ -203,8 +203,8 @@ function ClientLayout() {
     }
   }
 
-  const userMenuItems = [
-    ...(user?.role === 'admin' ? [
+  const userMenuItems = user ? [
+    ...(user.role === 'admin' ? [
       {
         key: 'admin',
         icon: <DashboardOutlined />,
@@ -230,7 +230,7 @@ function ClientLayout() {
       danger: true,
       onClick: handleConfirmLogout
     },
-  ];
+  ] : [];
 
   return (
     <div style={styles.shell}>

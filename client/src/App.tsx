@@ -64,7 +64,7 @@ function App() {
               <Route path="payment-success" element={<PaymentSuccess />} />
               <Route path="booking-history" element={<AuthGuard><BookingHistory /></AuthGuard>} />
               <Route path="history" element={<AuthGuard><Navigate to="/booking-history" replace /></AuthGuard>} />
-              <Route path="profile/:id" element={<AuthGuard><Profile /></AuthGuard>} ></Route>
+              <Route path="profile/:id" element={<AuthGuard><Profile /></AuthGuard>}></Route>
             </Route>
 
             {/* Admin */}
