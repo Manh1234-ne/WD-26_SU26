@@ -30,6 +30,7 @@ import PaymentSuccess from "./pages/client/payment-success";
 import BookingHistory from "./pages/client/BookingHistory";
 import { AuthGuard } from "./routes/AuthGuard";
 import { AdminRoute } from "./routes/AdminRoute";
+import Profile from "./pages/client/Profile";
 
 function App() {
   return (
@@ -63,6 +64,7 @@ function App() {
               <Route path="payment-success" element={<PaymentSuccess />} />
               <Route path="booking-history" element={<AuthGuard><BookingHistory /></AuthGuard>} />
               <Route path="history" element={<AuthGuard><Navigate to="/booking-history" replace /></AuthGuard>} />
+              <Route path="profile/:id" element={<AuthGuard><Profile /></AuthGuard>} ></Route>
             </Route>
 
             {/* Admin */}

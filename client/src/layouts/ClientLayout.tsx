@@ -1,11 +1,11 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { 
-  HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined, 
-  ShoppingCartOutlined, BgColorsOutlined, UserOutlined, HistoryOutlined, 
-  LogoutOutlined, DashboardOutlined, FacebookOutlined, TwitterOutlined, 
-  InstagramOutlined, YoutubeOutlined, InfoCircleOutlined, TeamOutlined, 
-  MailOutlined, FileTextOutlined, SafetyCertificateOutlined, 
-  QuestionCircleOutlined, BookOutlined, MoneyCollectOutlined, 
+import {
+  HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined,
+  ShoppingCartOutlined, BgColorsOutlined, UserOutlined, HistoryOutlined,
+  LogoutOutlined, DashboardOutlined, FacebookOutlined, TwitterOutlined,
+  InstagramOutlined, YoutubeOutlined, InfoCircleOutlined, TeamOutlined,
+  MailOutlined, FileTextOutlined, SafetyCertificateOutlined,
+  QuestionCircleOutlined, BookOutlined, MoneyCollectOutlined,
   CrownOutlined, GiftOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../features/auth/hooks/useAuth'
@@ -215,7 +215,7 @@ function ClientLayout() {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: <NavLink to="/profile">Thông tin người dùng</NavLink>,
+      label: <NavLink to={`/profile/${user._id}`}>Thông tin người dùng</NavLink>,
     },
     {
       key: 'history',
@@ -341,9 +341,9 @@ function ClientLayout() {
             </Space.Compact>
           </Col>
         </Row>
-        
+
         <Divider style={{ borderColor: '#e8e8e8', margin: '32px 0 20px 0' }} />
-        
+
         <div style={styles.footerBottom}>
           © {new Date().getFullYear()} Lumora Cinema. Đã đăng ký bản quyền.
         </div>

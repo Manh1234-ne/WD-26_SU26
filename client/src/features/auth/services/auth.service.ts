@@ -23,3 +23,13 @@ export async function googleSignIn(payload: any) {
 export async function logout() {
   await api.post('/auth/signOut')
 }
+
+export async function updateProfile(id: string, payload: any) {
+  const response = await api.patch<AuthResponse>(`/auth/updateProfile/${id}`, payload)
+  return response.data
+}
+
+export async function getProfile(id: string) {
+  const response = await api.get<AuthResponse>(`/auth/profile/${id}`);
+  return response.data
+}

@@ -232,7 +232,7 @@ export const changePassword = asyncHandler(async (req, res) => {
 });
 
 export const getProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.params.id);
 
     if (!user) {
         return res.status(404).json({
@@ -246,14 +246,18 @@ export const getProfile = asyncHandler(async (req, res) => {
             fullName: user.fullName,
             email: user.email,
             phone: user.phone,
-            address: user.address
+            address: user.address,
+            avatar: user.avatar,
+            role: user.role,
+            dateOfBirth: user.dateOfBirth,
+            password: user.password
         }
     })
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
     const { fullName, phone, address, dateOfBirth } = req.body;
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.params.id).select("+password");
     if (!user) {
         return res.status(404).json({
             message: "không tìm thấy người dùng"
@@ -266,6 +270,13 @@ export const updateProfile = asyncHandler(async (req, res) => {
     await user.save();
     return res.status(200).json({
         success: true,
-        message: "cập nhật thông tin thành công"
+        message: "cập nhật thông tin thành công",
+        user: {
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            address: user.address,
+            dateOfBirth: user.dateOfBirth
+        }
     })
 })

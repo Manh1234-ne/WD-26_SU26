@@ -1,0 +1,270 @@
+/* =============================================
+   PROFILE PAGE – Premium Light Cinema Theme
+   ============================================= */
+
+/* ---------- Page wrapper ---------- */
+.profile-section {
+    min-height: calc(100vh - 74px);
+    padding: 60px clamp(16px, 5vw, 80px) 80px;
+    background: #eff1f5;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative blob top-left */
+.profile-section::before {
+    content: "";
+    position: absolute;
+    top: -140px;
+    left: -120px;
+    width: 480px;
+    height: 480px;
+    background: radial-gradient(circle, rgba(225, 29, 72, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+/* Decorative blob bottom-right */
+.profile-section::after {
+    content: "";
+    position: absolute;
+    bottom: -80px;
+    right: -100px;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(225, 29, 72, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+/* ---------- Container ---------- */
+.profile-container {
+    max-width: 860px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- Title ---------- */
+.title {
+    margin-bottom: 28px;
+}
+
+.title h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.5px;
+    position: relative;
+    display: inline-block;
+}
+
+.title h2::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    width: 48px;
+    height: 4px;
+    background: linear-gradient(90deg, #e11d48, #f43f5e);
+    border-radius: 99px;
+}
+
+/* ---------- Card wrapper ---------- */
+.profile-wrapper {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.06),
+        0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    animation: profileFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes profileFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ---------- Profile body ---------- */
+.profile-body {
+    padding: 36px 40px 40px;
+}
+
+/* ---------- Info grid ---------- */
+.profile-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 32px;
+    margin-bottom: 32px;
+}
+
+/* ---------- Info item ---------- */
+.profile-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-info-item label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+}
+
+.profile-info-item input {
+    width: 100%;
+    height: 46px;
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    padding: 0 14px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #334155;
+    background-color: #f8fafc;
+    cursor: default;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.profile-info-item input:hover {
+    border-color: #cbd5e1;
+}
+
+.profile-info-item input:focus {
+    border-color: #fda4af;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.08);
+    background: #fff;
+}
+
+.full-width {
+    grid-column: 1/-1;
+}
+
+/* ---------- Edit button ---------- */
+.profile-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #e11d48, #be123c);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 14px rgba(225, 29, 72, 0.3);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.profile-edit-btn:hover {
+    background: linear-gradient(135deg, #be123c, #9f1239);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(225, 29, 72, 0.38);
+}
+
+.profile-edit-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(225, 29, 72, 0.25);
+}
+
+/* ---------- State texts ---------- */
+.state-text {
+    text-align: center;
+    color: #64748b;
+    padding: 40px 0;
+    font-weight: 500;
+}
+
+.error-text {
+    color: #e11d48;
+}
+
+/* ---------- Skeleton loading ---------- */
+.profile-loading {
+    min-height: calc(100vh - 74px);
+    padding: 60px clamp(16px, 5vw, 80px) 80px;
+    background: #f5f7fb;
+}
+
+.profile-skeleton {
+    max-width: 860px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.skeleton-banner {
+    height: 8px;
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+}
+
+.skeleton-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 28px;
+    padding: 36px 40px 40px;
+}
+
+.skeleton-item {
+    height: 72px;
+    background: linear-gradient(90deg, #f1f5f9 25%, #e8edf4 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 10px;
+}
+
+.skeleton-item.full-width {
+    grid-column: 1 / -1;
+    height: 46px;
+    width: 180px;
+    border-radius: 10px;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+    .profile-info {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-body {
+        padding: 24px 20px 28px;
+    }
+
+    .skeleton-body {
+        grid-template-columns: 1fr;
+        padding: 24px 20px;
+    }
+
+    .title h2 {
+        font-size: 1.4rem;
+    }
+}
