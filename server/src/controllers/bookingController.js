@@ -205,6 +205,17 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     return fail(res, 400, "Voucher sắp hết lượt sử dụng, vui lòng thử lại sau");
   }
 
+  const userVoucherCount = await Booking.countDocuments({
+    user: booking.user,
+    voucher: voucher._id,
+    status: { $ne: "cancelled" },
+    _id: { $ne: booking._id },
+  });
+
+  if (userVoucherCount >= 1) {
+    return fail(res, 400, "Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
+  }
+
   if (booking.totalSeatPrice < voucher.minOrderAmount) {
     return fail(
       res,

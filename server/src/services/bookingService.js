@@ -93,6 +93,16 @@ export const createBookingService = async ({
       throw new Error("Voucher sắp hết lượt sử dụng, vui lòng thử lại sau");
     }
 
+    const userVoucherCount = await Booking.countDocuments({
+      user,
+      voucher: voucher._id,
+      status: { $ne: "cancelled" }
+    });
+
+    if (userVoucherCount >= 1) {
+      throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
+    }
+
     if (
       totalSeatPrice <
       voucher.minOrderAmount
