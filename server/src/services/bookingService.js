@@ -73,12 +73,34 @@ export const createBookingService = async ({
     }
 
     if (
-      voucher.usageLimit &&
+      voucher.usageLimit != null &&
       voucher.usedCount >= voucher.usageLimit
     ) {
       throw new Error(
         "Voucher đã hết lượt sử dụng"
       );
+    }
+
+    const pendingBookingCount = await Booking.countDocuments({
+      voucher: voucher._id,
+      status: "pending",
+    });
+
+    if (
+      voucher.usageLimit != null &&
+      voucher.usedCount + pendingBookingCount >= voucher.usageLimit
+    ) {
+      throw new Error("Voucher sắp hết lượt sử dụng, vui lòng thử lại sau");
+    }
+
+    const userVoucherCount = await Booking.countDocuments({
+      user,
+      voucher: voucher._id,
+      status: { $ne: "cancelled" }
+    });
+
+    if (userVoucherCount >= 1) {
+      throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
     }
 
     if (

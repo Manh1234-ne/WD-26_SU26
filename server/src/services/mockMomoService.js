@@ -1,6 +1,7 @@
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import Voucher from "../models/Voucher.js";
 
 /**
  * Tạo payment mock MoMo
@@ -36,6 +37,9 @@ export const createMockMomoPayment = async ({ bookingId }) => {
       method: "momo",
       status: "pending",
     });
+  } else if (payment.status === "pending") {
+    payment.amount = booking.finalAmount;
+    await payment.save();
   }
 
   const payUrl = `http://localhost:5000/api/mock-momo/pay?paymentId=${payment._id}`;
