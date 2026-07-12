@@ -177,7 +177,7 @@ export const validateVoucher =
     }
 
     if (
-      voucher.usageLimit &&
+      voucher.usageLimit != null &&
       voucher.usedCount >=
         voucher.usageLimit
     ) {
