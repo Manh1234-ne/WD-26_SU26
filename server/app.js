@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 // import dotenv from "dotenv";
 import router from "./src/routes/index.js";
 import { startBookingTimeoutCheck } from "./src/utils/cronJob.js";
+import { ensureWelcomeVoucher } from "./src/utils/initVoucher.js";
 
 
 
@@ -28,8 +29,9 @@ const MONGO_URI = process.env.MONGO_URI;
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("Ket noi CSDL thanh cong");
+    await ensureWelcomeVoucher();
     startBookingTimeoutCheck();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

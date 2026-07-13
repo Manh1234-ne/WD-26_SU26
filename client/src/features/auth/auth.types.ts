@@ -1,3 +1,5 @@
+import type { Dayjs } from "dayjs"
+
 export type UserRole = 'admin' | 'staff' | 'customer'
 
 export type AuthUser = {
@@ -5,9 +7,11 @@ export type AuthUser = {
   fullName: string
   email: string
   phone?: string
-  dateOfBirth?: string
+  dateOfBirth?: Dayjs | string
   address?: string
   role: UserRole
+  avatar?: string
+  password?: string;
 }
 
 export type LoginPayload = {
@@ -25,7 +29,7 @@ export type RegisterPayload = LoginPayload & {
 export type AuthResponse = {
   success?: boolean
   message?: string
-  token: string
+  token?: string
   user: AuthUser
 }
 export type ChangePassword = {

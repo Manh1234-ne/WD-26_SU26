@@ -216,6 +216,18 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     return fail(res, 400, "Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
   }
 
+  if (voucher.code === "CHAOMUNGNGUOIMOI") {
+    const hasPastBooking = await Booking.findOne({
+      user: booking.user,
+      status: { $in: ["confirmed", "completed"] },
+      _id: { $ne: booking._id }
+    });
+
+    if (hasPastBooking) {
+      return fail(res, 400, "Voucher này chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
+    }
+  }
+
   if (booking.totalSeatPrice < voucher.minOrderAmount) {
     return fail(
       res,

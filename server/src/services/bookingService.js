@@ -103,6 +103,17 @@ export const createBookingService = async ({
       throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
     }
 
+    if (voucher.code === "CHAOMUNGNGUOIMOI") {
+      const hasPastBooking = await Booking.findOne({
+        user,
+        status: { $in: ["confirmed", "completed"] }
+      });
+
+      if (hasPastBooking) {
+        throw new Error("Voucher này chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
+      }
+    }
+
     if (
       totalSeatPrice <
       voucher.minOrderAmount
