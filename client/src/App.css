@@ -806,3 +806,251 @@ button:disabled {
     padding: 28px 22px;
   }
 }
+
+/* ───────────────────────────────────────────────
+   AUTH HERO LIVE — Phim thật từ backend
+   ─────────────────────────────────────────────── */
+
+.auth-hero-live {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  justify-content: flex-end;
+}
+
+/* Backdrop mờ phía sau */
+.auth-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.auth-backdrop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: blur(2px) saturate(1.3);
+  transform: scale(1.06);
+}
+
+.auth-backdrop-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(8, 8, 16, 0.55) 0%, rgba(8, 8, 16, 0.92) 100%),
+    linear-gradient(to right, rgba(8, 8, 16, 0.2) 0%, transparent 100%);
+}
+
+/* Brand ở góc trên */
+.auth-hero-live .brand {
+  position: absolute;
+  top: 28px;
+  left: 36px;
+  z-index: 10;
+}
+
+/* Content bên trong hero */
+.auth-hero-content {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  padding: 28px 36px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: 1;
+  gap: 20px;
+}
+
+/* Card ngang: poster + info */
+.auth-movie-card {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  animation: auth-fade-in 0.5s ease;
+}
+
+@keyframes auth-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Poster nhỏ dọc */
+.auth-movie-poster-wrap {
+  flex-shrink: 0;
+  width: 110px;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  border: 2px solid rgba(229, 9, 20, 0.4);
+}
+
+.auth-movie-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth-movie-poster-fallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #172033, #be123c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 900;
+  color: #fff;
+}
+
+/* Thông tin phim bên phải poster */
+.auth-movie-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-now-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #E50914;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.auth-movie-title {
+  color: #fff;
+  font-size: clamp(20px, 2.4vw, 30px);
+  font-weight: 900;
+  line-height: 1.2;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-movie-original {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-movie-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth-movie-genre {
+  background: rgba(229, 9, 20, 0.18);
+  border: 1px solid rgba(229, 9, 20, 0.35);
+  border-radius: 999px;
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+}
+
+.auth-movie-dot {
+  color: #475569;
+  font-size: 14px;
+}
+
+.auth-movie-duration,
+.auth-movie-age {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-movie-desc {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Nút đặt vé */
+.auth-book-btn {
+  display: inline-flex;
+  align-items: center;
+  background: #E50914;
+  border-radius: 6px;
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.auth-book-btn:hover {
+  background: #c7070f;
+  box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Dots chuyển phim */
+.auth-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.auth-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.3);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s ease, width 0.3s ease;
+}
+
+.auth-dot.active {
+  background: #E50914;
+  width: 20px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .auth-hero-live {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .auth-hero-content {
+    padding: 20px 20px 28px;
+  }
+  .auth-movie-poster-wrap {
+    width: 80px;
+  }
+  .auth-movie-title {
+    font-size: 18px;
+  }
+}
