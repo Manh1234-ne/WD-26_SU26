@@ -10,7 +10,6 @@ import AuthLayout from "./layouts/AuthLayout";
 
 import Dashboard from "./pages/admin/Dashboard";
 import ManageMovie from "./pages/admin/ManageMovie";
-import ManageCinema from "./pages/admin/ManageCinema";
 import ManageRoom from "./pages/admin/ManageRoom";
 import ManageSeat from "./pages/admin/ManageSeat";
 import ManageBooking from "./pages/admin/ManageBooking";
@@ -70,7 +69,6 @@ function App() {
               <AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="movies" element={<ManageMovie />} />
-              <Route path="cinemas" element={<ManageCinema />} />
               <Route path="rooms" element={<ManageRoom />} />
               <Route path="seats" element={<ManageSeat />} />
               <Route path="bookings" element={<ManageBooking />} />

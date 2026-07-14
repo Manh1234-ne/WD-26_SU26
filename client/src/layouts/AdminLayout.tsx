@@ -6,7 +6,6 @@ import {
   HomeOutlined,
   DashboardOutlined,
   VideoCameraOutlined,
-  BankOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
   FieldTimeOutlined,
@@ -31,7 +30,6 @@ function AdminLayout() {
   const menuItems: MenuProps["items"] = [
     { key: "/admin", icon: <DashboardOutlined />, label: "Tổng Quát" },
     { key: "/admin/movies", icon: <VideoCameraOutlined />, label: "Quản lý phim" },
-    { key: "/admin/cinemas", icon: <BankOutlined />, label: "Quản lý rạp" },
     { key: "/admin/rooms", icon: <ApartmentOutlined />, label: "Quản lý phòng chiếu" },
     { key: "/admin/showtimes", icon: <FieldTimeOutlined />, label: "Quản lý lịch chiếu" },
     { key: "/admin/seats", icon: <AppstoreOutlined />, label: "Quản lý sơ đồ ghế" },

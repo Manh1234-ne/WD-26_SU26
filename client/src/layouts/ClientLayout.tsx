@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { 
   HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined, 
-  ShoppingCartOutlined, BgColorsOutlined, UserOutlined, HistoryOutlined, 
+  UserOutlined, HistoryOutlined, 
   LogoutOutlined, DashboardOutlined, FacebookOutlined, TwitterOutlined, 
   InstagramOutlined, YoutubeOutlined, InfoCircleOutlined, TeamOutlined, 
   MailOutlined, FileTextOutlined, SafetyCertificateOutlined, 
