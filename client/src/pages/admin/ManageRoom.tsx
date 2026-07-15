@@ -103,6 +103,7 @@ function ManageRoom() {
     try {
       const payload: RoomPayload = {
         ...values,
+        cinema: values.cinema || cinemas[0]?._id || '',
       }
       if (editingId) {
         await updateRoom(editingId, payload)
@@ -152,11 +153,6 @@ function ManageRoom() {
       dataIndex: 'name',
       key: 'name',
       render: (text) => <strong style={{ color: '#e11d48' }}>{text}</strong>,
-    },
-    {
-      title: 'Rạp chiếu',
-      key: 'cinema',
-      render: (_, record) => record.cinema?.name || 'Không xác định',
     },
     {
       title: 'Loại phòng',
@@ -262,29 +258,7 @@ function ManageRoom() {
             requiredMark="optional"
           >
             <Row gutter={16}>
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item
-                  label="Thuộc rạp chiếu"
-                  name="cinema"
-                  rules={[{ required: true, message: 'Vui lòng chọn rạp chiếu!' }]}
-                >
-                  <Select
-                    placeholder="Chọn rạp chiếu..."
-                    showSearch
-                    optionFilterProp="children"
-                    filterOption={(input, option) =>
-                      (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-                    }
-                  >
-                    {cinemas.map((cinema) => (
-                      <Select.Option key={cinema._id} value={cinema._id}>
-                        {cinema.name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   label="Tên phòng chiếu"
                   name="name"
@@ -293,7 +267,7 @@ function ManageRoom() {
                   <Input placeholder="Ví dụ: P01, P02, IMAX 1" />
                 </Form.Item>
               </Col>
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12}>
                 <Form.Item label="Loại phòng" name="roomType">
                   <Select>
                     <Select.Option value="2D">2D Tiêu chuẩn</Select.Option>
