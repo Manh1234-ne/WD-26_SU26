@@ -50,7 +50,7 @@ function App() {
               <Route path="signIn" element={<LoginForm />} />
               <Route path="signUp" element={<RegisterForm />} />
               <Route
-                path="forgot-password"
+                path="change-password"
                 element={<ChangePasswordForm />}
               />
             </Route>
