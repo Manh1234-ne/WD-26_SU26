@@ -46,12 +46,12 @@ function Showtime() {
     }) || []
 
     const groupedShowtimes = filteredShowtimes.reduce((acc, st) => {
-        const cinemaId = st.cinema._id
+        const cinemaId = st.cinema?._id || 'default'
         const formatType = st.format || '2D'
 
         if (!acc[cinemaId]) {
             acc[cinemaId] = {
-                cinemaName: st.cinema.name,
+                cinemaName: st.cinema?.name || 'Hệ thống rạp Lumora',
                 formats: {}
             }
         }

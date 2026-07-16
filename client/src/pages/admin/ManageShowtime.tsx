@@ -4,9 +4,6 @@ import { useForm, Controller } from 'react-hook-form'
 import { getMovies } from '../../features/movie/movie.service'
 import type { Movie } from '../../features/movie/movie.types'
 
-import { getCinemas } from '../../features/cinema/cinema.service'
-import type { Cinema } from '../../features/cinema/cinema.types'
-
 import { createShowtime, deleteShowtime, getAllShowtimes, updateShowtime } from '../../features/showtime/showtime.service'
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { getRooms } from '../../features/room/room.service'
@@ -66,7 +63,6 @@ const FORMAT_OPTIONS = ['2D', '3D', 'IMAX', '4DX', 'ScreenX']
 
 interface ShowtimePayload {
     movieId: string
-    cinemaId: string
     roomId: string
     startTime: string
     endTime: string
@@ -87,12 +83,10 @@ function formatPrice(price: number) {
 
 function ManageShowtime() {
     const [movies, setMovies] = useState<Movie[]>([])
-    const [cinemas, setCinemas] = useState<Cinema[]>([])
     const [rooms, setRooms] = useState<Room[]>([])
     const [showtimes, setShowtimes] = useState<Showtime[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    const [isLoadingRooms, setIsLoadingRooms] = useState(false)
 
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
@@ -133,7 +127,6 @@ function ManageShowtime() {
     } = useForm<ShowtimePayload>({
         defaultValues: {
             movieId: '',
-            cinemaId: '',
             roomId: '',
             startTime: '',
             endTime: '',
@@ -145,7 +138,6 @@ function ManageShowtime() {
         },
     })
 
-    const selectedCinemaId = watch('cinemaId')
     const selectedMovieId = watch('movieId')
     const startTimeValue = watch('startTime')
 
@@ -165,38 +157,16 @@ function ManageShowtime() {
     }, [selectedMovieId, startTimeValue, movies, setValue])
 
     useEffect(() => {
-        if (!selectedCinemaId) {
-            setRooms([])
-            setValue('roomId', '')
-            return
-        }
-        const fetchRooms = async () => {
-            setIsLoadingRooms(true)
-            try {
-                const data = await getRooms({ cinema: selectedCinemaId })
-                setRooms(data)
-            } catch {
-                void message.error('Không thể tải danh sách phòng chiếu')
-            } finally {
-                setIsLoadingRooms(false)
-            }
-        }
-        fetchRooms()
-        setValue('roomId', '')
-    }, [selectedCinemaId, setValue])
-
-
-    useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true)
             try {
-                const [moviesData, cinemasData, showtimesData] = await Promise.all([
+                const [moviesData, roomsData, showtimesData] = await Promise.all([
                     getMovies(),
-                    getCinemas(),
+                    getRooms(),
                     getAllShowtimes(),
                 ])
                 setMovies(moviesData)
-                setCinemas(cinemasData.cinemas)
+                setRooms(roomsData)
                 setShowtimes(showtimesData)
             } catch {
                 void message.error('Không thể tải dữ liệu')
@@ -228,7 +198,6 @@ function ManageShowtime() {
             setIsSaving(true)
             const payload = {
                 movie: data.movieId,
-                cinema: data.cinemaId,
                 room: data.roomId,
                 startTime: new Date(data.startTime),
                 endTime: new Date(data.endTime),
@@ -257,22 +226,14 @@ function ManageShowtime() {
         }
     }
 
-    const handleEdit = async (showtime: Showtime) => {
+    const handleEdit = (showtime: Showtime) => {
         setEditingId(showtime._id)
-
-        try {
-            const roomsData = await getRooms({ cinema: showtime.cinema._id })
-            setRooms(roomsData)
-        } catch {
-
-        }
         const pad = (n: number) => String(n).padStart(2, '0')
         const toLocalStr = (d: Date | string) => {
             const dt = new Date(d)
             return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
         }
         setValue('movieId', showtime.movie._id)
-        setValue('cinemaId', showtime.cinema._id)
         setValue('roomId', showtime.room._id)
         setValue('startTime', toLocalStr(showtime.startTime))
         setValue('endTime', toLocalStr(showtime.endTime))
@@ -309,13 +270,10 @@ function ManageShowtime() {
             ),
         },
         {
-            title: 'Rạp / Phòng',
-            key: 'cinema',
+            title: 'Phòng chiếu',
+            key: 'room',
             render: (_, record) => (
-                <div>
-                    <div style={{ fontWeight: 500 }}>{record.cinema.name}</div>
-                    <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 2 }}>{record.room.name}</div>
-                </div>
+                <strong style={{ color: '#e11d48' }}>{record.room.name}</strong>
             ),
         },
         {
@@ -478,33 +436,6 @@ function ManageShowtime() {
                             </Col>
                             <Col xs={24} sm={12}>
                                 <Form.Item
-                                    label="Rạp chiếu"
-                                    validateStatus={errors.cinemaId ? 'error' : ''}
-                                    help={errors.cinemaId?.message}
-                                    required
-                                >
-                                    <Controller
-                                        name="cinemaId"
-                                        control={control}
-                                        rules={{ required: 'Vui lòng chọn rạp' }}
-                                        render={({ field }) => (
-                                            <Select
-                                                {...field}
-                                                placeholder="Chọn rạp"
-                                                showSearch
-                                                optionFilterProp="label"
-                                                style={{ width: '100%' }}
-                                                options={cinemas.map((c) => ({ label: c.name, value: c._id }))}
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col xs={24} sm={12}>
-                                <Form.Item
                                     label="Phòng chiếu"
                                     validateStatus={errors.roomId ? 'error' : ''}
                                     help={errors.roomId?.message}
@@ -517,9 +448,8 @@ function ManageShowtime() {
                                         render={({ field }) => (
                                             <Select
                                                 {...field}
-                                                placeholder={!selectedCinemaId ? 'Chọn rạp trước' : 'Chọn phòng chiếu'}
-                                                disabled={!selectedCinemaId}
-                                                loading={isLoadingRooms}
+                                                placeholder="Chọn phòng chiếu"
+                                                loading={isLoading}
                                                 style={{ width: '100%' }}
                                                 options={rooms.map((r) => ({
                                                     label: `${r.name} (${r.roomType})`,
@@ -530,6 +460,9 @@ function ManageShowtime() {
                                     />
                                 </Form.Item>
                             </Col>
+                        </Row>
+
+                        <Row gutter={16}>
                             <Col xs={24} sm={12}>
                                 <Form.Item label="Định dạng" required>
                                     <Controller
@@ -772,16 +705,10 @@ function ManageShowtime() {
             >
                 {viewingShowtime && (() => {
                     const activeSeats = seats.filter(s => s.isActive)
-                    const totalSeatsCount = activeSeats.length
-                    const occupiedSeatsCount = occupiedSeatIds.size
-                    const availableSeatsCount = totalSeatsCount - occupiedSeatsCount
-                    const bookingRate = totalSeatsCount > 0 ? Math.round((occupiedSeatsCount / totalSeatsCount) * 100) : 0
-
                     return (
                         <div style={{ padding: '16px 0' }}>
                             <div style={{ marginBottom: 24, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                                 <Row gutter={[16, 12]}>
-                                    <Col xs={24} sm={12}><strong>Rạp:</strong> {viewingShowtime.cinema.name}</Col>
                                     <Col xs={24} sm={12}><strong>Phòng chiếu:</strong> {viewingShowtime.room.name}</Col>
                                     <Col xs={24} sm={12}><strong>Thời gian:</strong> {formatDateTime(viewingShowtime.startTime)} - {formatDateTime(viewingShowtime.endTime)}</Col>
                                     <Col xs={24} sm={12}>
@@ -789,8 +716,6 @@ function ManageShowtime() {
                                         <span style={{ color: '#d97706', fontWeight: 'bold' }}>{formatPrice(viewingShowtime.basePrice)}</span>
                                     </Col>
                                 </Row>
-
-                                <Divider style={{ margin: '16px 0' }} />
 
 
                             </div>
