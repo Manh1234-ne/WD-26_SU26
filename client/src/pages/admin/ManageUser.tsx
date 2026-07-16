@@ -1,222 +1,354 @@
+import { useEffect, useState, useCallback } from "react";
+import {
+  Table, Tag, Button, Input, Select, Space, Card, Typography,
+  Popconfirm, Modal, Form, message, Avatar, Badge, Tooltip, Row, Col,
+} from "antd";
+import {
+  SearchOutlined, ReloadOutlined, UserOutlined,
+  LockOutlined, UnlockOutlined, DeleteOutlined, EditOutlined,
+  CrownOutlined, TeamOutlined,
+} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
+import { api } from "../../services/api";
 
-import { useMemo, useState } from 'react'
-import { Button, Card, Col, Input, Row, Select, Space, Table, Tag, Typography } from 'antd'
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
-import dayjs from 'dayjs'
-import type { ColumnsType } from 'antd/es/table'
+const { Title, Text } = Typography;
 
-const { Title, Text } = Typography
-
-type UserRole = 'admin' | 'customer'
-type UserStatus = 'active' | 'inactive'
+type UserRole = "admin" | "staff" | "customer";
 
 type UserRecord = {
-  id: string
-  fullName: string
-  email: string
-  role: UserRole
-  status: UserStatus
-  phone: string
-  createdAt: string
-}
+  _id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  role: UserRole;
+  isActive: boolean;
+  avatar?: string;
+  dateOfBirth?: string;
+  createdAt?: string;
+};
 
-const sampleUsers: UserRecord[] = [
-  {
-    id: 'u1',
-    fullName: 'Nguyễn Văn A',
-    email: 'nguyenvana@example.com',
-    role: 'admin',
-    status: 'active',
-    phone: '0901234567',
-    createdAt: '2026-06-10T08:32:00.000Z',
-  },
-  {
-    id: 'u2',
-    fullName: 'Trần Thị B',
-    email: 'tranthib@example.com',
-    role: 'customer',
-    status: 'active',
-    phone: '0987654321',
-    createdAt: '2026-06-12T11:25:00.000Z',
-  },
-  {
-    id: 'u3',
-    fullName: 'Lê Văn C',
-    email: 'levanc@example.com',
-    role: 'customer',
-    status: 'inactive',
-    phone: '0912345678',
-    createdAt: '2026-06-14T14:50:00.000Z',
-  },
-  {
-    id: 'u4',
-    fullName: 'Phạm Thị D',
-    email: 'phamthid@example.com',
-    role: 'admin',
-    status: 'active',
-    phone: '0938765432',
-    createdAt: '2026-06-15T09:10:00.000Z',
-  },
-]
+const ROLE_OPTIONS = [
+  { label: "Tất cả", value: "all" },
+  { label: "Admin", value: "admin" },
+  { label: "Nhân viên", value: "staff" },
+  { label: "Khách hàng", value: "customer" },
+];
 
-const roleOptions = [
-  { label: 'Tất cả vai trò', value: 'all' },
-  { label: 'Admin', value: 'admin' },
-  { label: 'Khách hàng', value: 'customer' },
-]
+const ROLE_EDIT_OPTIONS = [
+  { label: "Admin", value: "admin" },
+  { label: "Nhân viên", value: "staff" },
+  { label: "Khách hàng", value: "customer" },
+];
 
-const statusOptions = [
-  { label: 'Tất cả trạng thái', value: 'all' },
-  { label: 'Hoạt động', value: 'active' },
-  { label: 'Vô hiệu hoá', value: 'inactive' },
-]
-
-const roleTag = (role: UserRole) => {
-  return role === 'admin' ? <Tag color="volcano">Admin</Tag> : <Tag color="blue">Khách hàng</Tag>
-}
-
-const statusTag = (status: UserStatus) => {
-  return status === 'active' ? <Tag color="success">Hoạt động</Tag> : <Tag color="default">Vô hiệu hoá</Tag>
-}
+const roleConfig: Record<UserRole, { color: string; label: string; icon: React.ReactNode }> = {
+  admin: { color: "red", label: "Admin", icon: <CrownOutlined /> },
+  staff: { color: "blue", label: "Nhân viên", icon: <TeamOutlined /> },
+  customer: { color: "default", label: "Khách hàng", icon: <UserOutlined /> },
+};
 
 function ManageUser() {
-  const [searchValue, setSearchValue] = useState('')
-  const [roleFilter, setRoleFilter] = useState<typeof roleOptions[number]['value']>('all')
-  const [statusFilter, setStatusFilter] = useState<typeof statusOptions[number]['value']>('all')
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  const filteredUsers = useMemo(
-    () =>
-      sampleUsers.filter((user) => {
-        const searchLower = searchValue.trim().toLowerCase()
-        const matchesSearch =
-          !searchLower ||
-          [user.fullName, user.email, user.phone, user.role]
-            .join(' ')
-            .toLowerCase()
-            .includes(searchLower)
+  // Modal sửa vai trò
+  const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  const [editForm] = Form.useForm();
+  const [editLoading, setEditLoading] = useState(false);
 
-        const matchesRole = roleFilter === 'all' ; user.role === roleFilter
-        const matchesStatus = statusFilter === 'all' ; user.status === statusFilter
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, string> = {
+        page: String(page),
+        limit: String(pageSize),
+      };
+      if (search.trim()) params.search = search.trim();
+      if (roleFilter !== "all") params.role = roleFilter;
 
-        return matchesSearch ; matchesRole ; matchesStatus
-      }),
-    [searchValue, roleFilter, statusFilter],
-  )
+      const res = await api.get("/users", { params });
+      setUsers(res.data.data || []);
+      setTotal(res.data.total || 0);
+    } catch (err: any) {
+      void message.error(err?.response?.data?.message || "Không thể tải danh sách người dùng");
+    } finally {
+      setLoading(false);
+    }
+  }, [search, roleFilter, page]);
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  // Khi thay đổi filter → reset về trang 1
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
+
+  const handleToggleActive = async (user: UserRecord) => {
+    try {
+      await api.patch(`/users/${user._id}/toggle-active`);
+      void message.success(user.isActive ? "Đã khoá tài khoản" : "Đã mở khoá tài khoản");
+      void fetchUsers();
+    } catch (err: any) {
+      void message.error(err?.response?.data?.message || "Thao tác thất bại");
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
+    try {
+      await api.delete(`/users/${userId}`);
+      void message.success("Đã xoá người dùng");
+      void fetchUsers();
+    } catch (err: any) {
+      void message.error(err?.response?.data?.message || "Xoá thất bại");
+    }
+  };
+
+  const openEditModal = (user: UserRecord) => {
+    setEditingUser(user);
+    editForm.setFieldsValue({ role: user.role });
+  };
+
+  const handleEditRole = async () => {
+    if (!editingUser) return;
+    setEditLoading(true);
+    try {
+      const values = await editForm.validateFields();
+      await api.patch(`/users/${editingUser._id}/role`, { role: values.role });
+      void message.success("Cập nhật vai trò thành công");
+      setEditingUser(null);
+      void fetchUsers();
+    } catch (err: any) {
+      if (err?.response) {
+        void message.error(err?.response?.data?.message || "Cập nhật thất bại");
+      }
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const columns: ColumnsType<UserRecord> = [
     {
-      title: 'Họ tên',
-      dataIndex: 'fullName',
-      key: 'fullName',
-      width: 220,
-      render: (value, record) => (
-        <div>
-          <div style={{ fontWeight: 700 }}>{value}</div>
-          <Text type="secondary">{record.email}</Text>
-        </div>
-      ),
-    },
-    {
-      title: 'Vai trò',
-      dataIndex: 'role',
-      key: 'role',
-      width: 150,
-      render: (role) => roleTag(role),
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 140,
-      render: (status) => statusTag(status),
-    },
-    {
-      title: 'Số điện thoại',
-      dataIndex: 'phone',
-      key: 'phone',
-      width: 170,
-    },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 170,
-      render: (value) => dayjs(value).format('DD/MM/YYYY HH:mm'),
-    },
-    {
-      title: 'Hành động',
-      key: 'action',
-      width: 160,
+      title: "Người dùng",
+      key: "user",
       render: (_, record) => (
         <Space>
-          <Button type="default" size="small">
-            Chi tiết
-          </Button>
-          <Button type={record.status === 'active' ? 'dashed' : 'primary'} danger={record.status === 'active'} size="small">
-            {record.status === 'active' ? 'Vô hiệu hoá' : 'Kích hoạt'}
-          </Button>
+          <Avatar
+            src={record.avatar || undefined}
+            icon={!record.avatar ? <UserOutlined /> : undefined}
+            style={{ background: record.isActive ? "#e11d48" : "#94a3b8" }}
+          />
+          <div>
+            <div style={{ fontWeight: 700, color: "#0f172a" }}>{record.fullName}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>{record.email}</Text>
+          </div>
         </Space>
       ),
     },
-  ]
+    {
+      title: "Số điện thoại",
+      dataIndex: "phone",
+      key: "phone",
+      width: 140,
+      render: (phone) => phone || <Text type="secondary">—</Text>,
+    },
+    {
+      title: "Vai trò",
+      dataIndex: "role",
+      key: "role",
+      width: 140,
+      render: (role: UserRole) => {
+        const cfg = roleConfig[role];
+        return (
+          <Tag color={cfg.color} icon={cfg.icon}>
+            {cfg.label}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      key: "isActive",
+      width: 130,
+      render: (isActive: boolean) =>
+        isActive ? (
+          <Badge status="success" text="Hoạt động" />
+        ) : (
+          <Badge status="error" text="Đã khoá" />
+        ),
+    },
+    {
+      title: "Ngày tham gia",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      width: 150,
+      render: (date) =>
+        date ? dayjs(date).format("DD/MM/YYYY") : <Text type="secondary">—</Text>,
+    },
+    {
+      title: "Hành động",
+      key: "actions",
+      width: 150,
+      align: "center",
+      render: (_, record) => (
+        <Space size={4}>
+          <Tooltip title="Sửa vai trò">
+            <Button
+              type="text"
+              icon={<EditOutlined style={{ color: "#0ea5e9" }} />}
+              onClick={() => openEditModal(record)}
+            />
+          </Tooltip>
+          <Tooltip title={record.isActive ? "Khoá tài khoản" : "Mở khoá"}>
+            <Popconfirm
+              title={record.isActive ? "Khoá tài khoản này?" : "Mở khoá tài khoản này?"}
+              description={
+                record.isActive
+                  ? "Người dùng sẽ không thể đăng nhập sau khi khoá."
+                  : "Người dùng có thể đăng nhập lại."
+              }
+              onConfirm={() => void handleToggleActive(record)}
+              okText={record.isActive ? "Khoá" : "Mở khoá"}
+              cancelText="Hủy"
+              okButtonProps={{ danger: record.isActive }}
+            >
+              <Button
+                type="text"
+                icon={
+                  record.isActive
+                    ? <LockOutlined style={{ color: "#f59e0b" }} />
+                    : <UnlockOutlined style={{ color: "#10b981" }} />
+                }
+              />
+            </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Xoá người dùng">
+            <Popconfirm
+              title="Xoá người dùng này?"
+              description="Thao tác không thể hoàn tác."
+              onConfirm={() => void handleDelete(record._id)}
+              okText="Xoá"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                type="text"
+                icon={<DeleteOutlined style={{ color: "#e11d48" }} />}
+              />
+            </Popconfirm>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
   return (
     <section style={{ padding: 24 }}>
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 16 }}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <Title level={2} style={{ margin: 0 }}>
-              Quản lý người dùng
-            </Title>
-            <Text type="secondary">Quản lý tài khoản admin và khách hàng trong hệ thống.</Text>
+            <Title level={2} style={{ margin: 0 }}>Quản lý Người Dùng</Title>
+            <Text type="secondary">
+              Danh sách tất cả tài khoản đã đăng ký — tổng cộng{" "}
+              <strong>{total}</strong> người dùng.
+            </Text>
           </div>
-          <Button type="primary" icon={<ReloadOutlined />}>
+          <Button
+            icon={<ReloadOutlined spin={loading} />}
+            onClick={() => void fetchUsers()}
+            type="text"
+          >
             Tải lại
           </Button>
         </div>
 
+        {/* Bộ lọc */}
         <Card>
           <Row gutter={[16, 16]}>
-            <Col xs={24} md={10}>
+            <Col xs={24} md={14} xl={10}>
               <Input
-                placeholder="Tìm tên, email, số điện thoại"
-                prefix={<SearchOutlined />}
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
                 allowClear
+                prefix={<SearchOutlined />}
+                placeholder="Tìm tên, email, số điện thoại..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </Col>
-            <Col xs={24} md={7}>
+            <Col xs={24} md={8} xl={6}>
               <Select
                 value={roleFilter}
-                options={roleOptions}
-                onChange={(value) => setRoleFilter(value)}
-                style={{ width: '100%' }}
-              />
-            </Col>
-            <Col xs={24} md={7}>
-              <Select
-                value={statusFilter}
-                options={statusOptions}
-                onChange={(value) => setStatusFilter(value)}
-                style={{ width: '100%' }}
+                options={ROLE_OPTIONS}
+                onChange={setRoleFilter}
+                style={{ width: "100%" }}
               />
             </Col>
           </Row>
         </Card>
 
+        {/* Bảng dữ liệu */}
         <Card>
           <Table<UserRecord>
-            rowKey="id"
+            rowKey="_id"
             columns={columns}
-            dataSource={filteredUsers}
-            pagination={{ pageSize: 8 }}
-            locale={{ emptyText: 'Không tìm thấy người dùng phù hợp' }}
+            dataSource={users}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: setPage,
+              showTotal: (t) => `Tổng ${t} người dùng`,
+              showSizeChanger: false,
+            }}
+            scroll={{ x: true }}
+            locale={{ emptyText: "Không tìm thấy người dùng nào" }}
           />
         </Card>
       </Space>
+
+      {/* Modal sửa vai trò */}
+      <Modal
+        title={
+          <Space>
+            <EditOutlined style={{ color: "#e11d48" }} />
+            <span>Cập nhật vai trò — {editingUser?.fullName}</span>
+          </Space>
+        }
+        open={!!editingUser}
+        onCancel={() => setEditingUser(null)}
+        onOk={() => void handleEditRole()}
+        confirmLoading={editLoading}
+        okText="Lưu thay đổi"
+        cancelText="Hủy"
+        okButtonProps={{ style: { background: "#e11d48", borderColor: "#e11d48" } }}
+        destroyOnClose
+      >
+        <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            label="Email"
+          >
+            <Input value={editingUser?.email} disabled />
+          </Form.Item>
+          <Form.Item
+            name="role"
+            label="Vai trò mới"
+            rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
+          >
+            <Select options={ROLE_EDIT_OPTIONS} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </section>
-  )
+  );
 }
 
-export default ManageUser
+export default ManageUser;
