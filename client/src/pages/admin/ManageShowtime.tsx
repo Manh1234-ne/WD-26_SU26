@@ -218,9 +218,10 @@ function ManageShowtime() {
             }
             await loadShowtimes()
             reset()
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            void message.error(editingId ? 'Cập nhật lịch chiếu thất bại.' : 'Tạo lịch chiếu thất bại. Vui lòng kiểm tra lại dữ liệu.')
+            const errMsg = error.response?.data?.message || (editingId ? 'Cập nhật lịch chiếu thất bại.' : 'Tạo lịch chiếu thất bại. Vui lòng kiểm tra lại dữ liệu.')
+            void message.error(errMsg)
         } finally {
             setIsSaving(false)
         }
@@ -782,7 +783,7 @@ function ManageShowtime() {
                                                                         title={`${seat.code} (${seat.type.toUpperCase()}) - ${isOccupied ? 'Đã đặt' : 'Còn trống'}`}
                                                                     >
                                                                         <button
-                                                                            className="seat-unit"
+                                                                            className={`seat-unit ${seat.type}`}
                                                                             style={{ cursor: 'default', ...seatStyle }}
                                                                             type="button"
                                                                         >
