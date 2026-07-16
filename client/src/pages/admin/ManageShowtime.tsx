@@ -163,7 +163,7 @@ function ManageShowtime() {
                 const [moviesData, roomsData, showtimesData] = await Promise.all([
                     getMovies(),
                     getRooms(),
-                    getAllShowtimes(),
+                    getAllShowtimes({ includePast: true }),
                 ])
                 setMovies(moviesData)
                 setRooms(roomsData)
@@ -180,7 +180,7 @@ function ManageShowtime() {
     const loadShowtimes = async () => {
         setIsLoading(true)
         try {
-            const data = await getAllShowtimes()
+            const data = await getAllShowtimes({ includePast: true })
             setShowtimes(data)
         } catch {
             void message.error('Không thể tải danh sách lịch chiếu')
