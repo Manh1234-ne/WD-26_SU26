@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AuthResponse, AuthUser } from '../../features/auth/auth.types'
 import { useParams } from 'react-router-dom';
 import { getProfile, changePassword, updateProfile } from '../../features/auth/services/auth.service';
@@ -6,7 +6,9 @@ import './Profile.css';
 import Loading from '../../components/Loading/Loading';
 import { Button, DatePicker, Form, Input, Modal } from 'antd';
 import dayjs from 'dayjs';
-
+import { getBookingsByUser } from '../../features/booking/booking.service';
+import { CopyFilled, DollarOutlined } from '@ant-design/icons'
+import { Link } from 'react-router-dom';
 function Profile() {
     const [profile, setProfile] = useState<AuthResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -69,7 +71,37 @@ function Profile() {
             }
         }
         getProfileUser();
-    }, [id])
+    }, [id]);
+
+    //Tổng số vé và người dùng đã đặt
+    const [totalBookings, setTotalBookings] = useState<number>(0);
+    const [totalSpent, setTotalSpent] = useState<number>(0);
+
+    useEffect(() => {
+        if (!id) {
+            return;
+        }
+        const loadBookingCount = async () => {
+            try {
+                const res = await getBookingsByUser(id);
+                const booking = res.data;
+
+                const bookingSuccess = booking.filter(
+                    (booking) => booking.status === "completed"
+                )
+                setTotalBookings(bookingSuccess.length);
+                setTotalSpent(
+                    bookingSuccess.reduce((sum, booking) => sum + (booking.finalAmount || 0), 0)
+                );
+            } catch (error) {
+                setError("lỗi lấy thông tin")
+            } finally {
+                setLoading(false);
+            }
+
+        }
+        loadBookingCount();
+    }, [id]);
 
     const formatDate = (dateStr?: dayjs.Dayjs | string | Date | null) => {
         if (!dateStr) return null;
@@ -84,6 +116,9 @@ function Profile() {
     const initials = (name?: string) =>
         name ? name.trim().split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() : '?';
 
+    const formatCurrency = (amount: number) => {
+        return amount.toLocaleString('vi-VN') + ' đ';
+    };
     const openPasswordModal = () => {
         setCurrentPassword('');
         setNewPassword('');
@@ -156,13 +191,22 @@ function Profile() {
             {!loading && !error && !profile && (
                 <p className="state-text">Không tìm thấy</p>
             )}
-
             {!loading && profile && (
+
                 <div className="profile-container">
                     <div className='title'>
                         <h2>Thông tin cá nhân</h2>
                     </div>
+
                     <div className="profile-wrapper">
+                        <div className='profile-avatar'>
+                            <div className="profile-avatar-img">
+                                {profile.user.avatar
+                                    ? <img src={profile.user.avatar} alt={profile.user.fullName} />
+                                    : initials(profile.user.fullName)
+                                }
+                            </div>
+                        </div>
                         <div className="profile-body">
 
                             <div className="profile-info">
@@ -190,6 +234,31 @@ function Profile() {
                                 <div className="profile-info-item">
                                     <label htmlFor="text">Địa chỉ</label>
                                     <input type="text" value={profile.user.address || "chưa cập nhật"} readOnly />
+                                </div>
+                                <div className="profile-stats">
+                                    <Link to="/booking-history" >
+                                        <div className="stat-card">
+                                            <span className="stat-icon">
+                                                <CopyFilled />
+                                            </span>
+
+                                            <div className="stat-content">
+                                                <span className="stat-value">{formatCurrency(totalSpent)}</span>
+                                                <span className="stat-label">Tổng chi tiêu</span>
+                                            </div>
+
+                                        </div>
+                                    </Link>
+
+                                    <div className="stat-card">
+                                        <span className="stat-icon">
+                                            <DollarOutlined />
+                                        </span>
+                                        <div className="stat-content">
+                                            <span className="stat-value">{formatCurrency(totalSpent)}</span>
+                                            <span className="stat-label">Tổng chi tiêu</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
