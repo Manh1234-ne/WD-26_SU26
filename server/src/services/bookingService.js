@@ -173,7 +173,7 @@ export const createBookingService = async ({
     status: "pending",
 
     expiresAt: new Date(
-      Date.now() + 10 * 60 * 1000
+      Date.now() + 5 * 60 * 1000
     ),
   });
 
