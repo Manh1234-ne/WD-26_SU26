@@ -1930,3 +1930,15 @@ button:disabled {
   flex: 1;
   max-width: 200px;
 }
+
+/* =====================
+   SEAT HOLDING TIMER
+   ===================== */
+@keyframes holding-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.8; transform: scale(1.04); }
+}
+
+.holding-timer-urgent {
+  animation: holding-pulse 1s ease-in-out infinite;
+}
