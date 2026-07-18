@@ -26,21 +26,31 @@ export const createBookingService = async ({
     throw new Error("Ghế không hợp lệ");
   }
 
-  const bookedSeats = await BookingSeat.find({
+
+  const activeBookings = await Booking.find({
+    showtime,
+    $or: [
+      { status: { $in: ["confirmed", "completed"] } },
+      { status: "pending", expiresAt: { $gt: new Date() } }
+    ]
+  }).select("_id");
+  const activeBookingIds = activeBookings.map((b) => b._id);
+  const unavailableSeats = await BookingSeat.find({
     showtime,
     seat: { $in: seatIds },
-    status: "booked",
+    booking: { $in: activeBookingIds },
+    status: { $in: ["booked", "held"] },
   });
 
-  if (bookedSeats.length > 0) {
-    throw new Error("Ghế đã được đặt");
+  if (unavailableSeats.length > 0) {
+    throw new Error("Ghế đã được đặt hoặc đang được giữ bởi người khác");
   }
 
   const totalSeatPrice = seats.reduce(
     (sum, seat) =>
       sum +
       showtimeExists.basePrice *
-        seat.priceMultiplier,
+      seat.priceMultiplier,
     0
   );
 
@@ -135,7 +145,7 @@ export const createBookingService = async ({
       if (
         voucher.maxDiscountAmount &&
         discountAmount >
-          voucher.maxDiscountAmount
+        voucher.maxDiscountAmount
       ) {
         discountAmount =
           voucher.maxDiscountAmount;

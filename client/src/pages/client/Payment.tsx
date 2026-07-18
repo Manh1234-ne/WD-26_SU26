@@ -94,15 +94,15 @@ function Payment() {
         return () => clearInterval(timer)
     }, [booking])
 
-    const handleExpiration = () => {
+    const handleExpiration = async () => {
         try {
-
+            await api.patch(`/bookings/${bookingId}/cancel`)
         } catch (error) {
             console.error("Error cancelling expired booking:", error)
         }
         Swal.fire({
-            title: "hết thời gian thanh toán",
-            text: "Đặt vé của bạn đã hết hạn",
+            title: "Hết thời gian thanh toán",
+            text: "Đặt vé của bạn đã hết hạn và ghế đã được giải phóng.",
             icon: "warning",
             confirmButtonColor: "#e11d48",
             confirmButtonText: "Đồng ý",
@@ -400,13 +400,25 @@ function Payment() {
                     <span className="label">Tổng tiền thanh toán</span>
                     <span className="val">{finalAmount.toLocaleString("vi-VN")} đ</span>
                 </div>
-                <Link
+                <button
                     className="ghost-button"
-                    style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: "6px" }}
-                    to={`/booking/${showtime?._id}`}
+                    style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: "6px", cursor: "pointer", border: "1px solid #cbd5e1", background: "none", height: "40px", borderRadius: "8px", color: "#64748b" }}
+                    onClick={async () => {
+                        try {
+                            setIsProcessing(true);
+                            await api.patch(`/bookings/${bookingId}/cancel`);
+                        } catch (error) {
+                            console.error("Error cancelling booking when going back:", error);
+                        } finally {
+                            setIsProcessing(false);
+                            nav(`/booking/${showtime?._id}`);
+                        }
+                    }}
+                    disabled={isProcessing}
                 >
                     <ArrowLeftOutlined /> Quay lại đổi ghế
-                </Link>
+
+                </button>
             </div>
         </div>
     )
