@@ -2,11 +2,13 @@ import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
 import Showtime from "../models/Showtime.js";
 import Seat from "../models/Seat.js";
+import Voucher from "../models/Voucher.js";
 
 export const createBookingService = async ({
   user,
   showtime,
   seatIds,
+  voucherCode,
 }) => {
   const showtimeExists = await Showtime.findById(showtime);
 
@@ -24,44 +26,188 @@ export const createBookingService = async ({
     throw new Error("Ghế không hợp lệ");
   }
 
-  const bookedSeats = await BookingSeat.find({
+
+  const activeBookings = await Booking.find({
+    showtime,
+    $or: [
+      { status: { $in: ["confirmed", "completed"] } },
+      { status: "pending", expiresAt: { $gt: new Date() } }
+    ]
+  }).select("_id");
+  const activeBookingIds = activeBookings.map((b) => b._id);
+  const unavailableSeats = await BookingSeat.find({
     showtime,
     seat: { $in: seatIds },
-    status: "booked",
+    booking: { $in: activeBookingIds },
+    status: { $in: ["booked", "held"] },
   });
 
-  if (bookedSeats.length > 0) {
-    throw new Error("Ghế đã được đặt");
+  if (unavailableSeats.length > 0) {
+    throw new Error("Ghế đã được đặt hoặc đang được giữ bởi người khác");
   }
 
   const totalSeatPrice = seats.reduce(
     (sum, seat) =>
-      sum + showtimeExists.basePrice * seat.priceMultiplier,
+      sum +
+      showtimeExists.basePrice *
+      seat.priceMultiplier,
     0
   );
+
+  let voucher = null;
+  let discountAmount = 0;
+  let finalAmount = totalSeatPrice;
+
+  if (voucherCode) {
+    voucher = await Voucher.findOne({
+      code: voucherCode.toUpperCase(),
+      isActive: true,
+    });
+
+    if (!voucher) {
+      throw new Error(
+        "Voucher không tồn tại hoặc đã bị khóa"
+      );
+    }
+
+    const now = new Date();
+
+    if (now < voucher.startDate) {
+      throw new Error(
+        "Voucher chưa đến thời gian sử dụng"
+      );
+    }
+
+    if (now > voucher.endDate) {
+      throw new Error("Voucher đã hết hạn");
+    }
+
+    if (
+      voucher.usageLimit != null &&
+      voucher.usedCount >= voucher.usageLimit
+    ) {
+      throw new Error(
+        "Voucher đã hết lượt sử dụng"
+      );
+    }
+
+    const pendingBookingCount = await Booking.countDocuments({
+      voucher: voucher._id,
+      status: "pending",
+    });
+
+    if (
+      voucher.usageLimit != null &&
+      voucher.usedCount + pendingBookingCount >= voucher.usageLimit
+    ) {
+      throw new Error("Voucher sắp hết lượt sử dụng, vui lòng thử lại sau");
+    }
+
+    const userVoucherCount = await Booking.countDocuments({
+      user,
+      voucher: voucher._id,
+      status: { $ne: "cancelled" }
+    });
+
+    if (userVoucherCount >= 1) {
+      throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
+    }
+
+    if (voucher.code === "CHAOMUNGNGUOIMOI") {
+      const hasPastBooking = await Booking.findOne({
+        user,
+        status: { $in: ["confirmed", "completed"] }
+      });
+
+      if (hasPastBooking) {
+        throw new Error("Voucher này chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
+      }
+    }
+
+    if (
+      totalSeatPrice <
+      voucher.minOrderAmount
+    ) {
+      throw new Error(
+        `Đơn hàng tối thiểu ${voucher.minOrderAmount} để sử dụng voucher`
+      );
+    }
+
+    // Percent
+    if (
+      voucher.discountType === "percent"
+    ) {
+      discountAmount =
+        (totalSeatPrice *
+          voucher.discountValue) /
+        100;
+
+      if (
+        voucher.maxDiscountAmount &&
+        discountAmount >
+        voucher.maxDiscountAmount
+      ) {
+        discountAmount =
+          voucher.maxDiscountAmount;
+      }
+    }
+
+    if (
+      voucher.discountType === "fixed"
+    ) {
+      discountAmount =
+        voucher.discountValue;
+    }
+
+    if (
+      discountAmount >
+      totalSeatPrice
+    ) {
+      discountAmount =
+        totalSeatPrice;
+    }
+
+    finalAmount =
+      totalSeatPrice - discountAmount;
+  }
 
   const booking = await Booking.create({
     bookingCode: `BK${Date.now()}`,
     user,
     showtime,
+    voucher: voucher?._id,
     totalSeatPrice,
-    finalAmount: totalSeatPrice,
+    discountAmount,
+    finalAmount,
+
     status: "pending",
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+
+    expiresAt: new Date(
+      Date.now() + 5 * 60 * 1000
+    ),
   });
 
-  const bookingSeats = seats.map((seat) => ({
-    booking: booking._id,
-    showtime,
-    seat: seat._id,
-    seatCode: seat.code,
-    seatType: seat.type,
-    price:
-      showtimeExists.basePrice * seat.priceMultiplier,
-    status: "held",
-  }));
+  const bookingSeats = seats.map(
+    (seat) => ({
+      booking: booking._id,
+      showtime,
 
-  await BookingSeat.insertMany(bookingSeats);
+      seat: seat._id,
+
+      seatCode: seat.code,
+      seatType: seat.type,
+
+      price:
+        showtimeExists.basePrice *
+        seat.priceMultiplier,
+
+      status: "held",
+    })
+  );
+
+  await BookingSeat.insertMany(
+    bookingSeats
+  );
 
   return booking;
 };

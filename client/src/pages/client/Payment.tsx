@@ -8,6 +8,7 @@ import { createMockMomoPayment, createVnPayUrl } from "../../features/payment/pa
 import { ArrowLeftOutlined, ClockCircleOutlined, SafetyCertificateOutlined, VideoCameraOutlined, WalletOutlined } from "@ant-design/icons";
 import { format } from "date-fns";
 import Loading from "../../components/Loading/Loading";
+import { api } from "../../services/api";
 
 
 
@@ -19,6 +20,12 @@ function Payment() {
     const [paymentMethod, setPaymentMethod] = useState<"momo" | "vnpay">("momo");
     const [isProcessing, setIsProcessing] = useState(false);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [voucherCode, setVoucherCode] = useState("");
+    const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [finalAmount, setFinalAmount] = useState(0);
+    const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+    const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
 
 
     const { data: responseData, isLoading, error } = useQuery({
@@ -31,6 +38,36 @@ function Payment() {
     const booking = bookingData?.booking
     const seats = bookingData?.seats || []
 
+    useEffect(() => {
+        if (booking) {
+            if (booking.finalAmount !== undefined) {
+                setFinalAmount(booking.finalAmount)
+            }
+            if (booking.discountAmount !== undefined) {
+                setDiscountAmount(booking.discountAmount)
+            }
+            if (booking.voucher) {
+                setAppliedVoucher(booking.voucher)
+                setVoucherCode(booking.voucher.code || "")
+            }
+        }
+    }, [booking])
+
+    useEffect(() => {
+        const loadVouchers = async () => {
+            try {
+                const res = await api.get("/vouchers")
+                if (res.data?.success) {
+                    const activeVouchers = (res.data.data || []).filter((item: any) => item.isActive !== false)
+                    setAvailableVouchers(activeVouchers)
+                }
+            } catch (error) {
+                console.error("Failed to load vouchers", error)
+            }
+        }
+
+        void loadVouchers()
+    }, [])
 
     useEffect(() => {
         if (!booking || booking.status !== "pending") return
@@ -57,15 +94,15 @@ function Payment() {
         return () => clearInterval(timer)
     }, [booking])
 
-    const handleExpiration = () => {
+    const handleExpiration = async () => {
         try {
-
+            await api.patch(`/bookings/${bookingId}/cancel`)
         } catch (error) {
             console.error("Error cancelling expired booking:", error)
         }
         Swal.fire({
-            title: "hết thời gian thanh toán",
-            text: "Đặt vé của bạn đã hết hạn",
+            title: "Hết thời gian thanh toán",
+            text: "Đặt vé của bạn đã hết hạn và ghế đã được giải phóng.",
             icon: "warning",
             confirmButtonColor: "#e11d48",
             confirmButtonText: "Đồng ý",
@@ -79,6 +116,40 @@ function Payment() {
         const minutes = Math.floor(seconds / 60);
         const remainingSecond = seconds % 60;
         return `${minutes}:${remainingSecond.toString().padStart(2, "0")}`
+    }
+
+    const applyVoucher = async () => {
+        if (!booking || !voucherCode.trim()) {
+            message.error("Vui lòng nhập mã voucher")
+            return
+        }
+
+        setIsCheckingVoucher(true)
+        try {
+            const res = await api.patch(`/bookings/${bookingId}/apply-voucher`, {
+                voucherCode: voucherCode.trim(),
+            })
+
+            if (res.data?.success) {
+                const voucherData = res.data.data
+                setAppliedVoucher(voucherData.voucher)
+                setDiscountAmount(voucherData.discountAmount)
+                setFinalAmount(voucherData.finalAmount)
+                message.success(`Áp dụng voucher thành công: ${voucherData.voucher.code}`)
+            } else {
+                setAppliedVoucher(null)
+                setDiscountAmount(0)
+                setFinalAmount(booking.finalAmount)
+                message.error(res.data?.message || "Voucher không hợp lệ")
+            }
+        } catch (error: any) {
+            setAppliedVoucher(null)
+            setDiscountAmount(0)
+            setFinalAmount(booking.finalAmount)
+            message.error(error?.response?.data?.message || "Không thể kiểm tra voucher")
+        } finally {
+            setIsCheckingVoucher(false)
+        }
     }
 
     const handlePayment = async () => {
@@ -196,14 +267,62 @@ function Payment() {
                         </div>
                     </div>
                 </div>
+                <div style={{ marginTop: "20px", border: "1px dashed #f59e0b", borderRadius: "10px", padding: "14px", background: "#fff7ed" }}>
+                    <div style={{ fontWeight: 700, marginBottom: "8px", color: "#92400e" }}>Bạn có mã giảm giá?</div>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <input
+                            value={voucherCode}
+                            onChange={(e) => setVoucherCode(e.target.value)}
+                            placeholder="Nhập mã voucher"
+                            style={{ flex: 1, minWidth: "180px", padding: "10px 12px", borderRadius: "8px", border: "1px solid #f59e0b" }}
+                        />
+                        <button
+                            type="button"
+                            onClick={applyVoucher}
+                            disabled={isCheckingVoucher}
+                            style={{ padding: "10px 14px", borderRadius: "8px", background: "#e11d48", color: "white", border: "none", cursor: "pointer" }}
+                        >
+                            {isCheckingVoucher ? "Đang kiểm tra..." : "Áp dụng"}
+                        </button>
+                    </div>
+                    {appliedVoucher && (
+                        <div style={{ marginTop: "8px", color: "#166534", fontSize: "13px" }}>
+                            Đã áp dụng voucher <strong>{appliedVoucher.code}</strong>
+                        </div>
+                    )}
+                    <div style={{ marginTop: "10px" }}>
+                        <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "6px" }}>Voucher đang có:</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                            {availableVouchers.length > 0 ? (
+                                availableVouchers.map((item) => (
+                                    <button
+                                        key={item._id}
+                                        type="button"
+                                        onClick={() => {
+                                            setVoucherCode(item.code)
+                                            setAppliedVoucher(null)
+                                            setDiscountAmount(0)
+                                            setFinalAmount(booking.finalAmount)
+                                        }}
+                                        style={{ border: "1px solid #e11d48", borderRadius: "999px", padding: "6px 10px", background: "white", color: "#e11d48", cursor: "pointer", fontSize: "12px" }}
+                                    >
+                                        {item.code} - {item.discountType === "percent" ? `${item.discountValue}%` : `${item.discountValue.toLocaleString("vi-VN")}đ`}
+                                    </button>
+                                ))
+                            ) : (
+                                <span style={{ fontSize: "13px", color: "#64748b" }}>Hiện không có voucher nào.</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
                 <button
                     className="primary-button"
                     disabled={isProcessing || (timeLeft !== null && timeLeft <= 0)}
                     onClick={handlePayment}
-                    style={{ width: "100%", padding: "14px 28px", fontSize: "16px", fontWeight: 700 }}
+                    style={{ width: "100%", padding: "14px 28px", fontSize: "16px", fontWeight: 700, marginTop: "16px" }}
                     type="button"
                 >
-                    {isProcessing ? "Đang xử lý giao dịch..." : `Thanh Toán ${booking.finalAmount.toLocaleString("vi-VN")} đ`}
+                    {isProcessing ? "Đang xử lý giao dịch..." : `Thanh Toán ${finalAmount.toLocaleString("vi-VN")} đ`}
                 </button>
                 <div style={{ marginTop: "20px", display: "flex", alignItems: "center", gap: "8px", color: "#64748b", fontSize: "13px", justifyContent: "center" }}>
                     <SafetyCertificateOutlined style={{ color: "#10b981" }} />
@@ -274,20 +393,32 @@ function Payment() {
                     </div>
                     <div className="summary-info-item">
                         <span className="label">Khuyến mãi giảm</span>
-                        <span className="val">-{booking.discountAmount.toLocaleString("vi-VN")} đ</span>
+                        <span className="val">-{discountAmount.toLocaleString("vi-VN")} đ</span>
                     </div>
                 </div>
                 <div className="summary-total-price">
                     <span className="label">Tổng tiền thanh toán</span>
-                    <span className="val">{booking.finalAmount.toLocaleString("vi-VN")} đ</span>
+                    <span className="val">{finalAmount.toLocaleString("vi-VN")} đ</span>
                 </div>
-                <Link
+                <button
                     className="ghost-button"
-                    style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: "6px" }}
-                    to={`/booking/${showtime?._id}`}
+                    style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: "6px", cursor: "pointer", border: "1px solid #cbd5e1", background: "none", height: "40px", borderRadius: "8px", color: "#64748b" }}
+                    onClick={async () => {
+                        try {
+                            setIsProcessing(true);
+                            await api.patch(`/bookings/${bookingId}/cancel`);
+                        } catch (error) {
+                            console.error("Error cancelling booking when going back:", error);
+                        } finally {
+                            setIsProcessing(false);
+                            nav(`/booking/${showtime?._id}`);
+                        }
+                    }}
+                    disabled={isProcessing}
                 >
                     <ArrowLeftOutlined /> Quay lại đổi ghế
-                </Link>
+
+                </button>
             </div>
         </div>
     )

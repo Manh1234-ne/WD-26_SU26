@@ -181,24 +181,7 @@ function SeatSelection() {
 
             const res = await api.post('/bookings', payload)
 
-            Swal.fire({
-                title: 'Đặt Vé Thành Công!',
-                html: `
-          <div style="text-align: left; padding: 10px 0;">
-            <p>Hệ thống đã giữ chỗ thành công. Vui lòng hoàn tất thanh toán trong vòng 10 phút để nhận vé.</p>
-            <p><strong>Mã đặt vé:</strong> <span style="color: #e11d48; font-size: 18px; font-weight: 800;">${res.data.data.bookingCode}</span></p>
-            <p><strong>Phim:</strong> ${showtime.movie.title}</p>
-            <p><strong>Ghế:</strong> ${selectedSeats.map((s) => s.code).join(', ')}</p>
-            <p><strong>Phòng:</strong> ${showtime.room.name}</p>
-            <p><strong>Tổng tiền:</strong> ${totalSeatPrice.toLocaleString('vi-VN')} đ</p>
-          </div>
-        `,
-                icon: 'success',
-                confirmButtonColor: '#e11d48',
-                confirmButtonText: 'Tiến hành thanh toán',
-            }).then(() => {
-                navigate(`/payment/${res.data.data._id}`)
-            })
+            navigate(`/payment/${res.data.data._id}`);
         } catch (err: any) {
             console.error(err)
             const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra trong quá trình giữ ghế.'

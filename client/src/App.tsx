@@ -14,6 +14,7 @@ import ManageRoom from "./pages/admin/ManageRoom";
 import ManageSeat from "./pages/admin/ManageSeat";
 import ManageBooking from "./pages/admin/ManageBooking";
 import ManageUser from "./pages/admin/ManageUser";
+import ManageVoucher from "./pages/admin/ManageVoucher";
 
 import Home from "./pages/client/Home";
 import MovieDetail from "./pages/client/MovieDetail";
@@ -29,6 +30,7 @@ import PaymentSuccess from "./pages/client/payment-success";
 import BookingHistory from "./pages/client/BookingHistory";
 import { AuthGuard } from "./routes/AuthGuard";
 import { AdminRoute } from "./routes/AdminRoute";
+import Profile from "./pages/client/Profile";
 
 function App() {
   return (
@@ -47,7 +49,7 @@ function App() {
               <Route path="signIn" element={<LoginForm />} />
               <Route path="signUp" element={<RegisterForm />} />
               <Route
-                path="forgot-password"
+                path="change-password"
                 element={<ChangePasswordForm />}
               />
             </Route>
@@ -62,6 +64,7 @@ function App() {
               <Route path="payment-success" element={<PaymentSuccess />} />
               <Route path="booking-history" element={<AuthGuard><BookingHistory /></AuthGuard>} />
               <Route path="history" element={<AuthGuard><Navigate to="/booking-history" replace /></AuthGuard>} />
+              <Route path="profile/:id" element={<AuthGuard><Profile /></AuthGuard>}></Route>
             </Route>
 
             {/* Admin */}
@@ -74,6 +77,7 @@ function App() {
               <Route path="bookings" element={<ManageBooking />} />
               <Route path="users" element={<ManageUser />} />
               <Route path="showtimes" element={<ManageShowtime />} />
+              <Route path="vouchers" element={<ManageVoucher />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

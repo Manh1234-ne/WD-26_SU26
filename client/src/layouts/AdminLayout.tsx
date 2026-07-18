@@ -13,6 +13,7 @@ import {
   MenuFoldOutlined,
   UserOutlined,
   LogoutOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
@@ -35,6 +36,7 @@ function AdminLayout() {
     { key: "/admin/seats", icon: <AppstoreOutlined />, label: "Quản lý sơ đồ ghế" },
     { key: "/admin/bookings", icon: <VideoCameraOutlined />, label: "Quản lý đặt vé" },
     { key: "/admin/users", icon: <UserOutlined />, label: "Quản lý người dùng" },
+    { key: "/admin/vouchers", icon: <GiftOutlined />, label: "Quản lý voucher" },
   ];
 
   return (
