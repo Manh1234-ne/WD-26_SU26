@@ -263,10 +263,12 @@ function SeatSelection() {
                 <h3 className="summary-movie-title">{showtime.movie.title}</h3>
 
                 <div className="summary-info-list">
-                    <div className="summary-info-item">
-                        <span className="label">Rạp chiếu</span>
-                        <span className="val">{showtime.cinema.name}</span>
-                    </div>
+                    {showtime.cinema?.name && (
+                        <div className="summary-info-item">
+                            <span className="label">Rạp chiếu</span>
+                            <span className="val">{showtime.cinema.name}</span>
+                        </div>
+                    )}
                     <div className="summary-info-item">
                         <span className="label">Phòng chiếu</span>
                         <span className="val">{showtime.room.name}</span>
@@ -298,7 +300,7 @@ function SeatSelection() {
 
                 <button
                     className="primary-button summary-checkout-btn"
-                    disabled={selectedSeats.length === 0 || handleSingleSeat(seats, new Set(occupiedSeats.map(s => s.seat._id)), new Set(selectedSeats.map(s => s._id))) || isSubmitting}
+                    disabled={selectedSeats.length === 0 || handleSingleSeat(seats, new Set(occupiedSeats?.map((s: any) => s.seat?._id || s.seat)), new Set(selectedSeats.map((s: Seat) => s._id))) || isSubmitting}
                     onClick={handleBookingSubmit}
                     type="button"
                 >

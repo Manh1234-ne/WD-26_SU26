@@ -20,12 +20,12 @@ export const getShowtimeById = async (id: string) => {
     return response.data.data
 }
 
-export const createShowtime = async (payload: Omit<Showtime, '_id' | 'createdAt' | 'updatedAt' | 'movie' | 'cinema' | 'room'> & { movie: string; cinema: string; room: string }) => {
+export const createShowtime = async (payload: Omit<Showtime, '_id' | 'createdAt' | 'updatedAt' | 'movie' | 'cinema' | 'room'> & { movie: string; room: string }) => {
     const response = await api.post<ApiResponse<Showtime>>('/showtimes', payload)
     return response.data.data
 }
 
-export const updateShowtime = async (id: string, payload: Partial<Omit<Showtime, '_id' | 'createdAt' | 'updatedAt' | 'movie' | 'cinema' | 'room'> & { movie?: string; cinema?: string; room?: string }>) => {
+export const updateShowtime = async (id: string, payload: Partial<Omit<Showtime, '_id' | 'createdAt' | 'updatedAt' | 'movie' | 'cinema' | 'room'> & { movie?: string; room?: string }>) => {
     const response = await api.put<ApiResponse<Showtime>>(`/showtimes/${id}`, payload)
     return response.data.data
 }
