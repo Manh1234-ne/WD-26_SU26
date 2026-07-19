@@ -12,6 +12,7 @@ import mockMomoRoutes from "./mockMomoRoutes.js";
 import bookingSeatRoutes from "./bookingSeatRoutes.js"
 import reviewRoutes from "./reviewRoutes.js";
 import voucherRoutes from "./voucherRoutes.js";
+import comboRoutes from "./comboRoutes.js";
 const router = express.Router();
 
 // API Routes
@@ -28,6 +29,7 @@ router.use("/mock-momo", mockMomoRoutes);
 router.use("/booking-seats", bookingSeatRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/vouchers", voucherRoutes);
+router.use("/combos", comboRoutes);
 
 // Health check - Kiểm tra API còn chạy không
 router.get("/health", (req, res) => {
