@@ -54,3 +54,48 @@ export const getInventoryById =
 
     return ok(res, item);
   });
+
+  export const createInventory =
+  asyncHandler(async (req, res) => {
+    const {
+      name,
+      unit,
+      stockQuantity,
+      lowStockThreshold,
+    } = req.body;
+
+    if (!name) {
+      return fail(
+        res,
+        400,
+        "Tên sản phẩm không được để trống"
+      );
+    }
+
+    const exists =
+      await InventoryItem.findOne({
+        name,
+      });
+
+    if (exists) {
+      return fail(
+        res,
+        400,
+        "Sản phẩm đã tồn tại"
+      );
+    }
+
+    const item =
+      await InventoryItem.create({
+        name,
+        unit,
+        stockQuantity,
+        lowStockThreshold,
+      });
+
+    return created(
+      res,
+      item,
+      "Tạo sản phẩm thành công"
+    );
+  });
