@@ -61,3 +61,29 @@ export const createCombo = asyncHandler(async (req, res) => {
 
   return created(res, combo);
 });
+export const updateCombo = asyncHandler(async (req, res) => {
+  const combo = await Combo.findById(req.params.id);
+
+  if (!combo) {
+    return fail(
+      res,
+      404,
+      "Không tìm thấy combo"
+    );
+  }
+
+  combo.name = req.body.name || combo.name;
+  combo.description =
+    req.body.description || combo.description;
+  combo.image = req.body.image || combo.image;
+  combo.price =
+    req.body.price ?? combo.price;
+
+  if (req.body.isActive !== undefined) {
+    combo.isActive = req.body.isActive;
+  }
+
+  await combo.save();
+
+  return ok(res, combo);
+});
