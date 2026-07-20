@@ -27,3 +27,30 @@ const fail = (
     success: false,
     message,
   });
+export const getAllInventory =
+  asyncHandler(async (req, res) => {
+    const items =
+      await InventoryItem.find()
+        .sort({ name: 1 });
+
+    return ok(res, items);
+  });
+
+
+export const getInventoryById =
+  asyncHandler(async (req, res) => {
+    const item =
+      await InventoryItem.findById(
+        req.params.id
+      );
+
+    if (!item) {
+      return fail(
+        res,
+        404,
+        "Không tìm thấy sản phẩm"
+      );
+    }
+
+    return ok(res, item);
+  });
