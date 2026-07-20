@@ -36,3 +36,28 @@ export const getComboById = asyncHandler(async (req, res) => {
 
   return ok(res, combo);
 });
+export const createCombo = asyncHandler(async (req, res) => {
+  const {
+    name,
+    description,
+    image,
+    price,
+  } = req.body;
+
+  if (!name || !price) {
+    return fail(
+      res,
+      400,
+      "Thiếu thông tin"
+    );
+  }
+
+  const combo = await Combo.create({
+    name,
+    description,
+    image,
+    price,
+  });
+
+  return created(res, combo);
+});
