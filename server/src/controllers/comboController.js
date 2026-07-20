@@ -87,3 +87,20 @@ export const updateCombo = asyncHandler(async (req, res) => {
 
   return ok(res, combo);
 });
+export const deleteCombo = asyncHandler(async (req, res) => {
+  const combo = await Combo.findById(req.params.id);
+
+  if (!combo) {
+    return fail(
+      res,
+      404,
+      "Không tìm thấy combo"
+    );
+  }
+
+  combo.isActive = false;
+
+  await combo.save();
+
+  return ok(res, combo);
+});
