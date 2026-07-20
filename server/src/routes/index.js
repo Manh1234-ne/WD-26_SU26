@@ -13,6 +13,7 @@ import bookingSeatRoutes from "./bookingSeatRoutes.js"
 import reviewRoutes from "./reviewRoutes.js";
 import voucherRoutes from "./voucherRoutes.js";
 import comboRoutes from "./comboRoutes.js";
+import inventoryRoutes from "./inventoryRoutes.js";
 const router = express.Router();
 
 // API Routes
@@ -30,6 +31,7 @@ router.use("/booking-seats", bookingSeatRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/vouchers", voucherRoutes);
 router.use("/combos", comboRoutes);
+router.use("/inventory", inventoryRoutes);
 
 // Health check - Kiểm tra API còn chạy không
 router.get("/health", (req, res) => {
