@@ -99,3 +99,37 @@ export const getInventoryById =
       "Tạo sản phẩm thành công"
     );
   });
+
+  export const updateInventory =
+  asyncHandler(async (req, res) => {
+    const item =
+      await InventoryItem.findById(
+        req.params.id
+      );
+
+    if (!item) {
+      return fail(
+        res,
+        404,
+        "Không tìm thấy sản phẩm"
+      );
+    }
+
+    item.name =
+      req.body.name || item.name;
+
+    item.unit =
+      req.body.unit || item.unit;
+
+    item.lowStockThreshold =
+      req.body.lowStockThreshold ??
+      item.lowStockThreshold;
+
+    item.isActive =
+      req.body.isActive ??
+      item.isActive;
+
+    await item.save();
+
+    return ok(res, item);
+  });
