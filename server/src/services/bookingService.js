@@ -1,14 +1,17 @@
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import BookingCombo from "../models/BookingCombo.js";
 import Showtime from "../models/Showtime.js";
 import Seat from "../models/Seat.js";
 import Voucher from "../models/Voucher.js";
+import { getComboPrice } from "./comboService.js";
 
 export const createBookingService = async ({
   user,
   showtime,
   seatIds,
   voucherCode,
+  comboIds = [],
 }) => {
   const showtimeExists = await Showtime.findById(showtime);
 
@@ -29,7 +32,7 @@ export const createBookingService = async ({
   const bookedSeats = await BookingSeat.find({
     showtime,
     seat: { $in: seatIds },
-    status: "booked",
+    status: { $in: ["held", "booked"] },
   });
 
   if (bookedSeats.length > 0) {
@@ -38,15 +41,20 @@ export const createBookingService = async ({
 
   const totalSeatPrice = seats.reduce(
     (sum, seat) =>
-      sum +
-      showtimeExists.basePrice *
-        seat.priceMultiplier,
+      sum + showtimeExists.basePrice * seat.priceMultiplier,
     0
   );
 
+  const {
+    combos,
+    totalComboPrice,
+  } = await getComboPrice(comboIds);
+
+  const orderAmount = totalSeatPrice + totalComboPrice;
+
   let voucher = null;
   let discountAmount = 0;
-  let finalAmount = totalSeatPrice;
+  let finalAmount = orderAmount;
 
   if (voucherCode) {
     voucher = await Voucher.findOne({
@@ -69,7 +77,9 @@ export const createBookingService = async ({
     }
 
     if (now > voucher.endDate) {
-      throw new Error("Voucher đã hết hạn");
+      throw new Error(
+        "Voucher đã hết hạn"
+      );
     }
 
     if (
@@ -81,54 +91,74 @@ export const createBookingService = async ({
       );
     }
 
-    const pendingBookingCount = await Booking.countDocuments({
-      voucher: voucher._id,
-      status: "pending",
-    });
+    const pendingBookingCount =
+      await Booking.countDocuments({
+        voucher: voucher._id,
+        status: "pending",
+      });
 
     if (
       voucher.usageLimit != null &&
-      voucher.usedCount + pendingBookingCount >= voucher.usageLimit
+      voucher.usedCount + pendingBookingCount >=
+        voucher.usageLimit
     ) {
-      throw new Error("Voucher sắp hết lượt sử dụng, vui lòng thử lại sau");
+      throw new Error(
+        "Voucher sắp hết lượt sử dụng"
+      );
     }
 
-    const userVoucherCount = await Booking.countDocuments({
-      user,
-      voucher: voucher._id,
-      status: { $ne: "cancelled" }
-    });
-
-    if (userVoucherCount >= 1) {
-      throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
-    }
-
-    if (voucher.code === "CHAOMUNGNGUOIMOI") {
-      const hasPastBooking = await Booking.findOne({
+    const userVoucherCount =
+      await Booking.countDocuments({
         user,
-        status: { $in: ["confirmed", "completed"] }
+        voucher: voucher._id,
+        status: {
+          $ne: "cancelled",
+        },
       });
 
-      if (hasPastBooking) {
-        throw new Error("Voucher này chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
+    if (userVoucherCount >= 1) {
+      throw new Error(
+        "Mỗi tài khoản chỉ được sử dụng voucher này một lần"
+      );
+    }
+
+    if (
+      voucher.code ===
+      "CHAOMUNGNGUOIMOI"
+    ) {
+      const oldBooking =
+        await Booking.findOne({
+          user,
+          status: {
+            $in: [
+              "confirmed",
+              "completed",
+            ],
+          },
+        });
+
+      if (oldBooking) {
+        throw new Error(
+          "Voucher chỉ dành cho khách hàng mới"
+        );
       }
     }
 
     if (
-      totalSeatPrice <
+      orderAmount <
       voucher.minOrderAmount
     ) {
       throw new Error(
-        `Đơn hàng tối thiểu ${voucher.minOrderAmount} để sử dụng voucher`
+        `Đơn hàng tối thiểu ${voucher.minOrderAmount}`
       );
     }
 
-    // Percent
     if (
-      voucher.discountType === "percent"
+      voucher.discountType ===
+      "percent"
     ) {
       discountAmount =
-        (totalSeatPrice *
+        (orderAmount *
           voucher.discountValue) /
         100;
 
@@ -143,7 +173,8 @@ export const createBookingService = async ({
     }
 
     if (
-      voucher.discountType === "fixed"
+      voucher.discountType ===
+      "fixed"
     ) {
       discountAmount =
         voucher.discountValue;
@@ -151,53 +182,68 @@ export const createBookingService = async ({
 
     if (
       discountAmount >
-      totalSeatPrice
+      orderAmount
     ) {
       discountAmount =
-        totalSeatPrice;
+        orderAmount;
     }
 
     finalAmount =
-      totalSeatPrice - discountAmount;
+      orderAmount -
+      discountAmount;
   }
 
-  const booking = await Booking.create({
-    bookingCode: `BK${Date.now()}`,
-    user,
-    showtime,
-    voucher: voucher?._id,
-    totalSeatPrice,
-    discountAmount,
-    finalAmount,
-
-    status: "pending",
-
-    expiresAt: new Date(
-      Date.now() + 10 * 60 * 1000
-    ),
-  });
-
-  const bookingSeats = seats.map(
-    (seat) => ({
-      booking: booking._id,
+  const booking =
+    await Booking.create({
+      bookingCode: `BK${Date.now()}`,
+      user,
       showtime,
 
-      seat: seat._id,
+      voucher: voucher?._id,
 
+      totalSeatPrice,
+      discountAmount,
+      finalAmount,
+
+      status: "pending",
+
+      expiresAt: new Date(
+        Date.now() +
+          10 * 60 * 1000
+      ),
+    });
+
+  const bookingSeats =
+    seats.map((seat) => ({
+      booking: booking._id,
+      showtime,
+      seat: seat._id,
       seatCode: seat.code,
       seatType: seat.type,
-
-      price:
-        showtimeExists.basePrice *
-        seat.priceMultiplier,
-
+      price: showtimeExists.basePrice * seat.priceMultiplier,
       status: "held",
-    })
-  );
+    }));
 
   await BookingSeat.insertMany(
     bookingSeats
   );
+
+  if (combos.length > 0) {
+    const bookingCombos =
+      combos.map((combo) => ({
+        booking: booking._id,
+        combo: combo._id,
+        quantity: combo.quantity,
+        unitPrice: combo.price,
+        totalPrice:
+          combo.price *
+          combo.quantity,
+      }));
+
+    await BookingCombo.insertMany(
+      bookingCombos
+    );
+  }
 
   return booking;
 };
