@@ -19,3 +19,20 @@ const fail = (res, status, message) =>
     success: false,
     message,
   });
+export const getAllCombos = asyncHandler(async (req, res) => {
+  const combos = await Combo.find({
+    isActive: true,
+  });
+
+  return ok(res, combos);
+});
+
+export const getComboById = asyncHandler(async (req, res) => {
+  const combo = await Combo.findById(req.params.id);
+
+  if (!combo) {
+    return fail(res, 404, "Không tìm thấy combo");
+  }
+
+  return ok(res, combo);
+});
