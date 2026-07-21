@@ -177,10 +177,15 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     return fail(res, 400, "Booking không ở trạng thái chờ thanh toán");
   }
 
+  const orderAmount =
+      booking.totalSeatPrice +
+      (booking.totalComboPrice || 0);
+
+
   if (!voucherCode) {
     booking.voucher = undefined;
     booking.discountAmount = 0;
-    booking.finalAmount = booking.totalSeatPrice;
+    booking.finalAmount = orderAmount;
     await booking.save();
 
     const updatedBooking = await Booking.findById(booking._id)
@@ -262,7 +267,7 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     }
   }
 
-  if (booking.totalSeatPrice < voucher.minOrderAmount) {
+  if (orderAmount < voucher.minOrderAmount) {
     return fail(
       res,
       400,
@@ -272,7 +277,7 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
 
   let discountAmount = 0;
   if (voucher.discountType === "percent") {
-    discountAmount = (booking.totalSeatPrice * voucher.discountValue) / 100;
+    discountAmount = (orderAmount * voucher.discountValue) / 100;
     if (voucher.maxDiscountAmount && discountAmount > voucher.maxDiscountAmount) {
       discountAmount = voucher.maxDiscountAmount;
     }
@@ -280,13 +285,13 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     discountAmount = voucher.discountValue;
   }
 
-  if (discountAmount > booking.totalSeatPrice) {
-    discountAmount = booking.totalSeatPrice;
+  if (discountAmount > orderAmount) {
+    discountAmount = orderAmount;
   }
 
   booking.voucher = voucher._id;
   booking.discountAmount = discountAmount;
-  booking.finalAmount = booking.totalSeatPrice - discountAmount;
+  booking.finalAmount = orderAmount - discountAmount;
 
   await booking.save();
 

@@ -233,6 +233,8 @@ export const createBookingService = async ({
 
       totalSeatPrice,
 
+      totalComboPrice,
+
       discountAmount,
 
       finalAmount,
