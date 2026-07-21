@@ -133,3 +133,38 @@ export const getInventoryById =
 
     return ok(res, item);
   });
+  export const restockInventory =
+  asyncHandler(async (req, res) => {
+    const { quantity } = req.body;
+
+    if (
+      !quantity ||
+      quantity <= 0
+    ) {
+      return fail(
+        res,
+        400,
+        "Số lượng không hợp lệ"
+      );
+    }
+
+    const item =
+      await InventoryItem.findById(
+        req.params.id
+      );
+
+    if (!item) {
+      return fail(
+        res,
+        404,
+        "Không tìm thấy sản phẩm"
+      );
+    }
+
+    item.stockQuantity +=
+      Number(quantity);
+
+    await item.save();
+
+    return ok(res, item);
+  });
