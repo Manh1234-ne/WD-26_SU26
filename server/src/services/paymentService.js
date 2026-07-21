@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import moment from "moment";
+import qs from "qs";
 
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
@@ -7,15 +8,22 @@ import BookingSeat from "../models/BookingSeat.js";
 import Voucher from "../models/Voucher.js";
 
 /**
- * SORT OBJECT
+ * SORT OBJECT (Chuẩn VNPay)
  */
 function sortObject(obj) {
-  return Object.keys(obj)
-    .sort()
-    .reduce((acc, key) => {
-      acc[key] = obj[key];
-      return acc;
-    }, {});
+  let sorted = {};
+  let str = [];
+  let key;
+  for (key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      str.push(encodeURIComponent(key));
+    }
+  }
+  str.sort();
+  for (key = 0; key < str.length; key++) {
+    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+  }
+  return sorted;
 }
 
 /**
@@ -90,15 +98,15 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
 
   vnp_Params = sortObject(vnp_Params);
 
-  const signData = new URLSearchParams(vnp_Params).toString();
+  const signData = qs.stringify(vnp_Params, { encode: false });
 
   const hmac = crypto.createHmac("sha512", secretKey);
-  const signed = hmac.update(signData, "utf-8").digest("hex");
+  const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
 
   vnp_Params.vnp_SecureHash = signed;
 
   const paymentUrl =
-    vnpUrl + "?" + new URLSearchParams(vnp_Params).toString();
+    vnpUrl + "?" + qs.stringify(vnp_Params, { encode: false });
 
   return { paymentUrl, payment };
 };
@@ -108,7 +116,8 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
  * VERIFY VNPay
  * =========================
  */
-export const verifyVnPayReturnService = async (vnp_Params) => {
+export const verifyVnPayReturnService = async (params) => {
+  const vnp_Params = { ...params };
   const secureHash = vnp_Params.vnp_SecureHash;
 
   if (!secureHash) throw new Error("Thiếu chữ ký VNPay");
@@ -119,10 +128,10 @@ export const verifyVnPayReturnService = async (vnp_Params) => {
   const secretKey = process.env.vnp_HashSecret;
 
   const sortedParams = sortObject(vnp_Params);
-  const signData = new URLSearchParams(sortedParams).toString();
+  const signData = qs.stringify(sortedParams, { encode: false });
 
   const hmac = crypto.createHmac("sha512", secretKey);
-  const signed = hmac.update(signData, "utf-8").digest("hex");
+  const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
 
   if (secureHash !== signed) {
     throw new Error("Sai chữ ký VNPay");
