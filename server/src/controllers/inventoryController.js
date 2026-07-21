@@ -168,3 +168,17 @@ export const getInventoryById =
 
     return ok(res, item);
   });
+export const getLowStock =
+  asyncHandler(async (req, res) => {
+    const items =
+      await InventoryItem.find({
+        $expr: {
+          $lte: [
+            "$stockQuantity",
+            "$lowStockThreshold",
+          ],
+        },
+      });
+
+    return ok(res, items);
+  });
