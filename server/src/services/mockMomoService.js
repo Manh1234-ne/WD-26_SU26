@@ -1,7 +1,13 @@
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import BookingCombo from "../models/BookingCombo.js";
 import Voucher from "../models/Voucher.js";
+
+import {
+  deductReservedStock,
+  releaseReservedStock,
+} from "./inventoryService.js"
 
 /**
  * Tạo payment mock MoMo
@@ -115,6 +121,19 @@ export const verifyMockMomoPayment = async (paymentId) => {
   );
 }
 
+const bookingCombos = await BookingCombo.find({
+  booking: booking._id,
+});
+
+if (bookingCombos.length > 0) {
+  const comboIds = bookingCombos.map((item) => ({
+    combo: item.combo,
+    quantity: item.quantity,
+  }));
+
+  await deductReservedStock(comboIds);
+}
+
   await BookingSeat.updateMany(
     { booking: booking._id },
     { status: "booked" }
@@ -154,6 +173,19 @@ export const failMockMomoPayment = async (paymentId) => {
   payment.note = "Mock payment failed";
 
   booking.status = "cancelled";
+
+  const bookingCombos = await BookingCombo.find({
+  booking: booking._id,
+});
+
+if (bookingCombos.length > 0) {
+  const comboIds = bookingCombos.map((item) => ({
+    combo: item.combo,
+    quantity: item.quantity,
+  }));
+
+  await releaseReservedStock(comboIds);
+}
 
   await BookingSeat.updateMany(
     { booking: booking._id },

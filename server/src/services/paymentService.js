@@ -4,6 +4,7 @@ import moment from "moment";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import BookingCombo from "../models/BookingCombo.js";
 import Voucher from "../models/Voucher.js";
 
 import {
