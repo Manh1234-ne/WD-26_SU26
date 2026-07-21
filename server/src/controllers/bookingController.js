@@ -3,6 +3,11 @@ import BookingSeat from "../models/BookingSeat.js";
 import Voucher from "../models/Voucher.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 import { createBookingService } from "../services/bookingService.js";
+import BookingCombo from "../models/BookingCombo.js";
+
+import {
+  releaseReservedStock,
+} from "../services/inventoryService.js";
 
 const ok = (res, data) =>
   res.status(200).json({
@@ -25,7 +30,7 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds, voucherCode } = req.body;
+    const { user, showtime, seatIds, voucherCode, comboIds = [], } = req.body;
 
     if (!user || !showtime || !seatIds?.length) {
       return fail(
@@ -40,6 +45,7 @@ export const createBooking = asyncHandler(
       showtime,
       seatIds,
       voucherCode,
+      comboIds,
     });
 
     return created(res, booking);
@@ -66,9 +72,14 @@ export const getBookingById = asyncHandler(async (req, res) => {
     booking: booking._id,
   });
 
+  const combos = await BookingCombo.find({
+    booking: booking._id,
+}).populate("combo");
+
   return ok(res, {
     booking,
     seats,
+    combos,
   });
 });
 
@@ -117,15 +128,38 @@ export const cancelBooking = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy booking");
   }
 
+  if (booking.status === "cancelled") {
+    return fail(res, 400, "Booking đã bị hủy");
+  }
+
   booking.status = "cancelled";
   booking.cancelledAt = new Date();
 
   await booking.save();
 
   await BookingSeat.updateMany(
-    { booking: booking._id },
-    { status: "cancelled" }
+    {
+      booking: booking._id,
+    },
+    {
+      status: "cancelled",
+    }
   );
+
+  const bookingCombos =
+    await BookingCombo.find({
+      booking: booking._id,
+    });
+
+  if (bookingCombos.length > 0) {
+    const comboIds =
+      bookingCombos.map((item) => ({
+        combo: item.combo,
+        quantity: item.quantity,
+      }));
+
+    await releaseReservedStock(comboIds);
+  }
 
   return ok(res, booking);
 });
