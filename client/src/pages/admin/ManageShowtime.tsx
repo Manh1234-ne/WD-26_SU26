@@ -35,10 +35,7 @@ import {
     Row,
     Col,
     Switch,
-    DatePicker,
     message,
-    Divider,
-    Alert,
     Popconfirm,
     Modal,
     Tooltip,
@@ -190,8 +187,22 @@ function ManageShowtime() {
     }
 
     const onSubmit = async (data: ShowtimePayload) => {
-        if (new Date(data.endTime) <= new Date(data.startTime)) {
+        const start = new Date(data.startTime)
+        const end = new Date(data.endTime)
+        if (end <= start) {
             void message.error('Giờ kết thúc phải sau giờ bắt đầu')
+            return
+        }
+
+        const startH = start.getHours()
+        const endH = end.getHours()
+        const endM = end.getMinutes()
+        const isSameDay = end.getFullYear() === start.getFullYear() &&
+            end.getMonth() === start.getMonth() &&
+            end.getDate() === start.getDate()
+
+        if (startH < 8 || !isSameDay || endH > 23 || (endH === 23 && endM > 0)) {
+            void message.error('Rạp chỉ hoạt động từ 08:00 đến 23:00. Vui lòng chọn lịch chiếu trong khung giờ này!')
             return
         }
         try {
@@ -382,257 +393,350 @@ function ManageShowtime() {
     return (
         <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
             <Space direction="vertical" size={24} style={{ width: '100%' }}>
-                {/* Form Card */}
+                {/* Modern Form Card */}
                 <Card
                     bordered={false}
-                    style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', borderRadius: '12px' }}
+                    style={{
+                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+                        borderRadius: '16px',
+                        border: '1px solid #e2e8f0',
+                        overflow: 'hidden',
+                        background: '#ffffff',
+                    }}
                     title={
-                        <Space>
-                            <CalendarOutlined style={{ color: '#e11d48', fontSize: '20px' }} />
-                            <Title level={4} style={{ margin: 0 }}>
-                                {editingId ? 'Cập Nhật Lịch Chiếu' : 'Thêm Lịch Chiếu Mới'}
-                            </Title>
+                        <Space size={12}>
+                            <div style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #e11d48, #be123c)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)'
+                            }}>
+                                <CalendarOutlined style={{ color: '#ffffff', fontSize: '20px' }} />
+                            </div>
+                            <div>
+                                <Title level={4} style={{ margin: 0, fontWeight: 800, color: '#0f172a' }}>
+                                    {editingId ? 'Cập Nhật Lịch Chiếu' : 'Thêm Lịch Chiếu Mới'}
+                                </Title>
+                                <Text type="secondary" style={{ fontSize: '13px' }}>
+                                    {editingId ? 'Thay đổi thông tin suất chiếu đã chọn' : 'Lập lịch chiếu mới cho phim và phòng chiếu'}
+                                </Text>
+                            </div>
                         </Space>
                     }
                     extra={
                         editingId && (
                             <Button
                                 icon={<CloseOutlined />}
-                                size="small"
+                                shape="round"
+                                type="default"
+                                danger
                                 onClick={() => {
                                     setEditingId(null)
                                     reset()
                                 }}
                             >
-                                Hủy sửa
+                                Hủy chỉnh sửa
                             </Button>
                         )
                     }
                 >
                     <form onSubmit={handleSubmit(onSubmit)}>
-                        <Row gutter={16}>
-                            <Col xs={24} sm={12}>
-                                <Form.Item
-                                    label="Phim"
-                                    validateStatus={errors.movieId ? 'error' : ''}
-                                    help={errors.movieId?.message}
-                                    required
-                                >
-                                    <Controller
-                                        name="movieId"
-                                        control={control}
-                                        rules={{ required: 'Vui lòng chọn phim' }}
-                                        render={({ field }) => (
-                                            <Select
-                                                {...field}
-                                                placeholder="Chọn phim"
-                                                showSearch
-                                                optionFilterProp="label"
-                                                style={{ width: '100%' }}
-                                                options={movies.map((m) => ({ label: m.title, value: m._id }))}
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} sm={12}>
-                                <Form.Item
-                                    label="Phòng chiếu"
-                                    validateStatus={errors.roomId ? 'error' : ''}
-                                    help={errors.roomId?.message}
-                                    required
-                                >
-                                    <Controller
-                                        name="roomId"
-                                        control={control}
-                                        rules={{ required: 'Vui lòng chọn phòng' }}
-                                        render={({ field }) => (
-                                            <Select
-                                                {...field}
-                                                placeholder="Chọn phòng chiếu"
-                                                loading={isLoading}
-                                                style={{ width: '100%' }}
-                                                options={rooms.map((r) => ({
-                                                    label: `${r.name} (${r.roomType})`,
-                                                    value: r._id,
-                                                }))}
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                        {/* Section 1: Phim, Phòng chiếu & Định dạng */}
+                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
+                            <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
+                                📌 1. THÔNG TIN PHIM & PHÒNG CHIẾU
+                            </Text>
+                            <Row gutter={[20, 16]}>
+                                <Col xs={24} md={10}>
+                                    <Form.Item
+                                        label={<span style={{ fontWeight: 700, color: '#334155' }}>Chọn Phim Chiếu</span>}
+                                        validateStatus={errors.movieId ? 'error' : ''}
+                                        help={errors.movieId?.message}
+                                        required
+                                        style={{ marginBottom: 0 }}
+                                    >
+                                        <Controller
+                                            name="movieId"
+                                            control={control}
+                                            rules={{ required: 'Vui lòng chọn phim' }}
+                                            render={({ field }) => (
+                                                <Select
+                                                    {...field}
+                                                    placeholder="-- Chọn phim chiếu --"
+                                                    showSearch
+                                                    size="large"
+                                                    optionFilterProp="label"
+                                                    style={{ width: '100%' }}
+                                                    options={movies.map((m) => ({ label: m.title, value: m._id }))}
+                                                />
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12} md={8}>
+                                    <Form.Item
+                                        label={<span style={{ fontWeight: 700, color: '#334155' }}>Chọn Phòng Chiếu</span>}
+                                        validateStatus={errors.roomId ? 'error' : ''}
+                                        help={errors.roomId?.message}
+                                        required
+                                        style={{ marginBottom: 0 }}
+                                    >
+                                        <Controller
+                                            name="roomId"
+                                            control={control}
+                                            rules={{ required: 'Vui lòng chọn phòng' }}
+                                            render={({ field }) => (
+                                                <Select
+                                                    {...field}
+                                                    placeholder="-- Chọn phòng --"
+                                                    loading={isLoading}
+                                                    size="large"
+                                                    style={{ width: '100%' }}
+                                                    options={rooms.map((r) => ({
+                                                        label: `${r.name} (${r.roomType})`,
+                                                        value: r._id,
+                                                    }))}
+                                                />
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12} md={6}>
+                                    <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Định Dạng</span>} required style={{ marginBottom: 0 }}>
+                                        <Controller
+                                            name="format"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select {...field} size="large" style={{ width: '100%' }}>
+                                                    {FORMAT_OPTIONS.map((f) => (
+                                                        <Option key={f} value={f}>
+                                                            {f}
+                                                        </Option>
+                                                    ))}
+                                                </Select>
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </div>
 
-                        <Row gutter={16}>
-                            <Col xs={24} sm={12}>
-                                <Form.Item label="Định dạng" required>
-                                    <Controller
-                                        name="format"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select {...field} style={{ width: '100%' }}>
-                                                {FORMAT_OPTIONS.map((f) => (
-                                                    <Option key={f} value={f}>
-                                                        {f}
-                                                    </Option>
-                                                ))}
-                                            </Select>
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
+                        {/* Banner thời lượng phim */}
                         {movieDuration && (
-                            <Alert
-                                type="info"
-                                showIcon
-                                icon={<ClockCircleOutlined />}
-                                message={
-                                    <span>
-                                        Thời lượng phim: <strong>{movieDuration} phút</strong> — Giờ kết thúc sẽ được
-                                        tính tự động khi chọn giờ bắt đầu.
-                                    </span>
-                                }
-                                style={{ marginBottom: 16 }}
-                            />
+                            <div style={{
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                padding: '12px 16px',
+                                borderRadius: '10px',
+                                marginBottom: '20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                color: '#1d4ed8'
+                            }}>
+                                <ClockCircleOutlined style={{ fontSize: '18px', color: '#2563eb' }} />
+                                <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                                    Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> — Giờ kết thúc sẽ được tính toán tự động sau khi chọn giờ bắt đầu.
+                                </span>
+                            </div>
                         )}
 
-                        <Row gutter={16}>
-                            <Col xs={24} sm={12}>
-                                <Form.Item
-                                    label="Giờ bắt đầu"
-                                    validateStatus={errors.startTime ? 'error' : ''}
-                                    help={errors.startTime?.message}
-                                    required
-                                >
-                                    <Controller
-                                        name="startTime"
-                                        control={control}
-                                        rules={{ required: 'Vui lòng chọn giờ bắt đầu' }}
-                                        render={({ field }) => (
-                                            <DatePicker
-                                                showTime={{ format: 'HH:mm', showSecond: false }}
-                                                format="DD/MM/YYYY HH:mm"
-                                                needConfirm={false}
-                                                placeholder="Chọn ngày và giờ bắt đầu"
-                                                style={{ width: '100%' }}
-                                                value={field.value ? dayjs(field.value) : null}
-                                                onChange={(val) =>
-                                                    field.onChange(val ? val.format('YYYY-MM-DDTHH:mm') : '')
+                        {/* Section 2: Khung giờ chiếu */}
+                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
+                            <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
+                                ⏰ 2. KHUNG GIỜ CHIẾU (HOẠT ĐỘNG TỪ 08:00 ĐẾN 23:00)
+                            </Text>
+                            <Row gutter={[20, 16]}>
+                                <Col xs={24} sm={12}>
+                                    <Form.Item
+                                        label={<span style={{ fontWeight: 700, color: '#334155' }}>Giờ Bắt Đầu</span>}
+                                        validateStatus={errors.startTime ? 'error' : ''}
+                                        help={errors.startTime?.message}
+                                        required
+                                        style={{ marginBottom: 0 }}
+                                    >
+                                        <Controller
+                                            name="startTime"
+                                            control={control}
+                                            rules={{
+                                                required: 'Vui lòng chọn giờ bắt đầu',
+                                                validate: (v) => {
+                                                    const dt = new Date(v)
+                                                    if (isNaN(dt.getTime())) return true
+                                                    const h = dt.getHours()
+                                                    if (h < 8 || h >= 23) {
+                                                        return 'Rạp mở cửa từ 08:00 đến 23:00. Vui lòng chọn giờ bắt đầu từ 08:00 đến 22:59.'
+                                                    }
+                                                    return true
                                                 }
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} sm={12}>
-                                <Form.Item
-                                    label="Giờ kết thúc"
-                                    validateStatus={errors.endTime ? 'error' : ''}
-                                    help={errors.endTime?.message}
-                                    required
-                                >
-                                    <Controller
-                                        name="endTime"
-                                        control={control}
-                                        rules={{
-                                            required: 'Vui lòng chọn giờ kết thúc',
-                                            validate: (v) =>
-                                                !startTimeValue ||
-                                                new Date(v) > new Date(startTimeValue) ||
-                                                'Giờ kết thúc phải sau giờ bắt đầu',
-                                        }}
-                                        render={({ field }) => (
-                                            <DatePicker
-                                                showTime={{ format: 'HH:mm', showSecond: false }}
-                                                format="DD/MM/YYYY HH:mm"
-                                                needConfirm={false}
-                                                placeholder="Chọn ngày và giờ kết thúc"
-                                                style={{ width: '100%' }}
-                                                value={field.value ? dayjs(field.value) : null}
-                                                onChange={(val) =>
-                                                    field.onChange(val ? val.format('YYYY-MM-DDTHH:mm') : '')
+                                            }}
+                                            render={({ field }) => (
+                                                <Input
+                                                    type="datetime-local"
+                                                    size="large"
+                                                    style={{
+                                                        borderRadius: '8px',
+                                                        fontWeight: 600,
+                                                        color: '#0f172a'
+                                                    }}
+                                                    value={field.value ? field.value.slice(0, 16) : ''}
+                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                />
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                    <Form.Item
+                                        label={<span style={{ fontWeight: 700, color: '#334155' }}>Giờ Kết Thúc (Tự động)</span>}
+                                        validateStatus={errors.endTime ? 'error' : ''}
+                                        help={errors.endTime?.message}
+                                        required
+                                        style={{ marginBottom: 0 }}
+                                    >
+                                        <Controller
+                                            name="endTime"
+                                            control={control}
+                                            rules={{
+                                                required: 'Vui lòng chọn giờ kết thúc',
+                                                validate: (v) => {
+                                                    if (!v) return true
+                                                    const end = new Date(v)
+                                                    if (isNaN(end.getTime())) return true
+                                                    if (startTimeValue) {
+                                                        const start = new Date(startTimeValue)
+                                                        if (end <= start) return 'Giờ kết thúc phải sau giờ bắt đầu'
+                                                        const isSameDay = end.getFullYear() === start.getFullYear() &&
+                                                            end.getMonth() === start.getMonth() &&
+                                                            end.getDate() === start.getDate()
+                                                        if (!isSameDay) return 'Suất chiếu phải kết thúc trong cùng ngày'
+                                                    }
+                                                    const h = end.getHours()
+                                                    const m = end.getMinutes()
+                                                    if (h < 8 || h > 23 || (h === 23 && m > 0)) {
+                                                        return 'Rạp đóng cửa lúc 23:00. Suất chiếu phải kết thúc muộn nhất là 23:00.'
+                                                    }
+                                                    return true
                                                 }
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                                            }}
+                                            render={({ field }) => (
+                                                <Input
+                                                    type="datetime-local"
+                                                    size="large"
+                                                    style={{
+                                                        borderRadius: '8px',
+                                                        fontWeight: 600,
+                                                        color: '#0f172a'
+                                                    }}
+                                                    value={field.value ? field.value.slice(0, 16) : ''}
+                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                />
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </div>
 
-                        <Row gutter={16}>
-                            <Col xs={24} sm={8}>
-                                <Form.Item label="Ngôn ngữ">
-                                    <Controller
-                                        name="language"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Input {...field} placeholder="Ví dụ: Tiếng Việt" />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} sm={8}>
-                                <Form.Item label="Phụ đề">
-                                    <Controller
-                                        name="subtitle"
-                                        control={control}
-                                        render={({ field }) => <Input {...field} placeholder="Ví dụ: Không / Tiếng Anh" />}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col xs={24} sm={8}>
-                                <Form.Item
-                                    label="Giá vé (đ)"
-                                    validateStatus={errors.basePrice ? 'error' : ''}
-                                    help={errors.basePrice?.message}
-                                    required
-                                >
-                                    <Controller
-                                        name="basePrice"
-                                        control={control}
-                                        rules={{
-                                            required: 'Vui lòng nhập giá vé',
-                                            min: { value: 0, message: 'Giá không hợp lệ' },
+                        {/* Section 3: Thiết lập chi tiết & Giá vé */}
+                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #f1f5f9' }}>
+                            <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
+                                💵 3. THIẾT LẬP GIÁ VÉ & TRẠNG THÁI
+                            </Text>
+                            <Row gutter={[20, 16]}>
+                                <Col xs={24} sm={12} md={8}>
+                                    <Form.Item
+                                        label={<span style={{ fontWeight: 700, color: '#334155' }}>Giá Vé Gốc (VND)</span>}
+                                        validateStatus={errors.basePrice ? 'error' : ''}
+                                        help={errors.basePrice?.message}
+                                        required
+                                        style={{ marginBottom: 0 }}
+                                    >
+                                        <Controller
+                                            name="basePrice"
+                                            control={control}
+                                            rules={{
+                                                required: 'Vui lòng nhập giá vé',
+                                                min: { value: 0, message: 'Giá không hợp lệ' },
+                                            }}
+                                            render={({ field }) => (
+                                                <InputNumber
+                                                    {...field}
+                                                    size="large"
+                                                    style={{ width: '100%' }}
+                                                    min={0}
+                                                    step={5000}
+                                                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                                    addonAfter="VNĐ"
+                                                />
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12} md={5}>
+                                    <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Ngôn Ngữ</span>} style={{ marginBottom: 0 }}>
+                                        <Controller
+                                            name="language"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Input {...field} size="large" placeholder="VD: Tiếng Việt" />
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12} md={5}>
+                                    <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Phụ Đề</span>} style={{ marginBottom: 0 }}>
+                                        <Controller
+                                            name="subtitle"
+                                            control={control}
+                                            render={({ field }) => <Input {...field} size="large" placeholder="VD: Tiếng Anh" />}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12} md={6}>
+                                    <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Trạng Thái Mở Bán</span>} valuePropName="checked" style={{ marginBottom: 0 }}>
+                                        <Controller
+                                            name="status"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px' }}>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onChange={field.onChange}
+                                                        checkedChildren="Mở bán"
+                                                        unCheckedChildren="Ẩn"
+                                                    />
+                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: field.value ? '#16a34a' : '#64748b' }}>
+                                                        {field.value ? 'Đang kích hoạt' : 'Đang tạm ẩn'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </div>
+
+                        {/* Nút hành động */}
+                        <Row justify="end" gutter={12}>
+                            {editingId && (
+                                <Col>
+                                    <Button
+                                        size="large"
+                                        style={{ borderRadius: '8px' }}
+                                        onClick={() => {
+                                            setEditingId(null)
+                                            reset()
                                         }}
-                                        render={({ field }) => (
-                                            <InputNumber
-                                                {...field}
-                                                style={{ width: '100%' }}
-                                                min={0}
-                                                step={1000}
-                                                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                                addonAfter="đ"
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col xs={24} sm={12}>
-                                <Form.Item label="Trạng thái" valuePropName="checked">
-                                    <Controller
-                                        name="status"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Switch
-                                                checked={field.value}
-                                                onChange={field.onChange}
-                                                checkedChildren="Kích hoạt"
-                                                unCheckedChildren="Ẩn"
-                                            />
-                                        )}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Divider style={{ margin: '16px 0' }} />
-
-                        <Row justify="end">
+                                    >
+                                        Hủy
+                                    </Button>
+                                </Col>
+                            )}
                             <Col xs={24} sm={8} md={6}>
                                 <Button
                                     type="primary"
@@ -641,13 +745,21 @@ function ManageShowtime() {
                                     loading={isSaving}
                                     block
                                     size="large"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+                                        borderColor: '#e11d48',
+                                        boxShadow: '0 4px 14px rgba(225, 29, 72, 0.35)',
+                                        borderRadius: '8px',
+                                        fontWeight: 700,
+                                        height: '44px'
+                                    }}
                                     onClick={handleSubmit(onSubmit)}
                                 >
                                     {isSaving
                                         ? 'Đang lưu...'
                                         : editingId
                                             ? 'Cập Nhật Lịch Chiếu'
-                                            : 'Tạo Lịch Chiếu'}
+                                            : 'Tạo Lịch Chiếu Mới'}
                                 </Button>
                             </Col>
                         </Row>
