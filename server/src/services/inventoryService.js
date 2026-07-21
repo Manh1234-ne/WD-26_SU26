@@ -56,43 +56,49 @@ export const deductReservedStock =
           comboItem.quantity *
           item.quantity;
 
-        inventory.reservedQuantity -=
-          quantity;
+        inventory.reservedQuantity = Math.max(
+  0,
+  inventory.reservedQuantity - quantity
+);
 
-        inventory.stockQuantity -=
-          quantity;
+inventory.stockQuantity = Math.max(
+  0,
+  inventory.stockQuantity - quantity
+);
 
         await inventory.save();
       }
     }
   };
 
-export const releaseReservedStock =
-  async (comboIds = []) => {
-    for (const item of comboIds) {
-      const comboItems =
-        await ComboItem.find({
-          combo: item.combo,
-        }).populate(
-          "inventoryItem"
+export const releaseReservedStock = async (comboIds = []) => {
+  for (const item of comboIds) {
+    if (item.quantity <= 0) {
+      throw new Error("Số lượng combo không hợp lệ");
+    }
+
+    const comboItems = await ComboItem.find({
+      combo: item.combo,
+    }).populate("inventoryItem");
+
+    for (const comboItem of comboItems) {
+      const inventory = comboItem.inventoryItem;
+
+      if (!inventory || !inventory.isActive) {
+        throw new Error(
+          "Sản phẩm kho không tồn tại hoặc đã bị khóa"
         );
-
-      for (const comboItem of comboItems) {
-        const inventory =
-          comboItem.inventoryItem;
-
-        const quantity =
-          comboItem.quantity *
-          item.quantity;
-
-        inventory.reservedQuantity =
-          Math.max(
-            0,
-            inventory.reservedQuantity -
-              quantity
-          );
-
-        await inventory.save();
       }
+
+      const quantity =
+        comboItem.quantity * item.quantity;
+
+      inventory.reservedQuantity = Math.max(
+        0,
+        inventory.reservedQuantity - quantity
+      );
+
+      await inventory.save();
     }
-  };
+  }
+};

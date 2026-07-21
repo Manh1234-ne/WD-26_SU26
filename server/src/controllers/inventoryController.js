@@ -29,14 +29,14 @@ const fail = (
   });
 export const getAllInventory =
   asyncHandler(async (req, res) => {
-    const items =
-      await InventoryItem.find()
-        .sort({ name: 1 });
+    const items = await InventoryItem.find({
+      isActive: true,
+    }).sort({
+      name: 1,
+    });
 
     return ok(res, items);
   });
-
-
 export const getInventoryById =
   asyncHandler(async (req, res) => {
     const item =
@@ -44,7 +44,7 @@ export const getInventoryById =
         req.params.id
       );
 
-    if (!item) {
+    if (!item || !item.isActive) {
       return fail(
         res,
         404,
@@ -54,14 +54,13 @@ export const getInventoryById =
 
     return ok(res, item);
   });
-
-  export const createInventory =
+export const createInventory =
   asyncHandler(async (req, res) => {
     const {
       name,
       unit,
-      stockQuantity,
-      lowStockThreshold,
+      stockQuantity = 0,
+      lowStockThreshold = 10,
     } = req.body;
 
     if (!name) {
@@ -72,9 +71,22 @@ export const getInventoryById =
       );
     }
 
+    if (stockQuantity < 0) {
+      return fail(
+        res,
+        400,
+        "Số lượng tồn kho không hợp lệ"
+      );
+    }
+
     const exists =
       await InventoryItem.findOne({
-        name,
+        name: {
+          $regex: new RegExp(
+            `^${name.trim()}$`,
+            "i"
+          ),
+        },
       });
 
     if (exists) {
@@ -87,7 +99,7 @@ export const getInventoryById =
 
     const item =
       await InventoryItem.create({
-        name,
+        name: name.trim(),
         unit,
         stockQuantity,
         lowStockThreshold,
@@ -99,8 +111,7 @@ export const getInventoryById =
       "Tạo sản phẩm thành công"
     );
   });
-
-  export const updateInventory =
+export const updateInventory =
   asyncHandler(async (req, res) => {
     const item =
       await InventoryItem.findById(
@@ -115,31 +126,42 @@ export const getInventoryById =
       );
     }
 
-    item.name =
-      req.body.name || item.name;
+    if (req.body.name) {
+      item.name = req.body.name.trim();
+    }
 
-    item.unit =
-      req.body.unit || item.unit;
+    if (req.body.unit) {
+      item.unit = req.body.unit;
+    }
 
-    item.lowStockThreshold =
-      req.body.lowStockThreshold ??
-      item.lowStockThreshold;
+    if (
+      req.body.lowStockThreshold !==
+      undefined
+    ) {
+      item.lowStockThreshold =
+        req.body.lowStockThreshold;
+    }
 
-    item.isActive =
-      req.body.isActive ??
-      item.isActive;
+    if (
+      req.body.isActive !== undefined
+    ) {
+      item.isActive =
+        req.body.isActive;
+    }
 
     await item.save();
 
     return ok(res, item);
   });
-  export const restockInventory =
+export const restockInventory =
   asyncHandler(async (req, res) => {
-    const { quantity } = req.body;
+    const amount = Number(
+      req.body.quantity
+    );
 
     if (
-      !quantity ||
-      quantity <= 0
+      Number.isNaN(amount) ||
+      amount <= 0
     ) {
       return fail(
         res,
@@ -161,8 +183,7 @@ export const getInventoryById =
       );
     }
 
-    item.stockQuantity +=
-      Number(quantity);
+    item.stockQuantity += amount;
 
     await item.save();
 
@@ -172,20 +193,29 @@ export const getLowStock =
   asyncHandler(async (req, res) => {
     const items =
       await InventoryItem.find({
+        isActive: true,
         $expr: {
           $lte: [
-            "$stockQuantity",
+            {
+              $subtract: [
+                "$stockQuantity",
+                "$reservedQuantity",
+              ],
+            },
             "$lowStockThreshold",
           ],
         },
+      }).sort({
+        name: 1,
       });
 
     return ok(res, items);
   });
-  export const deleteInventory =
+
+export const deleteInventory =
   asyncHandler(async (req, res) => {
     const item =
-      await InventoryItem.findByIdAndDelete(
+      await InventoryItem.findById(
         req.params.id
       );
 
@@ -196,6 +226,10 @@ export const getLowStock =
         "Không tìm thấy sản phẩm"
       );
     }
+
+    item.isActive = false;
+
+    await item.save();
 
     return ok(res, item);
   });
