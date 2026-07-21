@@ -182,3 +182,20 @@ export const getLowStock =
 
     return ok(res, items);
   });
+  export const deleteInventory =
+  asyncHandler(async (req, res) => {
+    const item =
+      await InventoryItem.findByIdAndDelete(
+        req.params.id
+      );
+
+    if (!item) {
+      return fail(
+        res,
+        404,
+        "Không tìm thấy sản phẩm"
+      );
+    }
+
+    return ok(res, item);
+  });
