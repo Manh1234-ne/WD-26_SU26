@@ -257,3 +257,30 @@ export const deleteInventory =
     return ok(res, result);
 
   });
+  export const getAvailableInventoryById =
+  asyncHandler(async (req, res) => {
+
+    const item =
+      await InventoryItem.findById(
+        req.params.id
+      );
+
+    if (!item) {
+      return fail(
+        res,
+        404,
+        "Không tìm thấy sản phẩm"
+      );
+    }
+
+    return ok(res, {
+
+      ...item.toObject(),
+
+      availableQuantity:
+        item.stockQuantity -
+        item.reservedQuantity,
+
+    });
+
+  });
