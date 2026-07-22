@@ -1,5 +1,7 @@
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import BookingCombo from "../models/BookingCombo.js";
+import { releaseReservedStock } from "../services/inventoryService.js";
 
 export const startBookingTimeoutCheck = () => {
   console.log(
@@ -24,15 +26,37 @@ export const startBookingTimeoutCheck = () => {
         );
 
         for (const booking of expiredBookings) {
-          booking.status = "cancelled";
-          booking.cancelledAt = new Date();
 
-          await booking.save();
-
+          // Hủy giữ ghế
           await BookingSeat.updateMany(
             { booking: booking._id },
             { status: "cancelled" }
           );
+
+          // Lấy combo của booking
+          const bookingCombos =
+            await BookingCombo.find({
+              booking: booking._id,
+            });
+
+          if (bookingCombos.length > 0) {
+
+            const comboIds =
+              bookingCombos.map((item) => ({
+                combo: item.combo,
+                quantity: item.quantity,
+              }));
+
+            // Trả lại số lượng đã reserve
+            await releaseReservedStock(
+              comboIds
+            );
+          }
+
+          booking.status = "cancelled";
+          booking.cancelledAt = new Date();
+
+          await booking.save();
         }
       }
 
