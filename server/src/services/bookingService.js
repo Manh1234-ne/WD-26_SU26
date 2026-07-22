@@ -194,24 +194,25 @@ export const createBookingService = async ({
   }
 
   const booking =
-    await Booking.create({
-      bookingCode: `BK${Date.now()}`,
-      user,
-      showtime,
+  await Booking.create({
+    bookingCode: `BK${Date.now()}`,
+    user,
+    showtime,
 
-      voucher: voucher?._id,
+    voucher: voucher?._id,
 
-      totalSeatPrice,
-      discountAmount,
-      finalAmount,
+    totalSeatPrice,
+    totalComboPrice, // <-- thêm dòng này
+    discountAmount,
+    finalAmount,
 
-      status: "pending",
+    status: "pending",
 
-      expiresAt: new Date(
-        Date.now() +
-          10 * 60 * 1000
-      ),
-    });
+    expiresAt: new Date(
+      Date.now() +
+        10 * 60 * 1000
+    ),
+  });
 
   const bookingSeats =
     seats.map((seat) => ({
@@ -229,20 +230,14 @@ export const createBookingService = async ({
   );
 
   if (combos.length > 0) {
-    const bookingCombos =
-      combos.map((combo) => ({
-        booking: booking._id,
-        combo: combo._id,
-        quantity: combo.quantity,
-        unitPrice: combo.price,
-        totalPrice:
-          combo.price *
-          combo.quantity,
-      }));
+    const bookingCombos = combos.map((item) => ({
+  booking: booking._id,
+  combo: item.combo,
+  quantity: item.quantity,
+  price: item.price,
+}));
 
-    await BookingCombo.insertMany(
-      bookingCombos
-    );
+await BookingCombo.insertMany(bookingCombos);
   }
 
   return booking;
