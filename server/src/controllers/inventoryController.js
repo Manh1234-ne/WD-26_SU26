@@ -233,3 +233,27 @@ export const deleteInventory =
 
     return ok(res, item);
   });
+  export const getAvailableInventory =
+  asyncHandler(async (req, res) => {
+
+    const items =
+      await InventoryItem.find({
+        isActive: true,
+      }).sort({
+        name: 1,
+      });
+
+    const result =
+      items.map((item) => ({
+
+        ...item.toObject(),
+
+        availableQuantity:
+          item.stockQuantity -
+          item.reservedQuantity,
+
+      }));
+
+    return ok(res, result);
+
+  });
