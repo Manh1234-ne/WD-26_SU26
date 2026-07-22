@@ -1,7 +1,7 @@
 import BookingSeat from "../models/BookingSeat.js";
 import Showtime from "../models/Showtime.js";
 import { asyncHandler } from "../utils/asynHandler.js";
-
+import Booking from "../models/Booking.js";
 const ok = (res, data) =>
   res.status(200).json({
     success: true,
@@ -73,15 +73,22 @@ export const getBookingSeatsByShowtime =
 
 export const getOccupiedSeats =
   asyncHandler(async (req, res) => {
-    const occupiedSeats =
-      await BookingSeat.find({
-        showtime: req.params.showtimeId,
-        status: "booked",
-      })
-        .select(
-          "seat seatCode seatType status price"
-        )
-        .sort({ seatCode: 1 });
-
+    const activeBookings = await Booking.find({
+      showtime: req.params.showtimeId,
+      $or: [
+        { status: { $in: ["confirmed", "completed"] } },
+        { status: "pending", expiresAt: { $gt: new Date() } }
+      ]
+    }).select("_id");
+    const activeBookingIds = activeBookings.map((b) => b._id);
+    const occupiedSeats = await BookingSeat.find({
+      showtime: req.params.showtimeId,
+      booking: { $in: activeBookingIds },
+      status: { $in: ["booked", "held"] },
+    })
+      .select(
+        "seat seatCode seatType status price"
+      )
+      .sort({ seatCode: 1 });
     return ok(res, occupiedSeats);
   });

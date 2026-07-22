@@ -7,14 +7,14 @@ const showtimeSchema = new mongoose.Schema(
       ref: "Movie",
       required: true,
     },
-    cinema: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Cinema",
-      required: true,
-    },
     room: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Room",
+      required: true,
+    },
+    cinema: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cinema",
       required: true,
     },
     startTime: {

@@ -1,0 +1,287 @@
+/* Cinema Booking Admin Dashboard - Modern CSS Styles */
+:root {
+  --cinema-red: #b91c1c;
+  --cinema-red-hover: #991b1b;
+  --cinema-red-light: #fee2e2;
+  --cinema-red-soft: #fff1f2;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --bg-card: #ffffff;
+  --bg-dashboard: #f8fafc;
+  --border-color: #e2e8f0;
+}
+
+.dashboard-wrapper {
+  background-color: var(--bg-dashboard);
+  min-height: 100vh;
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Header Section */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dashboard-title-group h2 {
+  margin: 0 !important;
+  color: var(--text-primary);
+  font-weight: 800 !important;
+  letter-spacing: -0.5px;
+}
+
+.dashboard-title-badge {
+  background-color: var(--cinema-red-soft);
+  color: var(--cinema-red);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 1px solid rgba(185, 28, 28, 0.2);
+}
+
+/* Modern Card Base Styling */
+.cinema-card {
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden;
+}
+
+.cinema-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -6px rgba(185, 28, 28, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(185, 28, 28, 0.3) !important;
+}
+
+.cinema-card .ant-card-head {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 16px 20px;
+  min-height: 56px;
+}
+
+.cinema-card .ant-card-head-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title-icon {
+  color: var(--cinema-red);
+  font-size: 18px;
+}
+
+/* Filter Card */
+.filter-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
+}
+
+.filter-btn-primary {
+  background-color: var(--cinema-red) !important;
+  border-color: var(--cinema-red) !important;
+  font-weight: 600;
+  border-radius: 8px !important;
+}
+
+.filter-btn-primary:hover {
+  background-color: var(--cinema-red-hover) !important;
+  border-color: var(--cinema-red-hover) !important;
+}
+
+.filter-btn-reset {
+  border-radius: 8px !important;
+  font-weight: 500;
+}
+
+/* KPI Cards */
+.kpi-card-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.kpi-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  transition: transform 0.3s ease;
+}
+
+.cinema-card:hover .kpi-icon-box {
+  transform: scale(1.08) rotate(3deg);
+}
+
+.kpi-icon-red {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.kpi-icon-amber {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.kpi-icon-emerald {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.kpi-icon-blue {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.kpi-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+
+.kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trend-up {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.trend-down {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.kpi-subtext {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-left: 6px;
+}
+
+/* Room Occupancy Progress Bars */
+.room-item {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  margin-bottom: 12px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.room-item:hover {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.room-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.room-percentage {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--cinema-red);
+}
+
+/* Recharts Custom Tooltip Styling */
+.custom-recharts-tooltip {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.custom-recharts-tooltip .tooltip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.custom-recharts-tooltip .tooltip-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Custom Table Polish */
+.cinema-table .ant-table-thead > tr > th {
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.cinema-table .ant-table-tbody > tr:hover > td {
+  background: #fff1f2 !important;
+}
+
+.customer-avatar {
+  border: 2px solid #fee2e2;
+  box-shadow: 0 2px 6px rgba(185, 28, 28, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-wrapper {
+    padding: 16px;
+  }
+  .filter-card {
+    padding: 16px;
+  }
+  .kpi-value {
+    font-size: 22px;
+  }
+}
