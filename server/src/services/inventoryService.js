@@ -21,14 +21,17 @@ export const reserveComboStock = async (
         inventory.stockQuantity -
         inventory.reservedQuantity;
 
-      if (
-        available <
-        requiredQuantity
-      ) {
-        throw new Error(
-          `${inventory.name} không đủ tồn kho`
-        );
-      }
+      if (available <= 0) {
+  throw new Error(
+    `${inventory.name} đã hết hàng`
+  );
+}
+
+if (available < requiredQuantity) {
+  throw new Error(
+    `${inventory.name} chỉ còn ${available} ${inventory.unit}`
+  );
+}
 
       inventory.reservedQuantity +=
         requiredQuantity;
