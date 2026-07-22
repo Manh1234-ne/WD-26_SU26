@@ -14,7 +14,11 @@ const router = express.Router();
 
 router.get("/", getAllInventory);
 
+router.get("/available", getAvailableInventory);
+
 router.get("/low-stock", getLowStock);
+
+router.get("/:id/available", getAvailableInventoryById);
 
 router.get("/:id", getInventoryById);
 

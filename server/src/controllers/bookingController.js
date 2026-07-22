@@ -39,7 +39,6 @@ export const createBooking = asyncHandler(
         "Vui lòng cung cấp đầy đủ thông tin"
       );
     }
-
     const booking = await createBookingService({
       user,
       showtime,
