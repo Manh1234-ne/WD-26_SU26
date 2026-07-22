@@ -99,11 +99,6 @@ interface ApiMovie {
   status?: string;
 }
 
-interface ApiCinema {
-  _id: string;
-  name: string;
-}
-
 interface ApiUser {
   _id: string;
   fullName: string;
@@ -191,7 +186,6 @@ function Dashboard() {
       const [
         bookingsRes,
         moviesRes,
-        cinemasRes,
         usersRes,
         showtimesRes,
         roomsRes,

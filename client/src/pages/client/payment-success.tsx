@@ -89,7 +89,6 @@ function PaymentSuccess() {
     }
     const showtime = booking?.showtime
     const movie = showtime?.movie
-    const cinema = showtime?.cinema
     const room = showtime?.room
     return (
         <div className="payment-result-card">
@@ -114,7 +113,7 @@ function PaymentSuccess() {
                         </div>
                         <div className="result-detail-row">
                             <span className="result-detail-label">Rạp chiếu:</span>
-                            <span className="result-detail-val">{cinema?.name}</span>
+                            <span className="result-detail-val">Rạp Lumora</span>
                         </div>
                         <div className="result-detail-row">
                             <span className="result-detail-label">Phòng chiếu:</span>
