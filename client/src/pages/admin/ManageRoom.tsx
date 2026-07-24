@@ -25,6 +25,7 @@ import {
   Col,
   message,
   Tooltip,
+  Modal,
 } from 'antd'
 import {
   EditOutlined,
@@ -47,6 +48,8 @@ type RoomFormFields = {
   seatsPerRow: number
   capacity: number
   isActive: boolean
+  aisleColumns: string
+  aisleRows: string
 }
 
 const emptyFormValues: RoomFormFields = {
@@ -57,6 +60,8 @@ const emptyFormValues: RoomFormFields = {
   seatsPerRow: 10,
   capacity: 100,
   isActive: true,
+  aisleColumns: '',
+  aisleRows: '',
 }
 
 function ManageRoom() {
@@ -65,10 +70,21 @@ function ManageRoom() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [antdForm] = Form.useForm<RoomFormFields>()
 
   const totalRows = Form.useWatch('totalRows', antdForm)
   const seatsPerRow = Form.useWatch('seatsPerRow', antdForm)
+  const aisleColumnsVal = Form.useWatch('aisleColumns', antdForm)
+  const aisleRowsVal = Form.useWatch('aisleRows', antdForm)
+
+  const parsedAisles = aisleColumnsVal
+    ? aisleColumnsVal.split(',').map((n: string) => parseInt(n.trim())).filter((n: number) => !isNaN(n))
+    : []
+
+  const parsedAisleRows = aisleRowsVal
+    ? aisleRowsVal.split(',').map((s: string) => s.trim().toUpperCase()).filter(Boolean)
+    : []
 
   useEffect(() => {
     if (totalRows && seatsPerRow) {
@@ -101,9 +117,22 @@ function ManageRoom() {
   const handleSubmit = async (values: RoomFormFields) => {
     setIsSaving(true)
     try {
+      const parsedAisle = values.aisleColumns
+        ? values.aisleColumns.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+        : []
+      const parsedAisleRowsSubmit = values.aisleRows
+        ? values.aisleRows.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+        : []
       const payload: RoomPayload = {
-        ...values,
         cinema: values.cinema || cinemas[0]?._id || '',
+        name: values.name,
+        roomType: values.roomType,
+        totalRows: values.totalRows,
+        seatsPerRow: values.seatsPerRow,
+        capacity: values.capacity,
+        isActive: values.isActive,
+        aisleColumns: parsedAisle,
+        aisleRows: parsedAisleRowsSubmit,
       }
       if (editingId) {
         await updateRoom(editingId, payload)
@@ -133,6 +162,8 @@ function ManageRoom() {
       seatsPerRow: room.seatsPerRow,
       capacity: room.capacity,
       isActive: room.isActive ?? true,
+      aisleColumns: room.aisleColumns ? room.aisleColumns.join(', ') : '',
+      aisleRows: room.aisleRows ? room.aisleRows.join(', ') : '',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -285,9 +316,9 @@ function ManageRoom() {
                   label="Số hàng ghế (ngang)"
                   name="totalRows"
                   rules={[{ required: true, message: 'Nhập số hàng ghế!' }]}
-                  help="VD: 10 hàng (từ A đến J)"
+                  help="Tối đa 15 hàng (từ A đến O)"
                 >
-                  <InputNumber min={1} max={26} style={{ width: '100%' }} />
+                  <InputNumber min={1} max={15} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={8}>
@@ -295,18 +326,39 @@ function ManageRoom() {
                   label="Số ghế mỗi hàng (dọc)"
                   name="seatsPerRow"
                   rules={[{ required: true, message: 'Nhập số ghế mỗi hàng!' }]}
-                  help="VD: 10 ghế mỗi hàng"
+                  help="Tối đa 20 ghế mỗi hàng"
                 >
-                  <InputNumber min={1} max={50} style={{ width: '100%' }} />
+                  <InputNumber min={1} max={20} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={8}>
                 <Form.Item
                   label="Tổng sức chứa"
                   name="capacity"
-                  help="Hệ thống tự tính toán"
+                  help="Tự tính toán (tối đa 300 ghế)"
                 >
                   <InputNumber style={{ width: '100%' }} readOnly disabled />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label="Vị trí cột làm lối đi dọc (aisleColumns)"
+                  name="aisleColumns"
+                  help="Nhập số cột muốn để trống làm lối đi dọc, cách nhau bằng dấu phẩy. Ví dụ: 5, 15"
+                >
+                  <Input placeholder="Ví dụ: 5, 15" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  label="Vị trí hàng làm lối đi ngang (aisleRows)"
+                  name="aisleRows"
+                  help="Nhập chữ cái hàng muốn để lối đi ngang phía sau, cách nhau bằng dấu phẩy. Ví dụ: E, H"
+                >
+                  <Input placeholder="Ví dụ: E, H" />
                 </Form.Item>
               </Col>
             </Row>
@@ -324,16 +376,43 @@ function ManageRoom() {
               </Col>
               <Col xs={24} sm={16} md={18}>
                 <Form.Item style={{ marginBottom: 0 }}>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    icon={<SaveOutlined />}
-                    loading={isSaving}
-                    block
-                    size="large"
-                  >
-                    {isSaving ? 'Đang lưu...' : editingId ? 'Cập Nhật Phòng' : 'Tạo Phòng Chiếu'}
-                  </Button>
+                  <Space style={{ width: '100%', justifyContent: 'end' }} wrap>
+                    <Button
+                      type="default"
+                      size="large"
+                      onClick={() => {
+                        if (!totalRows || !seatsPerRow) {
+                          void message.warning('Vui lòng nhập số hàng và số ghế trước khi xem trước!')
+                          return
+                        }
+                        setIsPreviewOpen(true)
+                      }}
+                      style={{
+                        borderColor: '#e11d48',
+                        color: '#e11d48',
+                        fontWeight: 600,
+                        borderRadius: '8px'
+                      }}
+                    >
+                      Xem trước sơ đồ ghế
+                    </Button>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      icon={<SaveOutlined />}
+                      loading={isSaving}
+                      size="large"
+                      style={{
+                        background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+                        borderColor: '#e11d48',
+                        fontWeight: 700,
+                        borderRadius: '8px',
+                        minWidth: '150px'
+                      }}
+                    >
+                      {isSaving ? 'Đang lưu...' : editingId ? 'Cập Nhật Phòng' : 'Tạo Phòng Chiếu'}
+                    </Button>
+                  </Space>
                 </Form.Item>
               </Col>
             </Row>
@@ -371,6 +450,114 @@ function ManageRoom() {
           />
         </Card>
       </Space>
+
+      <Modal
+        title={
+          <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+            Xem Trước Sơ Đồ Ghế Phòng Chiếu ({totalRows || 0} Hàng x {seatsPerRow || 0} Ghế)
+          </strong>
+        }
+        open={isPreviewOpen}
+        onCancel={() => setIsPreviewOpen(false)}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => setIsPreviewOpen(false)}
+            style={{ background: '#e11d48', borderColor: '#e11d48' }}
+          >
+            Đóng xem trước
+          </Button>
+        ]}
+        width={Math.max(480, (seatsPerRow || 0) * 36 + 100)}
+        centered
+      >
+        <div style={{ padding: '24px 0', background: '#f8fafc', borderRadius: '12px', marginTop: '16px', border: '1px solid #e2e8f0' }}>
+          {/* Màn hình */}
+          <div style={{ width: '100%', maxWidth: '320px', margin: '0 auto 32px', textAlign: 'center' }}>
+            <div style={{ height: '6px', background: 'linear-gradient(to bottom, #e11d48, transparent)', borderRadius: '50%', boxShadow: '0 4px 10px rgba(225, 29, 72, 0.3)', marginBottom: '8px' }} />
+            <span style={{ fontSize: '11px', color: '#64748b', letterSpacing: '3px', fontWeight: 800 }}>MÀN HÌNH CHIẾU</span>
+          </div>
+
+          {/* Sơ đồ ghế */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', overflowX: 'auto', padding: '0 20px' }}>
+            {Array.from({ length: totalRows || 0 }).map((_, rIndex) => {
+              const rowLetter = String.fromCharCode(65 + rIndex)
+              const isAisleRow = parsedAisleRows.includes(rowLetter)
+              return (
+                <div key={rowLetter} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ width: '24px', fontWeight: 800, color: '#94a3b8', textAlign: 'center', fontSize: '13px' }}>{rowLetter}</span>
+                    {Array.from({ length: seatsPerRow || 0 }).map((_, sIndex) => {
+                      const seatNumber = sIndex + 1
+                      const isAisle = parsedAisles.includes(seatNumber)
+                      return (
+                        <div key={seatNumber} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <div
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              background: '#f1f5f9',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              color: '#475569',
+                              userSelect: 'none'
+                            }}
+                          >
+                            {seatNumber}
+                          </div>
+                          {isAisle && (
+                            <div
+                              style={{
+                                width: '24px',
+                                height: '28px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '9px',
+                                color: '#cbd5e1',
+                                fontWeight: 700,
+                                userSelect: 'none'
+                              }}
+                            >
+                              |
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                    <span style={{ width: '24px', fontWeight: 800, color: '#94a3b8', textAlign: 'center', fontSize: '13px' }}>{rowLetter}</span>
+                  </div>
+                  {isAisleRow && (
+                    <div
+                      style={{
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                        color: '#94a3b8',
+                        fontWeight: 800,
+                        width: '100%',
+                        borderBottom: '1px dashed #cbd5e1',
+                        margin: '4px 0',
+                        letterSpacing: '1px'
+                      }}
+                    >
+                      LỐI ĐI NGANG (SAU HÀNG {rowLetter})
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

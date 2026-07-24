@@ -12,6 +12,8 @@ export type Room = {
   seatsPerRow: number
   capacity: number
   isActive: boolean
+  aisleColumns?: number[]
+  aisleRows?: string[]
   createdAt?: string
   updatedAt?: string
 }
@@ -24,6 +26,8 @@ export type RoomPayload = {
   seatsPerRow: number
   capacity: number
   isActive?: boolean
+  aisleColumns?: number[]
+  aisleRows?: string[]
 }
 
 export type ApiResponse<T> = {

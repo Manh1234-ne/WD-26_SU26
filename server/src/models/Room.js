@@ -31,6 +31,14 @@ const roomSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    aisleColumns: {
+      type: [Number],
+      default: [],
+    },
+    aisleRows: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
