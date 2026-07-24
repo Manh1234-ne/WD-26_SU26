@@ -75,6 +75,8 @@ export const createRoom = asyncHandler(async (req, res) => {
         totalRows,
         seatsPerRow,
         capacity,
+        aisleColumns: req.body.aisleColumns || [],
+        aisleRows: req.body.aisleRows || [],
     });
 
     return created(res, room);
@@ -94,6 +96,8 @@ export const updateRoom = asyncHandler(async (req, res) => {
     room.totalRows = req.body.totalRows || room.totalRows;
     room.seatsPerRow = req.body.seatsPerRow || room.seatsPerRow;
     room.capacity = req.body.capacity || room.capacity;
+    room.aisleColumns = req.body.aisleColumns !== undefined ? req.body.aisleColumns : room.aisleColumns;
+    room.aisleRows = req.body.aisleRows !== undefined ? req.body.aisleRows : room.aisleRows;
 
     if (req.body.isActive !== undefined) {
         room.isActive = req.body.isActive;

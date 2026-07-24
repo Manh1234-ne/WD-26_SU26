@@ -155,15 +155,15 @@ function ManageRoom() {
   const handleEdit = (room: Room) => {
     setEditingId(room._id)
     antdForm.setFieldsValue({
-      cinema: room.cinema._id,
+      cinema: typeof room.cinema === 'object' && room.cinema ? room.cinema._id : (room.cinema as any),
       name: room.name,
       roomType: room.roomType,
       totalRows: room.totalRows,
       seatsPerRow: room.seatsPerRow,
       capacity: room.capacity,
       isActive: room.isActive ?? true,
-      aisleColumns: room.aisleColumns ? room.aisleColumns.join(', ') : '',
-      aisleRows: room.aisleRows ? room.aisleRows.join(', ') : '',
+      aisleColumns: room.aisleColumns && Array.isArray(room.aisleColumns) ? room.aisleColumns.join(', ') : '',
+      aisleRows: room.aisleRows && Array.isArray(room.aisleRows) ? room.aisleRows.join(', ') : '',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
