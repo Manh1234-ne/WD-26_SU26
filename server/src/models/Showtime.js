@@ -12,6 +12,10 @@ const showtimeSchema = new mongoose.Schema(
       ref: "Room",
       required: true,
     },
+    cinema: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cinema",
+    },
     startTime: {
       type: Date,
       required: true,
