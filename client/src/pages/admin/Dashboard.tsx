@@ -32,6 +32,10 @@ import {
   LineChartOutlined,
   DashboardOutlined,
   SearchOutlined,
+  FireOutlined,
+  ClockCircleOutlined,
+  CalendarOutlined,
+  RiseOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
@@ -193,7 +197,6 @@ function Dashboard() {
       ] = await Promise.allSettled([
         api.get("/bookings"),
         api.get("/movies"),
-        api.get("/cinemas"),
         api.get("/users?limit=100"),
         api.get("/showtimes?includePast=true"),
         api.get("/rooms"),
@@ -243,7 +246,7 @@ function Dashboard() {
     setRevenueTimeframe("day");
     setTableSearchText("");
     fetchDashboardData();
-    message.success("Đã làm mới dữ liệu từ server!");
+    message.success("Đã làm mới dữ liệu");
   };
 
   const handleFilter = () => {
@@ -343,6 +346,121 @@ function Dashboard() {
       },
     ];
   }, [filteredBookings, bookingSeats, users, showtimes]);
+
+  // Tính toán Doanh thu đỉnh cao (Ngày, Tháng, Năm, Khung Giờ)
+  const peakMetrics = useMemo(() => {
+    const validBookings = filteredBookings.filter((b) => b.status !== "cancelled");
+
+    if (validBookings.length === 0) {
+      return {
+        peakDay: { date: "Chưa có dữ liệu", revenue: 0 },
+        peakMonth: { month: "Chưa có dữ liệu", revenue: 0 },
+        peakYear: { year: "Chưa có dữ liệu", revenue: 0 },
+        peakHour: { hourRange: "Chưa có dữ liệu", revenue: 0, percentage: 0, count: 0, hourIndex: -1 },
+      };
+    }
+
+    const dayMap = new Map<string, number>();
+    const monthMap = new Map<string, number>();
+    const yearMap = new Map<string, number>();
+    const hourRevenue = new Array(24).fill(0);
+    const hourOrders = new Array(24).fill(0);
+
+    let totalRevenueSum = 0;
+
+    validBookings.forEach((b) => {
+      const rev = b.finalAmount || b.totalSeatPrice || 0;
+      totalRevenueSum += rev;
+      const d = dayjs(b.createdAt);
+
+      const dayKey = d.format("DD/MM/YYYY");
+      dayMap.set(dayKey, (dayMap.get(dayKey) || 0) + rev);
+
+      const monthKey = `Tháng ${d.format("MM/YYYY")}`;
+      monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + rev);
+
+      const yearKey = `Năm ${d.format("YYYY")}`;
+      yearMap.set(yearKey, (yearMap.get(yearKey) || 0) + rev);
+
+      const h = d.hour();
+      hourRevenue[h] += rev;
+      hourOrders[h] += 1;
+    });
+
+    let peakDay = { date: "Chưa có dữ liệu", revenue: 0 };
+    dayMap.forEach((rev, date) => {
+      if (rev >= peakDay.revenue) {
+        peakDay = { date, revenue: rev };
+      }
+    });
+
+    let peakMonth = { month: "Chưa có dữ liệu", revenue: 0 };
+    monthMap.forEach((rev, month) => {
+      if (rev >= peakMonth.revenue) {
+        peakMonth = { month, revenue: rev };
+      }
+    });
+
+    let peakYear = { year: "Chưa có dữ liệu", revenue: 0 };
+    yearMap.forEach((rev, year) => {
+      if (rev >= peakYear.revenue) {
+        peakYear = { year, revenue: rev };
+      }
+    });
+
+    let maxHourIdx = 0;
+    let maxHourRev = 0;
+    hourRevenue.forEach((rev, idx) => {
+      if (rev > maxHourRev) {
+        maxHourRev = rev;
+        maxHourIdx = idx;
+      }
+    });
+
+    const startH = String(maxHourIdx).padStart(2, "0");
+    const endH = String((maxHourIdx + 1) % 24).padStart(2, "0");
+    const hourRange = `${startH}:00 - ${endH}:00`;
+    const percentage = totalRevenueSum > 0 ? Math.round((maxHourRev / totalRevenueSum) * 100) : 0;
+
+    return {
+      peakDay,
+      peakMonth,
+      peakYear,
+      peakHour: {
+        hourRange,
+        revenue: maxHourRev,
+        percentage,
+        count: hourOrders[maxHourIdx],
+        hourIndex: maxHourIdx,
+      },
+    };
+  }, [filteredBookings]);
+
+  // Thống kê doanh thu theo 24 khung giờ
+  const hourlyRevenueData = useMemo(() => {
+    const validBookings = filteredBookings.filter((b) => b.status !== "cancelled");
+    const result = Array.from({ length: 24 }, (_, i) => {
+      const hStr = String(i).padStart(2, "0");
+      return {
+        hour: `${hStr}:00`,
+        hourIdx: i,
+        revenue: 0,
+        orders: 0,
+        isPeak: i === peakMetrics.peakHour.hourIndex && peakMetrics.peakHour.revenue > 0,
+      };
+    });
+
+    validBookings.forEach((b) => {
+      const h = dayjs(b.createdAt).hour();
+      const rev = b.finalAmount || b.totalSeatPrice || 0;
+      if (result[h]) {
+        result[h].revenue += rev;
+        result[h].orders += 1;
+      }
+    });
+
+    return result;
+  }, [filteredBookings, peakMetrics.peakHour.hourIndex, peakMetrics.peakHour.revenue]);
 
 
   const revenueChartData = useMemo(() => {
@@ -476,23 +594,32 @@ function Dashboard() {
   const roomOccupancyData: RoomOccupancyRow[] = useMemo(() => {
     if (rooms.length === 0) {
       return [
-        { id: "1", roomName: "Phòng 1 (Standard)", type: "Standard", cinema: "Rạp 1", seats: 120, occupancy: 85 },
-        { id: "2", roomName: "Phòng 2 (IMAX)", type: "IMAX", cinema: "Rạp 1", seats: 200, occupancy: 72 },
-        { id: "3", roomName: "Phòng 3 (VIP)", type: "VIP", cinema: "Rạp 2", seats: 80, occupancy: 60 },
+        { id: "1", roomName: "Phòng 1", type: "Standard", cinema: "", seats: 120, occupancy: 85 },
+        { id: "2", roomName: "Phòng 2", type: "IMAX", cinema: "", seats: 200, occupancy: 72 },
+        { id: "3", roomName: "Phòng 3", type: "VIP", cinema: "", seats: 80, occupancy: 60 },
       ];
     }
 
     return rooms.map((r, idx) => {
       const roomBookings = filteredBookings.filter((b) => b.showtime?.room?._id === r._id);
-      const capacity = r.seatCapacity || 100;
+      const capacity = r.seatCapacity || (r as any).capacity || 100;
       const bookedCount = roomBookings.length * 2;
       const occupancy = Math.min(100, Math.round((bookedCount / capacity) * 100) || (85 - idx * 10));
 
+      const rawName = r.name || (r as any).roomName || (r as any).title || `Phòng ${idx + 1}`;
+      const nameStr = String(rawName).trim();
+      const displayName = nameStr
+        ? nameStr.toLowerCase().includes("phòng")
+          ? nameStr
+          : `Phòng ${nameStr}`
+        : `Phòng ${idx + 1}`;
+
+
       return {
         id: r._id,
-        roomName: r.name,
-        type: "Standard",
-        cinema: r.cinema?.name || "Rạp Lumora",
+        roomName: displayName,
+        type: (r as any).roomType || "Standard",
+        cinema: r.cinema?.name || "",
         seats: capacity,
         occupancy: Math.max(15, occupancy),
       };
@@ -832,6 +959,144 @@ function Dashboard() {
             </Col>
           ))}
         </Row>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <FireOutlined style={{ color: "#b91c1c", fontSize: 20 }} />
+            <Title level={4} style={{ margin: 0, color: "#0f172a", fontWeight: 700 }}>
+              Kỷ Lục Doanh Thu Đỉnh Cao
+            </Title>
+          </div>
+          <Row gutter={[20, 20]}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className="cinema-card peak-card peak-card-day" bodyStyle={{ padding: "18px 20px" }}>
+                <div className="peak-card-header">
+                  <span className="peak-card-badge badge-day">
+                    <CalendarOutlined style={{ marginRight: 4 }} /> Ngày Cao Nhất
+                  </span>
+                  <div className="peak-icon-circle circle-day">
+                    <TrophyOutlined />
+                  </div>
+                </div>
+                <div className="peak-card-value">{formatVND(peakMetrics.peakDay.revenue)}</div>
+                <div className="peak-card-sub text-day">
+                  Mốc ngày: <strong>{peakMetrics.peakDay.date}</strong>
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className="cinema-card peak-card peak-card-month" bodyStyle={{ padding: "18px 20px" }}>
+                <div className="peak-card-header">
+                  <span className="peak-card-badge badge-month">
+                    <RiseOutlined style={{ marginRight: 4 }} /> Tháng Cao Nhất
+                  </span>
+                  <div className="peak-icon-circle circle-month">
+                    <RiseOutlined />
+                  </div>
+                </div>
+                <div className="peak-card-value">{formatVND(peakMetrics.peakMonth.revenue)}</div>
+                <div className="peak-card-sub text-month">
+                  Mốc tháng: <strong>{peakMetrics.peakMonth.month}</strong>
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className="cinema-card peak-card peak-card-year" bodyStyle={{ padding: "18px 20px" }}>
+                <div className="peak-card-header">
+                  <span className="peak-card-badge badge-year">
+                    <TrophyOutlined style={{ marginRight: 4 }} /> Năm Cao Nhất
+                  </span>
+                  <div className="peak-icon-circle circle-year">
+                    <DollarCircleOutlined />
+                  </div>
+                </div>
+                <div className="peak-card-value">{formatVND(peakMetrics.peakYear.revenue)}</div>
+                <div className="peak-card-sub text-year">
+                  Mốc năm: <strong>{peakMetrics.peakYear.year}</strong>
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className="cinema-card peak-card peak-card-hour" bodyStyle={{ padding: "18px 20px" }}>
+                <div className="peak-card-header">
+                  <span className="peak-card-badge badge-hour">
+                    <FireOutlined style={{ marginRight: 4 }} /> Khung Giờ Đỉnh Điểm
+                  </span>
+                  <div className="peak-icon-circle circle-hour">
+                    <ClockCircleOutlined />
+                  </div>
+                </div>
+                <div className="peak-card-value">{peakMetrics.peakHour.hourRange}</div>
+                <div className="peak-card-sub text-hour">
+                  Doanh thu: <strong>{formatVND(peakMetrics.peakHour.revenue)}</strong> ({peakMetrics.peakHour.percentage}% tổng)
+                </div>
+              </Card>
+            </Col>
+          </Row>
+        </div>
+        <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+          <Col xs={24}>
+            <Card
+              className="cinema-card"
+              title={
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, width: "100%" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <ClockCircleOutlined className="card-title-icon" /> Thống Kê Doanh Thu Theo Giờ Trong Ngày (00:00 - 23:00)
+                  </span>
+                  <div className="peak-hour-highlight-badge">
+                    <FireOutlined style={{ color: "#b91c1c", marginRight: 4 }} />
+                    Khung giờ cao nhất: <strong>{peakMetrics.peakHour.hourRange}</strong> ({formatVND(peakMetrics.peakHour.revenue)})
+                  </div>
+                </div>
+              }
+            >
+              <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={hourlyRevenueData} margin={{ top: 15, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="hour" tick={{ fill: "#64748b", fontSize: 11 }} />
+                    <YAxis
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      tickFormatter={(val) => (val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : `${val / 1000}k`)}
+                    />
+                    <RechartsTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="custom-recharts-tooltip">
+                              <div className="tooltip-title">Khung giờ: {label}</div>
+                              <div className="tooltip-value" style={{ color: data.isPeak ? "#ef4444" : "#ffffff" }}>
+                                Doanh thu: {formatVND(data.revenue)}
+                              </div>
+                              <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 2 }}>
+                                Số đơn đặt vé: {data.orders} đơn
+                              </div>
+                              {data.isPeak && (
+                                <Tag color="error" style={{ marginTop: 6, fontWeight: 700 }}>
+                                  🔥 Khung giờ cao nhất!
+                                </Tag>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="revenue" radius={[4, 4, 0, 0]} barSize={20}>
+                      {hourlyRevenueData.map((entry, index) => (
+                        <Cell
+                          key={`cell-hour-${index}`}
+                          fill={entry.isPeak ? "#b91c1c" : "#3b82f6"}
+                          opacity={entry.isPeak ? 1 : 0.75}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+        </Row>
 
 
         <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
@@ -1072,9 +1337,6 @@ function Dashboard() {
                     <div className="room-header">
                       <div>
                         <span className="room-name">{room.roomName}</span>
-                        <Tag color="default" style={{ marginLeft: 8, fontSize: 11 }}>
-                          {room.cinema}
-                        </Tag>
                         <Text type="secondary" style={{ fontSize: 12, marginLeft: 6 }}>
                           ({room.seats} ghế)
                         </Text>
