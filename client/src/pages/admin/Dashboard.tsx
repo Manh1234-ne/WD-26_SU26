@@ -57,6 +57,7 @@ import {
 } from "recharts";
 
 import { api } from "../../services/api";
+import * as XLSX from "xlsx";
 import "./Dashboard.css";
 
 dayjs.extend(isBetween);
@@ -851,6 +852,89 @@ function Dashboard() {
   }, [movies]);
 
 
+  const handleExportReport = () => {
+    try {
+      const overviewData = [
+        ["BÁO CÁO THỐNG KÊ DOANH THU LUMORA CINEMA"],
+        [`Thời gian xuất báo cáo: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}`],
+        [],
+        ["1. CHỈ SỐ KPI TỔNG QUAN"],
+        ["Chỉ số", "Giá trị"],
+        ["Tổng doanh thu", kpiData[0]?.value || "0 ₫"],
+        ["Tổng vé đã bán", kpiData[1]?.value || "0 vé"],
+        ["Tổng khách hàng", kpiData[2]?.value || "0 khách"],
+        ["Tổng suất chiếu", kpiData[3]?.value || "0 suất"],
+        [],
+        ["2. KỶ LỤC DOANH THU ĐỈNH CAO"],
+        ["Tiêu chí", "Mốc thời gian", "Doanh thu"],
+        ["Ngày có doanh thu cao nhất", peakMetrics.peakDay.date, formatVND(peakMetrics.peakDay.revenue)],
+        ["Tháng có doanh thu cao nhất", peakMetrics.peakMonth.month, formatVND(peakMetrics.peakMonth.revenue)],
+        ["Năm có doanh thu cao nhất", peakMetrics.peakYear.year, formatVND(peakMetrics.peakYear.revenue)],
+        [
+          "Khung giờ đỉnh điểm",
+          peakMetrics.peakHour.hourRange,
+          `${formatVND(peakMetrics.peakHour.revenue)} (${peakMetrics.peakHour.percentage}% tổng doanh thu, ${peakMetrics.peakHour.count} đơn)`,
+        ],
+      ];
+
+      const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
+
+      const detailHeaders = [
+        "STT",
+        "Mã Đơn / Thời Gian Đặt",
+        "Tên Phim",
+        "Rạp Chiếu",
+        "Suất Chiếu",
+        "Doanh Thu (VNĐ)",
+        "Trạng Thái",
+      ];
+      const detailRows = searchedRevenueDetails.map((item, idx) => [
+        idx + 1,
+        item.date,
+        item.movieName,
+        item.cinema,
+        item.showtime,
+        item.revenue,
+        item.status,
+      ]);
+      const wsDetail = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailRows]);
+
+      const hourlyHeaders = ["Khung Giờ", "Số Đơn Đặt", "Doanh Thu (VNĐ)", "Ghi Chú"];
+      const hourlyRows = hourlyRevenueData.map((h) => [
+        `${h.hour} - ${String((h.hourIdx + 1) % 24).padStart(2, "0")}:00`,
+        h.orders,
+        h.revenue,
+        h.isPeak ? "Khung giờ cao nhất" : "",
+      ]);
+      const wsHourly = XLSX.utils.aoa_to_sheet([hourlyHeaders, ...hourlyRows]);
+
+
+      const topMoviesRows = [
+        ["TOP 5 PHIM DOANH THU CAO NHẤT"],
+        ["Hạng", "Tên Phim", "Doanh Thu (Triệu VNĐ)"],
+        ...topMoviesData.map((m, i) => [i + 1, m.name, m.revenue]),
+        [],
+        ["TOP 10 KHÁCH HÀNG THÂN THIẾT"],
+        ["Hạng", "Tên Khách Hàng", "Email", "Hạng Hội Viên", "Số Đơn Đặt", "Tổng Chi Tiêu (VNĐ)"],
+        ...topCustomersData.map((c) => [c.rank, c.name, c.email, c.membership, c.tickets, c.totalSpent]),
+      ];
+      const wsTop = XLSX.utils.aoa_to_sheet(topMoviesRows);
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsOverview, "Tổng Quan & Kỷ Lục");
+      XLSX.utils.book_append_sheet(wb, wsDetail, "Doanh Thu Chi Tiết");
+      XLSX.utils.book_append_sheet(wb, wsHourly, "Thống Kê Theo Giờ");
+      XLSX.utils.book_append_sheet(wb, wsTop, "Top Phim & Khách Hàng");
+
+      const fileName = `Bao_Cao_Doanh_Thu_Lumora_${dayjs().format("YYYYMMDD_HHmmss")}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      message.success(`Đã xuất báo cáo thành công ra file sheet Excel: ${fileName}`);
+    } catch (err) {
+      console.error("Lỗi khi xuất file báo cáo:", err);
+      message.error("Không thể xuất file báo cáo. Vui lòng thử lại!");
+    }
+  };
+
   return (
     <div className="dashboard-wrapper">
       <Spin spinning={loading} tip="Đang kết nối Server API lấy dữ liệu thực tế...">
@@ -872,10 +956,10 @@ function Dashboard() {
             <Button
               type="default"
               icon={<DownloadOutlined />}
-              onClick={() => message.info("Đã xuất báo cáo dữ liệu từ server!")}
+              onClick={() => handleExportReport()}
               style={{ borderRadius: 8 }}
             >
-              Xuất báo cáo
+              Xuất báo cáo (Excel)
             </Button>
             <Button
               type="primary"
