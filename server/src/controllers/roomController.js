@@ -1,5 +1,4 @@
 import Room from "../models/Room.js";
-import Cinema from "../models/Cinema.js";
 import Seat from "../models/Seat.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 
@@ -24,11 +23,10 @@ const fail = (res, status, message) =>
     });
 
 export const getAllRooms = asyncHandler(async (req, res) => {
-    const { cinema, roomType, isActive } = req.query;
+    const { roomType, isActive } = req.query;
 
     const query = {};
 
-    if (cinema) query.cinema = cinema;
     if (roomType) query.roomType = roomType;
 
     if (isActive !== undefined) {
@@ -36,7 +34,6 @@ export const getAllRooms = asyncHandler(async (req, res) => {
     }
 
     const rooms = await Room.find(query)
-        .populate("cinema", "name city district")
         .sort({ _id: -1 });
 
     return ok(res, rooms);
@@ -45,8 +42,7 @@ export const getAllRooms = asyncHandler(async (req, res) => {
 export const getRoomById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const room = await Room.findById(id)
-        .populate("cinema", "name city district");
+    const room = await Room.findById(id);
 
     if (!room) {
         return fail(res, 404, "không tìm thấy phòng");
@@ -57,7 +53,6 @@ export const getRoomById = asyncHandler(async (req, res) => {
 
 export const createRoom = asyncHandler(async (req, res) => {
     const {
-        cinema,
         name,
         roomType,
         totalRows,
@@ -66,7 +61,6 @@ export const createRoom = asyncHandler(async (req, res) => {
     } = req.body;
 
     if (
-        !cinema ||
         !name ||
         !totalRows ||
         !seatsPerRow ||
@@ -75,14 +69,7 @@ export const createRoom = asyncHandler(async (req, res) => {
         return fail(res, 400, "vui lòng cung cấp đủ thông tin");
     }
 
-    const cinemaExists = await Cinema.findById(cinema);
-
-    if (!cinemaExists) {
-        return fail(res, 404, "không tìm thấy rạp");
-    }
-
     const room = await Room.create({
-        cinema,
         name,
         roomType,
         totalRows,

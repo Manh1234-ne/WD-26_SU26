@@ -1,5 +1,4 @@
 import type { Dayjs } from "dayjs"
-
 export type UserRole = 'admin' | 'staff' | 'customer'
 
 export type AuthUser = {

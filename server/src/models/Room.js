@@ -2,11 +2,6 @@ import mongoose from "mongoose";
 
 const roomSchema = new mongoose.Schema(
   {
-    cinema: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Cinema",
-      required: true,
-    },
     name: {
       type: String,
       required: true,
@@ -42,6 +37,6 @@ const roomSchema = new mongoose.Schema(
   }
 );
 
-roomSchema.index({ cinema: 1, name: 1 }, { unique: true });
+roomSchema.index({ name: 1 }, { unique: true });
 
 export default mongoose.model("Room", roomSchema);
