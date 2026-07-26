@@ -403,16 +403,18 @@ function Payment() {
                 <button
                     className="ghost-button"
                     style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: "6px", cursor: "pointer", border: "1px solid #cbd5e1", background: "none", height: "40px", borderRadius: "8px", color: "#64748b" }}
-                    onClick={async () => {
-                        try {
-                            setIsProcessing(true);
-                            await api.patch(`/bookings/${bookingId}/cancel`);
-                        } catch (error) {
-                            console.error("Error cancelling booking when going back:", error);
-                        } finally {
-                            setIsProcessing(false);
-                            nav(`/booking/${showtime?._id}`);
+                    onClick={() => {
+
+                        if (booking?.expiresAt && showtime?._id) {
+                            sessionStorage.setItem(
+                                `cinema_holding_${showtime._id}`,
+                                JSON.stringify({
+                                    bookingId,
+                                    expiresAt: new Date(booking.expiresAt).getTime(),
+                                })
+                            );
                         }
+                        nav(`/booking/${showtime?._id}`);
                     }}
                     disabled={isProcessing}
                 >

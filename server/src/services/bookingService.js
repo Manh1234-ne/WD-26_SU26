@@ -9,6 +9,7 @@ export const createBookingService = async ({
   showtime,
   seatIds,
   voucherCode,
+  customExpiresAt,
 }) => {
   const showtimeExists = await Showtime.findById(showtime);
 
@@ -171,6 +172,14 @@ export const createBookingService = async ({
       totalSeatPrice - discountAmount;
   }
 
+  const maxExpiresAt = Date.now() + 5 * 60 * 1000;
+  const resolvedExpiresAt =
+    customExpiresAt &&
+      customExpiresAt > Date.now() &&
+      customExpiresAt <= maxExpiresAt
+      ? new Date(customExpiresAt)
+      : new Date(maxExpiresAt);
+
   const booking = await Booking.create({
     bookingCode: `BK${Date.now()}`,
     user,
@@ -182,9 +191,7 @@ export const createBookingService = async ({
 
     status: "pending",
 
-    expiresAt: new Date(
-      Date.now() + 5 * 60 * 1000
-    ),
+    expiresAt: resolvedExpiresAt,
   });
 
   const bookingSeats = seats.map(

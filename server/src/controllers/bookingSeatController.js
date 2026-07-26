@@ -87,7 +87,7 @@ export const getOccupiedSeats =
       status: { $in: ["booked", "held"] },
     })
       .select(
-        "seat seatCode seatType status price"
+        "booking seat seatCode seatType status price"
       )
       .sort({ seatCode: 1 });
     return ok(res, occupiedSeats);
