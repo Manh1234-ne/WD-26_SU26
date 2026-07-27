@@ -65,12 +65,10 @@ const movieSchema = new mongoose.Schema(
     posterUrl: {
       type: String,
       default: "",
-      maxlength: [500, "URL poster không vượt quá 500 ký tự"],
     },
     backdropUrl: {
       type: String,
       default: "",
-      maxlength: [500, "URL backdrop không vượt quá 500 ký tự"],
     },
     trailerUrl: {
       type: String,

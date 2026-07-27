@@ -27,6 +27,7 @@ import {
   Divider,
   Modal,
   Descriptions,
+  Upload,
 } from 'antd'
 import {
   EditOutlined,
@@ -40,6 +41,16 @@ import {
   CloseOutlined,
   SaveOutlined,
   EyeOutlined,
+  PlaySquareOutlined,
+  TranslationOutlined,
+  ClockCircleOutlined,
+  TeamOutlined,
+  SafetyCertificateOutlined,
+  AppstoreOutlined,
+  TagsOutlined,
+  AlignLeftOutlined,
+  PictureOutlined,
+  YoutubeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
@@ -59,7 +70,6 @@ type MovieFormFields = {
   director: string
   cast: string
   posterUrl: string
-  backdropUrl: string
   trailerUrl: string
   status: MovieStatus
   endDate: dayjs.Dayjs
@@ -78,7 +88,6 @@ const emptyFormValues = {
   director: '',
   cast: '',
   posterUrl: '',
-  backdropUrl: '',
   trailerUrl: '',
   status: 'coming_soon' as const,
   endDate: dayjs().add(14, 'day'),
@@ -105,7 +114,6 @@ function toPayload(formValues: MovieFormFields): MoviePayload {
     director: formValues.director.trim(),
     cast: toList(formValues.cast),
     posterUrl: formValues.posterUrl.trim(),
-    backdropUrl: formValues.backdropUrl.trim(),
     trailerUrl: formValues.trailerUrl.trim(),
     status: formValues.status,
     endDate: formValues.endDate.format('YYYY-MM-DD'),
@@ -126,12 +134,48 @@ function toFormFields(movie: Movie): Partial<MovieFormFields> {
     director: movie.director || '',
     cast: movie.cast?.join(', ') || '',
     posterUrl: movie.posterUrl || '',
-    backdropUrl: movie.backdropUrl || '',
     trailerUrl: movie.trailerUrl || '',
     status: movie.status,
     endDate: dayjs(movie.endDate),
     isActive: movie.isActive ?? true,
   }
+}
+
+const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+function getYouTubeEmbedUrl(url: string) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  const videoId = (match && match[2].length === 11) ? match[2] : null;
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
 }
 
 function ManageMovie() {
@@ -390,165 +434,256 @@ function ManageMovie() {
             layout="vertical"
             initialValues={emptyFormValues}
             onFinish={handleSubmit}
-            requiredMark="optional"
+            requiredMark={false}
           >
-            <Row gutter={16}>
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item
-                  label="Tên phim"
-                  name="title"
-                  rules={[{ required: true, message: 'Vui lòng nhập tên phim!' }]}
-                >
-                  <Input placeholder="Ví dụ: Lật Mặt 7" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item label="Tên gốc" name="originalTitle">
-                  <Input placeholder="Ví dụ: Face Off 7" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item label="Trạng thái chiếu" name="status">
-                  <Select>
-                    <Select.Option value="coming_soon">Sắp chiếu</Select.Option>
-                    <Select.Option value="now_showing">Đang chiếu</Select.Option>
-                    <Select.Option value="ended">Đã kết thúc</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
+            {/* SECTION 1: THÔNG TIN CƠ BẢN */}
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '2px solid #e11d48', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>1. Thông tin cơ bản</span>
+              </div>
+              <Row gutter={16}>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item
+                    label={<span><PlaySquareOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Tên phim</strong></span>}
+                    name="title"
+                    rules={[{ required: true, message: 'Vui lòng nhập tên phim!' }]}
+                  >
+                    <Input prefix={<PlaySquareOutlined style={{ color: '#94a3b8' }} />} placeholder="Ví dụ: Lật Mặt 7" style={{ borderRadius: '6px' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item label={<span><TranslationOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Tên gốc (Tiếng Anh / Khác)</strong></span>} name="originalTitle">
+                    <Input prefix={<TranslationOutlined style={{ color: '#94a3b8' }} />} placeholder="Ví dụ: Face Off 7" style={{ borderRadius: '6px' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item
+                    label={<span><ClockCircleOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Thời lượng (phút)</strong></span>}
+                    name="duration"
+                    rules={[{ required: true, message: 'Nhập thời lượng!' }]}
+                  >
+                    <InputNumber prefix={<ClockCircleOutlined style={{ color: '#94a3b8' }} />} min={1} style={{ width: '100%', borderRadius: '6px' }} placeholder="90" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item label={<span><SafetyCertificateOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Phân loại độ tuổi</strong></span>} name="ageRating">
+                    <Select style={{ borderRadius: '6px' }}>
+                      <Select.Option value="P">P - Mọi lứa tuổi</Select.Option>
+                      <Select.Option value="K">K - Dưới 13 tuổi có giám hộ</Select.Option>
+                      <Select.Option value="T13">T13 - Trên 13 tuổi</Select.Option>
+                      <Select.Option value="T16">T16 - Trên 16 tuổi</Select.Option>
+                      <Select.Option value="T18">T18 - Trên 18 tuổi</Select.Option>
+                      <Select.Option value="C">C - Cấm phổ biến</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item label={<span><AppstoreOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Trạng thái chiếu</strong></span>} name="status">
+                    <Select style={{ borderRadius: '6px' }}>
+                      <Select.Option value="coming_soon">Sắp chiếu</Select.Option>
+                      <Select.Option value="now_showing">Đang chiếu</Select.Option>
+                      <Select.Option value="ended">Đã kết thúc</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item label={<span><GlobalOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Quốc gia</strong></span>} name="country">
+                    <Input prefix={<GlobalOutlined style={{ color: '#94a3b8' }} />} placeholder="Ví dụ: Việt Nam, Mỹ..." style={{ borderRadius: '6px' }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
 
-            <Form.Item
-              label="Mô tả phim"
-              name="description"
-              rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}
-            >
-              <TextArea rows={3} placeholder="Nhập tóm tắt nội dung phim..." />
-            </Form.Item>
+            {/* SECTION 2: CHI TIẾT SẢN XUẤT */}
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '2px solid #e11d48', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>2. Chi tiết sản xuất & Nội dung</span>
+              </div>
+              <Row gutter={16}>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item
+                    label={<span><TagsOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Thể loại phim</strong></span>}
+                    name="genres"
+                    rules={[{ required: true, message: 'Vui lòng chọn thể loại!' }]}
+                  >
+                    <Select mode="multiple" placeholder="Chọn thể loại" style={{ borderRadius: '6px' }}>
+                      <Select.Option value="Hành động">Hành động</Select.Option>
+                      <Select.Option value="Tình cảm">Tình cảm</Select.Option>
+                      <Select.Option value="Kinh dị">Kinh dị</Select.Option>
+                      <Select.Option value="Hài hước">Hài hước</Select.Option>
+                      <Select.Option value="Viễn tưởng">Viễn tưởng</Select.Option>
+                      <Select.Option value="Kỳ ảo">Kỳ ảo</Select.Option>
+                      <Select.Option value="Tâm lý">Tâm lý</Select.Option>
+                      <Select.Option value="Tội phạm">Tội phạm</Select.Option>
+                      <Select.Option value="Chiến tranh">Chiến tranh</Select.Option>
+                      <Select.Option value="Xã hội">Xã hội</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item label={<span><UserOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Đạo diễn</strong></span>} name="director">
+                    <Input prefix={<UserOutlined style={{ color: '#94a3b8' }} />} placeholder="Tên đạo diễn" style={{ borderRadius: '6px' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Form.Item
+                    label={<span><TeamOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Dàn diễn viên</strong></span>}
+                    name="cast"
+                    help={<span style={{ fontSize: '11px', color: '#94a3b8' }}>Phân tách bằng dấu phẩy (,). Ví dụ: Trấn Thành, Tuấn Trần</span>}
+                  >
+                    <Input prefix={<TeamOutlined style={{ color: '#94a3b8' }} />} placeholder="Diễn viên A, Diễn viên B" style={{ borderRadius: '6px' }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item
+                label={<span><AlignLeftOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Tóm tắt nội dung phim</strong></span>}
+                name="description"
+                rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}
+              >
+                <TextArea rows={4} placeholder="Nhập tóm tắt nội dung phim giúp khán giả nắm rõ cốt truyện..." style={{ borderRadius: '6px' }} />
+              </Form.Item>
+            </div>
 
-            <Row gutter={16}>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item
-                  label="Thể loại"
-                  name="genres"
-                  rules={[{ required: true, message: 'Vui lòng chọn thể loại!' }]}
-                >
-                  <Select mode="multiple" placeholder="Chọn thể loại">
-                    <Select.Option value="Hành động">Hành động</Select.Option>
-                    <Select.Option value="Tình cảm">Tình cảm</Select.Option>
-                    <Select.Option value="Kinh dị">Kinh dị</Select.Option>
-                    <Select.Option value="Hài hước">Hài hước</Select.Option>
-                    <Select.Option value="Viễn tưởng">Viễn tưởng</Select.Option>
-                    <Select.Option value="Kỳ ảo">Kỳ ảo</Select.Option>
-                    <Select.Option value="Tâm lý">Tâm lý</Select.Option>
-                    <Select.Option value="Tội phạm">Tội phạm</Select.Option>
-                    <Select.Option value="Chiến tranh">Chiến tranh</Select.Option>
-                    <Select.Option value="Xã hội">Xã hội</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item
-                  label="Diễn viên"
-                  name="cast"
-                  help="Phân tách bằng dấu phẩy (,)"
-                >
-                  <Input placeholder="Diễn viên A, Diễn viên B" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Đạo diễn" name="director">
-                  <Input prefix={<UserOutlined />} placeholder="Tên đạo diễn" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Quốc gia" name="country">
-                  <Input prefix={<GlobalOutlined />} placeholder="Ví dụ: Việt Nam, Mỹ..." />
-                </Form.Item>
-              </Col>
-            </Row>
+            {/* SECTION 3: LỊCH TRÌNH CHIẾU */}
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '2px solid #e11d48', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>3. Thời gian phát hành</span>
+              </div>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label={<span><CalendarOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Ngày khởi chiếu</strong></span>}
+                    name="releaseDate"
+                    rules={[{ required: true, message: 'Chọn ngày chiếu!' }]}
+                  >
+                    <DatePicker style={{ width: '100%', borderRadius: '6px' }} format="DD/MM/YYYY" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label={<span><CalendarOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Ngày kết thúc dự kiến</strong></span>}
+                    name="endDate"
+                    rules={[
+                      { required: true, message: 'Chọn ngày kết thúc!' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || !getFieldValue('releaseDate') || value.isAfter(getFieldValue('releaseDate')) || value.isSame(getFieldValue('releaseDate'))) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(new Error('Ngày kết thúc phải sau hoặc bằng ngày chiếu!'));
+                        },
+                      }),
+                    ]}
+                  >
+                    <DatePicker style={{ width: '100%', borderRadius: '6px' }} format="DD/MM/YYYY" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
 
-            <Row gutter={16}>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item
-                  label="Thời lượng (phút)"
-                  name="duration"
-                  rules={[{ required: true, message: 'Nhập thời lượng!' }]}
-                >
-                  <InputNumber min={1} style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item
-                  label="Ngày khởi chiếu"
-                  name="releaseDate"
-                  rules={[{ required: true, message: 'Chọn ngày chiếu!' }]}
-                >
-                  <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item
-                  label="Ngày kết thúc"
-                  name="endDate"
-                  rules={[
-                    { required: true, message: 'Chọn ngày kết thúc!' },
-                    ({ getFieldValue }) => ({
-                      validator(_, value) {
-                        if (!value || !getFieldValue('releaseDate') || value.isAfter(getFieldValue('releaseDate')) || value.isSame(getFieldValue('releaseDate'))) {
-                          return Promise.resolve();
-                        }
-                        return Promise.reject(new Error('Ngày kết thúc phải sau hoặc bằng ngày chiếu!'));
-                      },
-                    }),
-                  ]}
-                >
-                  <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Phân loại độ tuổi" name="ageRating">
-                  <Select>
-                    <Select.Option value="P">P - Mọi lứa tuổi</Select.Option>
-                    <Select.Option value="K">K - Dưới 13 tuổi có giám hộ</Select.Option>
-                    <Select.Option value="T13">T13 - Trên 13 tuổi</Select.Option>
-                    <Select.Option value="T16">T16 - Trên 16 tuổi</Select.Option>
-                    <Select.Option value="T18">T18 - Trên 18 tuổi</Select.Option>
-                    <Select.Option value="C">C - Cấm phổ biến</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
+            {/* SECTION 4: HÌNH ẢNH & ĐƯỜNG DẪN TRUYỀN THÔNG */}
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '2px solid #e11d48', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>4. Hình ảnh & Trailer</span>
+              </div>
+              <Row gutter={16}>
+                <Col xs={24} md={12}>
+                  <Form.Item label={<span><PictureOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Poster (Ảnh dọc)</strong></span>}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <Form.Item name="posterUrl" noStyle>
+                          <Input prefix={<LinkOutlined style={{ color: '#94a3b8' }} />} placeholder="https://domain.com/poster.jpg" style={{ borderRadius: '6px', flex: 1 }} />
+                        </Form.Item>
+                        <Upload
+                          accept="image/*"
+                          showUploadList={false}
+                          beforeUpload={async (file) => {
+                            try {
+                              const compressedBase64 = await compressImage(file, 600, 0.7);
+                              antdForm.setFieldValue('posterUrl', compressedBase64);
+                              void message.success('Đã chọn và xử lý ảnh Poster thành công!');
+                            } catch (error) {
+                              void message.error('Lỗi khi xử lý ảnh!');
+                            }
+                            return false;
+                          }}
+                        >
+                          <Button style={{ borderRadius: '6px' }}>Chọn file</Button>
+                        </Upload>
+                      </div>
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prevValues, currentValues) => prevValues.posterUrl !== currentValues.posterUrl}
+                      >
+                        {({ getFieldValue }) => {
+                          const url = getFieldValue('posterUrl');
+                          return url ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '8px', borderRadius: '8px' }}>
+                              <img
+                                src={url}
+                                alt="Poster Preview"
+                                referrerPolicy="no-referrer"
+                                style={{
+                                  height: '250px',
+                                  objectFit: 'cover',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                }}
+                              />
+                            </div>
+                          ) : null;
+                        }}
+                      </Form.Item>
+                    </div>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label={<span><YoutubeOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Trailer URL (Youtube)</strong></span>}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <Form.Item name="trailerUrl" noStyle>
+                        <Input prefix={<LinkOutlined style={{ color: '#94a3b8' }} />} placeholder="https://youtube.com/watch?v=..." style={{ borderRadius: '6px' }} />
+                      </Form.Item>
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prevValues, currentValues) => prevValues.trailerUrl !== currentValues.trailerUrl}
+                      >
+                        {({ getFieldValue }) => {
+                          const url = getFieldValue('trailerUrl');
+                          const embedUrl = getYouTubeEmbedUrl(url);
+                          return embedUrl ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '8px', borderRadius: '8px' }}>
+                              <iframe
+                                width="100%"
+                                height="250px"
+                                src={embedUrl}
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                style={{ borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                              ></iframe>
+                            </div>
+                          ) : null;
+                        }}
+                      </Form.Item>
+                    </div>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
 
-            <Divider style={{ margin: '16px 0' }} />
-
-            <Row gutter={16}>
-              <Col xs={24} md={8}>
-                <Form.Item label="Poster URL" name="posterUrl">
-                  <Input prefix={<LinkOutlined />} placeholder="https://domain.com/poster.jpg" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item label="Backdrop URL" name="backdropUrl">
-                  <Input prefix={<LinkOutlined />} placeholder="https://domain.com/backdrop.jpg" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item label="Trailer URL (Youtube)" name="trailerUrl">
-                  <Input prefix={<LinkOutlined />} placeholder="https://youtube.com/..." />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={24} align="bottom" style={{ marginTop: '16px' }}>
+            {/* FORM FOOTER CONTROLS */}
+            <Row gutter={24} align="middle">
               <Col xs={24} sm={8} md={6}>
                 <Form.Item
                   name="isActive"
                   valuePropName="checked"
-                  label="Hiển thị phim"
+                  label={<span><EyeOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Trạng thái hiển thị</strong></span>}
                   style={{ marginBottom: 0 }}
                 >
-                  <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" style={{ width: '70px' }} />
+                  <Switch checkedChildren="Hiện trên Web" unCheckedChildren="Ẩn trên Web" style={{ width: '130px' }} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={16} md={18}>
@@ -558,8 +693,16 @@ function ManageMovie() {
                     htmlType="submit"
                     icon={<SaveOutlined />}
                     loading={isSaving}
-                    block
                     size="large"
+                    style={{
+                      background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+                      borderColor: '#e11d48',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      height: '46px',
+                      float: 'right',
+                      minWidth: '200px'
+                    }}
                   >
                     {isSaving ? 'Đang lưu phim...' : editingId ? 'Cập Nhật Thay Đổi' : 'Thêm Phim Mới'}
                   </Button>
@@ -623,35 +766,6 @@ function ManageMovie() {
       >
         {selectedMovie && (
           <div style={{ overflowX: 'hidden' }}>
-            {selectedMovie.backdropUrl && (
-              <div
-                style={{
-                  width: '100%',
-                  height: '200px',
-                  backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.85)), url(${selectedMovie.backdropUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  padding: '16px',
-                  color: '#fff',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '22px', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
-                    {selectedMovie.title}
-                  </div>
-                  {selectedMovie.originalTitle && (
-                    <div style={{ fontSize: '13px', fontStyle: 'italic', opacity: 0.85, textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-                      {selectedMovie.originalTitle}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             <div style={{ padding: '0 16px' }}>
               <Row gutter={[24, 24]}>
                 <Col xs={24} sm={8} style={{ textAlign: 'center' }}>
@@ -706,16 +820,14 @@ function ManageMovie() {
                 </Col>
 
                 <Col xs={24} sm={16} style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
-                  {!selectedMovie.backdropUrl && (
-                    <div style={{ marginBottom: '12px', wordWrap: 'break-word' }}>
-                      <h2 style={{ margin: 0, fontSize: '20px' }}>{selectedMovie.title}</h2>
-                      {selectedMovie.originalTitle && (
-                        <p style={{ margin: '2px 0 0 0', color: '#8c8c8c', fontStyle: 'italic' }}>
-                          {selectedMovie.originalTitle}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ marginBottom: '12px', wordWrap: 'break-word' }}>
+                    <h2 style={{ margin: 0, fontSize: '20px' }}>{selectedMovie.title}</h2>
+                    {selectedMovie.originalTitle && (
+                      <p style={{ margin: '2px 0 0 0', color: '#8c8c8c', fontStyle: 'italic' }}>
+                        {selectedMovie.originalTitle}
+                      </p>
+                    )}
+                  </div>
 
                   <div style={{ marginBottom: '16px' }}>
                     <h4 style={{ margin: '0 0 4px 0', color: '#262626', fontWeight: 600 }}>Tóm tắt nội dung:</h4>
