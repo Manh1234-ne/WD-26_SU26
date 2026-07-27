@@ -8,6 +8,9 @@ import {
   deleteInventory,
   restockInventory,
   getLowStock,
+  getAvailableInventory,
+  getAvailableInventoryById
+
 } from "../controllers/inventoryController.js";
 
 const router = express.Router();
@@ -26,7 +29,7 @@ router.post("/", createInventory);
 
 router.put("/:id", updateInventory);
 
-router.patch("/:id/restock",restockInventory);
+router.patch("/:id/restock", restockInventory);
 
 router.delete("/:id", deleteInventory);
 
