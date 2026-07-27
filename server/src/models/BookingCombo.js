@@ -20,7 +20,13 @@ const bookingComboSchema = new mongoose.Schema(
       min: 1,
     },
 
-    price: {
+    unitPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    totalPrice: {
       type: Number,
       required: true,
       min: 0,

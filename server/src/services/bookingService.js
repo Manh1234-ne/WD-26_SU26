@@ -4,7 +4,14 @@ import BookingCombo from "../models/BookingCombo.js";
 import Showtime from "../models/Showtime.js";
 import Seat from "../models/Seat.js";
 import Voucher from "../models/Voucher.js";
-import { getComboPrice } from "./comboService.js";
+
+import {
+  getComboPrice,
+} from "./comboService.js";
+
+import {
+  reserveComboStock,
+} from "./inventoryService.js";
 
 export const createBookingService = async ({
   user,
@@ -14,14 +21,19 @@ export const createBookingService = async ({
   comboIds = [],
   customExpiresAt,
 }) => {
-  const showtimeExists = await Showtime.findById(showtime);
+  const showtimeExists =
+    await Showtime.findById(showtime);
 
   if (!showtimeExists) {
-    throw new Error("Không tìm thấy suất chiếu");
+    throw new Error(
+      "Không tìm thấy suất chiếu"
+    );
   }
 
   const seats = await Seat.find({
-    _id: { $in: seatIds },
+    _id: {
+      $in: seatIds,
+    },
     room: showtimeExists.room,
     isActive: true,
   });
@@ -63,7 +75,13 @@ export const createBookingService = async ({
     totalComboPrice,
   } = await getComboPrice(comboIds);
 
-  const orderAmount = totalSeatPrice + totalComboPrice;
+  if (comboIds.length > 0) {
+    await reserveComboStock(comboIds);
+  }
+
+  const orderAmount =
+    totalSeatPrice +
+    totalComboPrice;
 
   let voucher = null;
   let discountAmount = 0;
@@ -97,7 +115,8 @@ export const createBookingService = async ({
 
     if (
       voucher.usageLimit != null &&
-      voucher.usedCount >= voucher.usageLimit
+      voucher.usedCount >=
+        voucher.usageLimit
     ) {
       throw new Error(
         "Voucher đã hết lượt sử dụng"
@@ -112,7 +131,8 @@ export const createBookingService = async ({
 
     if (
       voucher.usageLimit != null &&
-      voucher.usedCount + pendingBookingCount >=
+      voucher.usedCount +
+        pendingBookingCount >=
         voucher.usageLimit
     ) {
       throw new Error(
@@ -234,11 +254,19 @@ export const createBookingService = async ({
   const bookingSeats =
     seats.map((seat) => ({
       booking: booking._id,
+
       showtime,
+
       seat: seat._id,
+
       seatCode: seat.code,
+
       seatType: seat.type,
-      price: showtimeExists.basePrice * seat.priceMultiplier,
+
+      price:
+        showtimeExists.basePrice *
+        seat.priceMultiplier,
+
       status: "held",
     }));
 
@@ -247,14 +275,24 @@ export const createBookingService = async ({
   );
 
   if (combos.length > 0) {
-    const bookingCombos = combos.map((item) => ({
-  booking: booking._id,
-  combo: item.combo,
-  quantity: item.quantity,
-  price: item.price,
-}));
+    const bookingCombos =
+      combos.map((combo) => ({
+        booking: booking._id,
 
-await BookingCombo.insertMany(bookingCombos);
+        combo: combo._id,
+
+        quantity: combo.quantity,
+
+        unitPrice: combo.price,
+
+        totalPrice:
+          combo.price *
+          combo.quantity,
+      }));
+
+    await BookingCombo.insertMany(
+      bookingCombos
+    );
   }
 
   return booking;

@@ -5,7 +5,13 @@ import qs from "qs";
 import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import BookingCombo from "../models/BookingCombo.js";
 import Voucher from "../models/Voucher.js";
+
+import {
+  deductReservedStock,
+  releaseReservedStock,
+} from "./inventoryService.js";
 
 /**
  * SORT OBJECT (Chuẩn VNPay)
@@ -120,7 +126,9 @@ export const verifyVnPayReturnService = async (params) => {
   const vnp_Params = { ...params };
   const secureHash = vnp_Params.vnp_SecureHash;
 
-  if (!secureHash) throw new Error("Thiếu chữ ký VNPay");
+  if (!secureHash) {
+    throw new Error("Thiếu chữ ký VNPay");
+  }
 
   delete vnp_Params.vnp_SecureHash;
   delete vnp_Params.vnp_SecureHashType;
@@ -137,77 +145,174 @@ export const verifyVnPayReturnService = async (params) => {
     throw new Error("Sai chữ ký VNPay");
   }
 
-  const payment = await Payment.findById(vnp_Params.vnp_TxnRef);
-  if (!payment) throw new Error("Không tìm thấy payment");
+  const payment = await Payment.findById(
+    vnp_Params.vnp_TxnRef
+  );
 
-  const booking = await Booking.findById(payment.booking);
-  if (!booking) throw new Error("Không tìm thấy booking");
-
-  if (payment.status !== "pending") {
-    return { payment, booking };
+  if (!payment) {
+    throw new Error("Không tìm thấy payment");
   }
 
-  const responseCode = vnp_Params.vnp_ResponseCode;
+  const booking = await Booking.findById(
+    payment.booking
+  );
 
-  if (responseCode === "00") {
-    const bookingSeats = await BookingSeat.find({ booking: booking._id });
-    const seatIds = bookingSeats.map((bs) => bs.seat);
-    const alreadyBooked = await BookingSeat.findOne({
-      showtime: booking.showtime,
-      seat: { $in: seatIds },
-      status: "booked",
+  if (!booking) {
+    throw new Error("Không tìm thấy booking");
+  }
+
+  if (payment.status !== "pending") {
+    return {
+      payment,
+      booking,
+    };
+  }
+
+  const responseCode =
+    vnp_Params.vnp_ResponseCode;
+
+  /**
+   * Lấy combo của booking
+   */
+  const bookingCombos =
+    await BookingCombo.find({
+      booking: booking._id,
     });
+
+  const comboIds = bookingCombos.map(
+    (item) => ({
+      combo: item.combo,
+      quantity: item.quantity,
+    })
+  );
+
+  /**
+   * Thanh toán thành công
+   */
+  if (responseCode === "00") {
+    /**
+     * Kiểm tra ghế lần cuối
+     */
+    const bookingSeats =
+      await BookingSeat.find({
+        booking: booking._id,
+      });
+
+    const seatIds = bookingSeats.map(
+      (item) => item.seat
+    );
+
+    const alreadyBooked =
+      await BookingSeat.findOne({
+        showtime: booking.showtime,
+        seat: {
+          $in: seatIds,
+        },
+        status: "booked",
+      });
 
     if (alreadyBooked) {
       payment.status = "failed";
-      payment.note = "Ghế đã được người khác thanh toán trước.";
+
+      payment.note =
+        "Ghế đã được người khác thanh toán trước.";
+
       booking.status = "cancelled";
 
       await BookingSeat.updateMany(
-        { booking: booking._id },
-        { status: "cancelled" }
+        {
+          booking: booking._id,
+        },
+        {
+          status: "cancelled",
+        }
       );
+
+      /**
+       * Hoàn reserved kho combo
+       */
+      await releaseReservedStock(comboIds);
 
       await payment.save();
       await booking.save();
-      throw new Error("Ghế đã được người khác thanh toán trước.");
+
+      throw new Error(
+        "Ghế đã được người khác thanh toán trước."
+      );
     }
 
     payment.status = "paid";
-    payment.transactionId = vnp_Params.vnp_TransactionNo;
+
+    payment.transactionId =
+      vnp_Params.vnp_TransactionNo;
+
     payment.paidAt = new Date();
 
     booking.status = "confirmed";
 
+    /**
+     * Voucher
+     */
     if (booking.voucher) {
-    await Voucher.findByIdAndUpdate(
-      booking.voucher,
+      await Voucher.findByIdAndUpdate(
+        booking.voucher,
+        {
+          $inc: {
+            usedCount: 1,
+          },
+        }
+      );
+    }
+
+    /**
+     * Ghế booked
+     */
+    await BookingSeat.updateMany(
       {
-        $inc: {
-          usedCount: 1,
-        },
+        booking: booking._id,
+      },
+      {
+        status: "booked",
       }
     );
+
+    /**
+     * Trừ kho thật
+     */
+    await deductReservedStock(comboIds);
   }
 
-    await BookingSeat.updateMany(
-      { booking: booking._id },
-      { status: "booked" }
-    );
-  } else {
+  /**
+   * Thanh toán thất bại
+   */
+  else {
     payment.status = "failed";
-    payment.note = `VNPay error: ${responseCode}`;
+
+    payment.note =
+      `VNPay error: ${responseCode}`;
 
     booking.status = "cancelled";
 
     await BookingSeat.updateMany(
-      { booking: booking._id },
-      { status: "cancelled" }
+      {
+        booking: booking._id,
+      },
+      {
+        status: "cancelled",
+      }
     );
+
+    /**
+     * Hoàn reserved kho
+     */
+    await releaseReservedStock(comboIds);
   }
 
   await payment.save();
   await booking.save();
 
-  return { payment, booking };
+  return {
+    payment,
+    booking,
+  };
 };

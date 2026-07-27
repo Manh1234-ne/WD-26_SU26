@@ -6,6 +6,10 @@ import { asyncHandler } from "../utils/asynHandler.js";
 import { createBookingService } from "../services/bookingService.js";
 import BookingCombo from "../models/BookingCombo.js";
 
+import {
+  releaseReservedStock,
+} from "../services/inventoryService.js";
+
 const ok = (res, data) =>
   res.status(200).json({
     success: true,
@@ -27,7 +31,7 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds, voucherCode, comboIds, customExpiresAt } = req.body;
+    const { user, showtime, seatIds, voucherCode, comboIds = [], customExpiresAt } = req.body;
 
     if (!user || !showtime || !seatIds?.length) {
       return fail(
@@ -36,7 +40,6 @@ export const createBooking = asyncHandler(
         "Vui lòng cung cấp đầy đủ thông tin"
       );
     }
-
     const booking = await createBookingService({
       user,
       showtime,
@@ -147,15 +150,38 @@ export const cancelBooking = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy booking");
   }
 
+  if (booking.status === "cancelled") {
+    return fail(res, 400, "Booking đã bị hủy");
+  }
+
   booking.status = "cancelled";
   booking.cancelledAt = new Date();
 
   await booking.save();
 
   await BookingSeat.updateMany(
-    { booking: booking._id },
-    { status: "cancelled" }
+    {
+      booking: booking._id,
+    },
+    {
+      status: "cancelled",
+    }
   );
+
+  const bookingCombos =
+    await BookingCombo.find({
+      booking: booking._id,
+    });
+
+  if (bookingCombos.length > 0) {
+    const comboIds =
+      bookingCombos.map((item) => ({
+        combo: item.combo,
+        quantity: item.quantity,
+      }));
+
+    await releaseReservedStock(comboIds);
+  }
 
   return ok(res, booking);
 });
@@ -173,10 +199,15 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     return fail(res, 400, "Booking không ở trạng thái chờ thanh toán");
   }
 
+  const orderAmount =
+      booking.totalSeatPrice +
+      (booking.totalComboPrice || 0);
+
+
   if (!voucherCode) {
     booking.voucher = undefined;
     booking.discountAmount = 0;
-    booking.finalAmount = booking.totalSeatPrice;
+    booking.finalAmount = orderAmount;
     await booking.save();
 
     const updatedBooking = await Booking.findById(booking._id)
@@ -258,7 +289,7 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     }
   }
 
-  if (booking.totalSeatPrice < voucher.minOrderAmount) {
+  if (orderAmount < voucher.minOrderAmount) {
     return fail(
       res,
       400,
@@ -268,7 +299,7 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
 
   let discountAmount = 0;
   if (voucher.discountType === "percent") {
-    discountAmount = (booking.totalSeatPrice * voucher.discountValue) / 100;
+    discountAmount = (orderAmount * voucher.discountValue) / 100;
     if (voucher.maxDiscountAmount && discountAmount > voucher.maxDiscountAmount) {
       discountAmount = voucher.maxDiscountAmount;
     }
@@ -276,13 +307,13 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     discountAmount = voucher.discountValue;
   }
 
-  if (discountAmount > booking.totalSeatPrice) {
-    discountAmount = booking.totalSeatPrice;
+  if (discountAmount > orderAmount) {
+    discountAmount = orderAmount;
   }
 
   booking.voucher = voucher._id;
   booking.discountAmount = discountAmount;
-  booking.finalAmount = booking.totalSeatPrice - discountAmount;
+  booking.finalAmount = orderAmount - discountAmount;
 
   await booking.save();
 

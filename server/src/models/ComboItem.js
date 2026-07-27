@@ -8,10 +8,10 @@ const comboItemSchema = new mongoose.Schema(
       required: true,
     },
 
-    itemName: {
-      type: String,
+    inventoryItem: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InventoryItem",
       required: true,
-      trim: true,
     },
 
     quantity: {
