@@ -7,10 +7,8 @@ import {
   createSeat,
 } from '../../features/seat/seat.service'
 import { getRooms } from '../../features/room/room.service'
-import { getCinemas } from '../../features/cinema/cinema.service'
 import type { Seat, SeatPayload } from '../../features/seat/seat.types'
 import type { Room } from '../../features/room/room.types'
-import type { Cinema } from '../../features/cinema/cinema.types'
 import {
   Card,
   Typography,
@@ -40,16 +38,13 @@ import {
 const { Title, Text } = Typography
 
 function ManageSeat() {
-  const [cinemas, setCinemas] = useState<Cinema[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
 
-  const [selectedCinema, setSelectedCinema] = useState<string | null>(null)
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
 
   const [currentRoomInfo, setCurrentRoomInfo] = useState<Room | null>(null)
   const [seats, setSeats] = useState<Seat[]>([])
 
-  const [isLoadingCinemas, setIsLoadingCinemas] = useState(true)
   const [isLoadingRooms, setIsLoadingRooms] = useState(false)
   const [isLoadingSeats, setIsLoadingSeats] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -61,45 +56,19 @@ function ManageSeat() {
   const [form] = Form.useForm()
 
   useEffect(() => {
-    const fetchCinemas = async () => {
+    const fetchRooms = async () => {
+      setIsLoadingRooms(true)
       try {
-        const data = await getCinemas({ limit: 1000 })
-        if (data && data.cinemas) {
-          setCinemas(data.cinemas)
-        }
+        const data = await getRooms()
+        setRooms(data)
       } catch {
-        void message.error('Không thể tải danh sách rạp.')
+        void message.error('Không thể tải danh sách phòng chiếu.')
       } finally {
-        setIsLoadingCinemas(false)
+        setIsLoadingRooms(false)
       }
     }
-    void fetchCinemas()
+    void fetchRooms()
   }, [])
-
-  useEffect(() => {
-    if (selectedCinema) {
-      const fetchRooms = async () => {
-        setIsLoadingRooms(true)
-        setSelectedRoom(null)
-        setSeats([])
-        setCurrentRoomInfo(null)
-        try {
-          const data = await getRooms({ cinema: selectedCinema })
-          setRooms(data)
-        } catch {
-          void message.error('Không thể tải danh sách phòng chiếu.')
-        } finally {
-          setIsLoadingRooms(false)
-        }
-      }
-      void fetchRooms()
-    } else {
-      setRooms([])
-      setSelectedRoom(null)
-      setSeats([])
-      setCurrentRoomInfo(null)
-    }
-  }, [selectedCinema])
 
   const loadSeats = async (roomId: string) => {
     setIsLoadingSeats(true)
@@ -273,29 +242,15 @@ function ManageSeat() {
           }
         >
           <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <div style={{ marginBottom: '8px', fontWeight: 500 }}>Chọn Rạp Chiếu:</div>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="Vui lòng chọn rạp..."
-                options={cinemas.map(c => ({ label: c.name, value: c._id }))}
-                value={selectedCinema}
-                onChange={(val) => setSelectedCinema(val)}
-                loading={isLoadingCinemas}
-                showSearch
-                optionFilterProp="label"
-              />
-            </Col>
-            <Col xs={24} sm={12}>
+            <Col xs={24}>
               <div style={{ marginBottom: '8px', fontWeight: 500 }}>Chọn Phòng Chiếu:</div>
               <Select
                 style={{ width: '100%' }}
-                placeholder={selectedCinema ? "Vui lòng chọn phòng..." : "Hãy chọn rạp trước"}
+                placeholder="Vui lòng chọn phòng..."
                 options={rooms.map(r => ({ label: `${r.name} (${r.roomType})`, value: r._id }))}
                 value={selectedRoom}
                 onChange={(val) => setSelectedRoom(val)}
                 loading={isLoadingRooms}
-                disabled={!selectedCinema}
                 showSearch
                 optionFilterProp="label"
               />

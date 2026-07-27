@@ -1,6 +1,5 @@
 import Showtime from "../models/Showtime.js";
 import Movie from "../models/Movie.js";
-import Cinema from "../models/Cinema.js";
 import Room from "../models/Room.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 
@@ -25,16 +24,12 @@ const fail = (res, status, message) =>
   });
 
 export const getAllShowtimes = asyncHandler(async (req, res) => {
-  const { movie, cinema, date, includePast } = req.query;
+  const { movie, date, includePast } = req.query;
   const query = {};
 
   if (movie) {
     query.movie = movie;
   }
-  if (cinema) {
-    query.cinema = cinema;
-  }
-
 
   if (date) {
     const parsedDate = new Date(date);
@@ -60,7 +55,6 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
 
   const showtimes = await Showtime.find(query)
     .populate("movie")
-    .populate("cinema")
     .populate("room")
     .sort({ startTime: 1 });
 
@@ -70,7 +64,6 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
 export const getShowtimeById = asyncHandler(async (req, res) => {
   const showtime = await Showtime.findById(req.params.id)
     .populate("movie")
-    .populate("cinema")
     .populate("room");
 
   if (!showtime) {
@@ -83,7 +76,6 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
 export const createShowtime = asyncHandler(async (req, res) => {
   const {
     movie,
-    cinema,
     room,
     startTime,
     endTime,
@@ -94,11 +86,9 @@ export const createShowtime = asyncHandler(async (req, res) => {
   } = req.body;
 
   const movieExists = await Movie.findById(movie);
-  const cinemaExists = await Cinema.findById(cinema);
   const roomExists = await Room.findById(room);
 
   if (!movieExists) return fail(res, 404, "Không tìm thấy phim");
-  if (!cinemaExists) return fail(res, 404, "Không tìm thấy rạp");
   if (!roomExists) return fail(res, 404, "Không tìm thấy phòng");
 
   const start = new Date(startTime);
@@ -127,7 +117,6 @@ export const createShowtime = asyncHandler(async (req, res) => {
 
   const showtime = await Showtime.create({
     movie,
-    cinema,
     room,
     startTime: start,
     endTime: end,
@@ -158,15 +147,11 @@ export const updateShowtime = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy suất chiếu");
   }
 
-  const { movie, cinema, room, startTime, endTime } = req.body;
+  const { movie, room, startTime, endTime } = req.body;
 
   if (movie) {
     const movieExists = await Movie.findById(movie);
     if (!movieExists) return fail(res, 404, "Không tìm thấy phim");
-  }
-  if (cinema) {
-    const cinemaExists = await Cinema.findById(cinema);
-    if (!cinemaExists) return fail(res, 404, "Không tìm thấy rạp");
   }
   if (room) {
     const roomExists = await Room.findById(room);

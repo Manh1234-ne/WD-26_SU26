@@ -54,6 +54,10 @@ const bookingSchema = new mongoose.Schema(
     cancelledAt: {
       type: Date,
     },
+    totalComboPrice: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

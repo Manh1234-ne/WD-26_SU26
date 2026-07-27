@@ -19,6 +19,7 @@ export const createBookingService = async ({
   seatIds,
   voucherCode,
   comboIds = [],
+  customExpiresAt,
 }) => {
   const showtimeExists =
     await Showtime.findById(showtime);
@@ -41,29 +42,33 @@ export const createBookingService = async ({
     throw new Error("Ghế không hợp lệ");
   }
 
-  const bookedSeats =
-    await BookingSeat.find({
-      showtime,
-      seat: {
-        $in: seatIds,
-      },
-      status: {
-        $in: ["held", "booked"],
-      },
-    });
 
-  if (bookedSeats.length > 0) {
-    throw new Error("Ghế đã được đặt");
+  const activeBookings = await Booking.find({
+    showtime,
+    $or: [
+      { status: { $in: ["confirmed", "completed"] } },
+      { status: "pending", expiresAt: { $gt: new Date() } }
+    ]
+  }).select("_id");
+  const activeBookingIds = activeBookings.map((b) => b._id);
+  const unavailableSeats = await BookingSeat.find({
+    showtime,
+    seat: { $in: seatIds },
+    booking: { $in: activeBookingIds },
+    status: { $in: ["booked", "held"] },
+  });
+
+  if (unavailableSeats.length > 0) {
+    throw new Error("Ghế đã được đặt hoặc đang được giữ bởi người khác");
   }
 
-  const totalSeatPrice =
-    seats.reduce(
-      (sum, seat) =>
-        sum +
-        showtimeExists.basePrice *
-          seat.priceMultiplier,
-      0
-    );
+  const totalSeatPrice = seats.reduce(
+    (sum, seat) =>
+      sum +
+      showtimeExists.basePrice *
+      seat.priceMultiplier,
+    0
+  );
 
   const {
     combos,
@@ -193,7 +198,7 @@ export const createBookingService = async ({
       if (
         voucher.maxDiscountAmount &&
         discountAmount >
-          voucher.maxDiscountAmount
+        voucher.maxDiscountAmount
       ) {
         discountAmount =
           voucher.maxDiscountAmount;
@@ -221,31 +226,30 @@ export const createBookingService = async ({
       discountAmount;
   }
 
-  const booking =
-    await Booking.create({
-      bookingCode: `BK${Date.now()}`,
+  const maxExpiresAt = Date.now() + 5 * 60 * 1000;
+  const resolvedExpiresAt =
+    customExpiresAt &&
+      customExpiresAt > Date.now() &&
+      customExpiresAt <= maxExpiresAt
+      ? new Date(customExpiresAt)
+      : new Date(maxExpiresAt);
 
-      user,
+  const booking = await Booking.create({
+    bookingCode: `BK${Date.now()}`,
+    user,
+    showtime,
 
-      showtime,
+    voucher: voucher?._id,
 
-      voucher: voucher?._id,
+    totalSeatPrice,
+    totalComboPrice, // <-- thêm dòng này
+    discountAmount,
+    finalAmount,
 
-      totalSeatPrice,
+    status: "pending",
 
-      totalComboPrice,
-
-      discountAmount,
-
-      finalAmount,
-
-      status: "pending",
-
-      expiresAt: new Date(
-        Date.now() +
-          10 * 60 * 1000
-      ),
-    });
+    expiresAt: resolvedExpiresAt,
+  });
 
   const bookingSeats =
     seats.map((seat) => ({

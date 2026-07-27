@@ -5,7 +5,7 @@ export type Showtime = {
         title: string,
         imageUrl: string,
     },
-    cinema: {
+    cinema?: {
         _id: string,
         name: string,
     },
