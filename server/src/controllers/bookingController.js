@@ -4,6 +4,7 @@ import BookingSeat from "../models/BookingSeat.js";
 import Voucher from "../models/Voucher.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 import { createBookingService } from "../services/bookingService.js";
+import BookingCombo from "../models/BookingCombo.js";
 
 const ok = (res, data) =>
   res.status(200).json({
@@ -26,7 +27,7 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds, voucherCode, customExpiresAt } = req.body;
+    const { user, showtime, seatIds, voucherCode, comboIds, customExpiresAt } = req.body;
 
     if (!user || !showtime || !seatIds?.length) {
       return fail(
@@ -41,6 +42,7 @@ export const createBooking = asyncHandler(
       showtime,
       seatIds,
       voucherCode,
+      comboIds,
       customExpiresAt
     });
 
@@ -73,9 +75,14 @@ export const getBookingById = asyncHandler(async (req, res) => {
     booking: booking._id,
   });
 
+  const combos = await BookingCombo.find({
+    booking: booking._id,
+  }).populate("combo");
+
   return ok(res, {
     booking,
     seats,
+    combos,
   });
 });
 
