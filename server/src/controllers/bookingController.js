@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
 import Voucher from "../models/Voucher.js";
@@ -26,7 +27,7 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds, voucherCode, comboIds } = req.body;
+    const { user, showtime, seatIds, voucherCode, comboIds, customExpiresAt } = req.body;
 
     if (!user || !showtime || !seatIds?.length) {
       return fail(
@@ -42,20 +43,26 @@ export const createBooking = asyncHandler(
       seatIds,
       voucherCode,
       comboIds,
+      customExpiresAt
     });
 
     return created(res, booking);
   });
 
 export const getBookingById = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id)
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id)
     .populate("user")
     .populate("voucher")
     .populate({
       path: "showtime",
       populate: [
         { path: "movie" },
-        { path: "cinema" },
         { path: "room" }
       ]
     });
@@ -79,6 +86,22 @@ export const getBookingById = asyncHandler(async (req, res) => {
   });
 });
 
+export const getAllBookings = asyncHandler(async (req, res) => {
+  const bookings = await Booking.find()
+    .populate("user")
+    .populate("voucher")
+    .populate({
+      path: "showtime",
+      populate: [
+        { path: "movie" },
+        { path: "room" }
+      ]
+    })
+    .sort({ createdAt: -1 });
+
+  return ok(res, bookings);
+});
+
 export const getBookingsByUser = asyncHandler(async (req, res) => {
   const bookings = await Booking.find({
     user: req.params.userId,
@@ -87,7 +110,7 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
       path: "showtime",
       populate: [
         { path: "movie" },
-        { path: "cinema" },
+        { path: "room" },
       ],
     })
     .sort({ createdAt: -1 });

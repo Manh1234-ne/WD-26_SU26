@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   createBooking,
+  getAllBookings,
   getBookingById,
   getBookingsByUser,
   cancelBooking,
@@ -11,6 +12,7 @@ import {
 
 const routerBooking = express.Router();
 
+routerBooking.get("/", getAllBookings);
 routerBooking.post("/", createBooking);
 
 routerBooking.get("/user/:userId", getBookingsByUser);

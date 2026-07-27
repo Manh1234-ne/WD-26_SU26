@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getShowtimeById } from '../../features/showtime/showtime.service'
@@ -9,6 +9,8 @@ import { format } from 'date-fns'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 import Loading from '../../components/Loading/Loading'
+import { cancelBooking, getBookingsByUser, getBookingById } from '../../features/booking/booking.service'
+import { ClockCircleOutlined } from '@ant-design/icons'
 
 interface Seat {
     _id: string
@@ -28,14 +30,11 @@ function SeatSelection() {
     const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    const SESSION_KEY = `cinema_holding_${showtimeId}`;
+    const [holdingSession, setHoldingSession] = useState<{ bookingId: string; expiresAt: number } | null>(null);
 
-    useEffect(() => {
-        if (!isAuthenticated) {
-            message.warning('Vui lòng đăng nhập để tiến hành đặt vé.')
-            navigate('/signIn')
-        }
-    }, [isAuthenticated, navigate, message])
-
+    const [holdingTimeLeft, setHoldingTimeLeft] = useState<number | null>(null)
+    const holdingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const { data: showtime, isLoading: isShowtimeLoading, error: showtimeError } = useQuery({
         queryKey: ['showtime-detail', showtimeId],
         queryFn: () => getShowtimeById(showtimeId || ''),
@@ -43,7 +42,6 @@ function SeatSelection() {
     })
 
     const roomId = showtime?.room?._id
-
 
     const { data: seatData, isLoading: isSeatsLoading, error: seatsError } = useQuery({
         queryKey: ['seats-room', roomId],
@@ -59,6 +57,113 @@ function SeatSelection() {
         },
         enabled: !!showtimeId,
     })
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            message.warning('Vui lòng đăng nhập để tiến hành đặt vé.')
+            navigate('/signIn')
+        }
+    }, [isAuthenticated, navigate, message])
+
+    useEffect(() => {
+        if (!showtimeId) return;
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw) as { bookingId: string, expiresAt: number };
+                if (Date.now() < parsed.expiresAt) {
+                    setHoldingSession(parsed);
+                }
+                else {
+                    sessionStorage.removeItem(SESSION_KEY)
+                }
+            } catch {
+                sessionStorage.removeItem(SESSION_KEY)
+            }
+        }
+    }, [showtimeId, SESSION_KEY]);
+
+    useEffect(() => {
+        if (!holdingSession) return
+        const tick = () => {
+            const remaining = Math.max(0, Math.floor((holdingSession.expiresAt - Date.now()) / 1000))
+            setHoldingTimeLeft(remaining)
+            if (remaining <= 0) {
+                if (holdingTimerRef.current) clearInterval(holdingTimerRef.current)
+                setHoldingSession(null)
+                setHoldingTimeLeft(null)
+                setSelectedSeats([])
+                sessionStorage.removeItem(SESSION_KEY)
+                Swal.fire({
+                    title: 'Hết thời gian giữ chỗ',
+                    text: 'Phần giữ ghế của bạn đã hết hạn. Vui lòng chọn lại ghế.',
+                    icon: 'warning',
+                    confirmButtonColor: '#e11d48',
+                })
+                void refetchOccupied()
+            }
+        }
+        tick()
+        holdingTimerRef.current = setInterval(tick, 1000)
+        return () => {
+            if (holdingTimerRef.current) clearInterval(holdingTimerRef.current)
+        }
+    }, [holdingSession, SESSION_KEY, refetchOccupied]);
+
+    useEffect(() => {
+        if (!showtimeId || !user?._id) return;
+
+        const cancelExistingPendingBooking = async () => {
+            const raw = sessionStorage.getItem(SESSION_KEY);
+            let keepBookingId: string | null = null;
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw) as { bookingId: string; expiresAt: number }
+                    if (parsed.expiresAt > Date.now()) {
+                        keepBookingId = parsed.bookingId
+                    }
+                } catch { }
+            }
+            try {
+                const res = await getBookingsByUser(user._id)
+                const pendingBookings = (res?.data || []).filter((b: any) => {
+                    const bShowtimeId = typeof b.showtime === 'object' ? b.showtime?._id : b.showtime;
+                    return bShowtimeId === showtimeId && b.status === "pending";
+                })
+                for (const pb of pendingBookings) {
+                    if (pb._id === keepBookingId) continue
+                    await cancelBooking(pb._id)
+                }
+                void refetchOccupied()
+            } catch (error) {
+                console.error('Error cancelling pending booking on seat selection page:', error)
+            }
+        }
+        void cancelExistingPendingBooking()
+    }, [showtimeId, user?._id, SESSION_KEY, refetchOccupied])
+
+    useEffect(() => {
+        if (!holdingSession?.bookingId || !seatData?.seats) return;
+        let isMounted = true;
+        const restoreHoldingSeats = async () => {
+            try {
+                const res = await getBookingById(holdingSession.bookingId);
+                if (!isMounted) return;
+                const bookingSeats = res?.data?.seats || [];
+                const holdingSeatIds = new Set(bookingSeats.map((bs: any) => typeof bs.seat === 'object' ? bs.seat._id : bs.seat));
+                const restored = (seatData.seats as Seat[]).filter((s) => holdingSeatIds.has(s._id));
+                if (restored.length > 0) {
+                    setSelectedSeats(restored);
+                }
+            } catch (error) {
+                console.error("Failed to restore holding seats:", error);
+            }
+        };
+        void restoreHoldingSeats();
+        return () => {
+            isMounted = false;
+        };
+    }, [holdingSession?.bookingId, seatData]);
 
     if (isShowtimeLoading || isSeatsLoading || isOccupiedLoading) {
         return <Loading fullScreen text="Đang tải phòng chiếu và sơ đồ ghế..." />
@@ -76,7 +181,14 @@ function SeatSelection() {
     }
 
     const seats = seatData.seats || []
-    const occupiedSet = new Set(occupiedSeats?.map((os: any) => os.seat) || [])
+    const occupiedSet = new Set<string>(
+        (occupiedSeats || [])
+            .filter((os: any) => {
+                const osBookingId = typeof os.booking === 'object' ? os.booking?._id : os.booking;
+                return !holdingSession?.bookingId || osBookingId !== holdingSession.bookingId;
+            })
+            .map((os: any) => typeof os.seat === 'object' ? os.seat._id : os.seat)
+    )
 
     const groupedSeats = seats.reduce((acc, seat) => {
         if (!seat.isActive) return acc
@@ -115,10 +227,9 @@ function SeatSelection() {
     }
 
     const checkAllRowsForIsolation = (selected: Seat[]) => {
-        const selectedSet = new Set(selected.map((s) => s._id))
-        const occupiedSeatSet = new Set<string>((occupiedSeats ?? []).map((os: any) => os.seat))
+        const selectedSet = new Set<string>(selected.map((s) => s._id))
         return Object.values(groupedSeats).some((rowSeats) =>
-            hasIsolatedSeat(rowSeats, occupiedSeatSet, selectedSet)
+            hasIsolatedSeat(rowSeats, occupiedSet, selectedSet)
         )
     }
 
@@ -164,6 +275,11 @@ function SeatSelection() {
         return hasIsolatedSeat(seat, occupied, selected)
     }
 
+    const formatCountdown = (seconds: number) => {
+        const m = Math.floor(seconds / 60)
+        const s = seconds % 60
+        return `${m}:${s.toString().padStart(2, '0')}`
+    }
 
     const handleBookingSubmit = async () => {
         if (selectedSeats.length === 0) {
@@ -173,32 +289,22 @@ function SeatSelection() {
 
         setIsSubmitting(true)
         try {
-            const payload = {
-                user: user?._id || user?._id,
+            if (holdingSession?.bookingId) {
+                try {
+                    await cancelBooking(holdingSession.bookingId)
+                } catch { }
+            }
+            const payload: Record<string, unknown> = {
+                user: user?._id,
                 showtime: showtimeId,
                 seatIds: selectedSeats.map((s) => s._id),
             }
-
             const res = await api.post('/bookings', payload)
 
-            Swal.fire({
-                title: 'Đặt Vé Thành Công!',
-                html: `
-          <div style="text-align: left; padding: 10px 0;">
-            <p>Hệ thống đã giữ chỗ thành công. Vui lòng hoàn tất thanh toán trong vòng 10 phút để nhận vé.</p>
-            <p><strong>Mã đặt vé:</strong> <span style="color: #e11d48; font-size: 18px; font-weight: 800;">${res.data.data.bookingCode}</span></p>
-            <p><strong>Phim:</strong> ${showtime.movie.title}</p>
-            <p><strong>Ghế:</strong> ${selectedSeats.map((s) => s.code).join(', ')}</p>
-            <p><strong>Phòng:</strong> ${showtime.room.name}</p>
-            <p><strong>Tổng tiền:</strong> ${totalSeatPrice.toLocaleString('vi-VN')} đ</p>
-          </div>
-        `,
-                icon: 'success',
-                confirmButtonColor: '#e11d48',
-                confirmButtonText: 'Tiến hành thanh toán',
-            }).then(() => {
-                navigate(`/payment/${res.data.data._id}`)
-            })
+            sessionStorage.removeItem(SESSION_KEY)
+            setHoldingSession(null)
+            setHoldingTimeLeft(null)
+            navigate(`/payment/${res.data.data._id}`)
         } catch (err: any) {
             console.error(err)
             const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra trong quá trình giữ ghế.'
@@ -279,34 +385,30 @@ function SeatSelection() {
             <div className="booking-summary-panel">
                 <h3 className="summary-movie-title">{showtime.movie.title}</h3>
 
-                <div className="summary-info-list">
-                    <div className="summary-info-item">
-                        <span className="label">Rạp chiếu</span>
-                        <span className="val">{showtime.cinema.name}</span>
+                {/* Countdown timer */}
+                {holdingTimeLeft !== null && holdingTimeLeft >= 0 && (
+                    <div
+                        className={holdingTimeLeft <= 60 ? 'holding-timer-urgent' : ''}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: holdingTimeLeft <= 60 ? 'linear-gradient(135deg,#fff1f2,#ffe4e6)' : 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+                            border: `1px solid ${holdingTimeLeft <= 60 ? '#fca5a5' : '#6ee7b7'}`,
+                            borderRadius: '10px',
+                            padding: '10px 14px',
+                            marginBottom: '12px',
+                            transition: 'background 0.5s, border-color 0.5s',
+                        }}>
+                        <ClockCircleOutlined style={{ fontSize: '18px', color: holdingTimeLeft <= 60 ? '#e11d48' : '#059669', flexShrink: 0 }} />
+                        <div>
+                            <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Thời gian giữ ghế</div>
+                            <div style={{ fontSize: '22px', fontWeight: 800, color: holdingTimeLeft <= 60 ? '#e11d48' : '#059669', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                                {formatCountdown(holdingTimeLeft)}
+                            </div>
+                        </div>
                     </div>
-                    <div className="summary-info-item">
-                        <span className="label">Phòng chiếu</span>
-                        <span className="val">{showtime.room.name}</span>
-                    </div>
-                    <div className="summary-info-item">
-                        <span className="label">Định dạng</span>
-                        <span className="val">{showtime.format}</span>
-                    </div>
-                    <div className="summary-info-item">
-                        <span className="label">Ngày chiếu</span>
-                        <span className="val">{format(new Date(showtime.startTime), 'dd/MM/yyyy')}</span>
-                    </div>
-                    <div className="summary-info-item">
-                        <span className="label">Suất chiếu</span>
-                        <span className="val">{format(new Date(showtime.startTime), 'HH:mm')}</span>
-                    </div>
-                    <div className="summary-info-item">
-                        <span className="label">Ghế đã chọn</span>
-                        <span className="val" style={{ color: '#e11d48', fontWeight: 800 }}>
-                            {selectedSeats.length > 0 ? selectedSeats.map((s) => s.code).join(', ') : 'Chưa chọn'}
-                        </span>
-                    </div>
-                </div>
+                )}
 
                 <div className="summary-total-price">
                     <span className="label">Tổng tiền</span>
@@ -315,7 +417,7 @@ function SeatSelection() {
 
                 <button
                     className="primary-button summary-checkout-btn"
-                    disabled={selectedSeats.length === 0 || handleSingleSeat(seats, new Set(occupiedSeats.map(s => s.seat._id)), new Set(selectedSeats.map(s => s._id))) || isSubmitting}
+                    disabled={selectedSeats.length === 0 || handleSingleSeat(seats, occupiedSet, new Set(selectedSeats.map(s => s._id))) || isSubmitting}
                     onClick={handleBookingSubmit}
                     type="button"
                 >

@@ -9,11 +9,12 @@ function AuthLayout() {
           <span>Lumora</span>
         </Link>
         <div>
-          <p className="eyebrow">Thành viên Lumora</p>
-          <h1>Đăng nhập để đặt vé và quản lý lịch xem phim.</h1>
+          <p className="eyebrow">Chào mừng đến Lumora</p>
+          <h1>Đặt Lịch Xem Phim Nhanh Chóng Lumora </h1>
           <p>
-            Tài khoản của bạn được dùng cho trang khách hàng và phần quản trị nếu
-            có quyền admin.
+            Khám phá hàng trăm bộ phim hấp dẫn với lịch chiếu được cập nhật liên tục.
+            Dễ dàng chọn rạp, suất chiếu và vị trí ghế yêu thích, thanh toán nhanh chóng
+            chỉ với vài thao tác.
           </p>
         </div>
       </section>

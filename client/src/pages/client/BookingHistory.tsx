@@ -5,6 +5,7 @@ import { getBookingsByUser, getBookingById } from "../../features/booking/bookin
 import { App as AntdApp, Table, Tag } from "antd"
 import { format } from "date-fns"
 import { FileOutlined, FilterOutlined, HomeOutlined } from "@ant-design/icons"
+import Loading from "../../components/Loading/Loading"
 
 function BookingHistory() {
   const { user } = useAuth()
@@ -107,7 +108,7 @@ function BookingHistory() {
       title: "Rạp chiếu",
       dataIndex: "cinemaName",
       key: "cinemaName",
-      render: (value: string) => value || "-",
+      render: () => "Rạp Lumora",
     },
     {
       title: "Suất chiếu",
@@ -194,7 +195,7 @@ function BookingHistory() {
 
       {loading && (
         <div className="page-state">
-          <p className="state-text">Đang tải lịch sử đặt vé...</p>
+          <Loading text="Đang tải lịch sử vé..." />
         </div>
       )}
 
