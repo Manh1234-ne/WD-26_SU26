@@ -53,6 +53,7 @@ import {
   getBookingById,
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
+import QRCode from "qrcode";
 
 dayjs.extend(isBetween);
 
@@ -139,6 +140,7 @@ function ManageBooking() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<BookingWithSeats | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   const fetchAllBookings = async () => {
     setLoading(true);
@@ -235,11 +237,26 @@ function ManageBooking() {
     setDrawerOpen(true);
     setLoadingDetails(true);
     setSelectedBookingDetails(null);
+    setQrCodeUrl("");
 
     try {
       const res = await getBookingById(booking._id);
       if (res?.success && res?.data) {
-        setSelectedBookingDetails(res.data);
+        const data = res.data;
+        setSelectedBookingDetails(data);
+        if (data.booking && (data.booking.status === "confirmed" || data.booking.status === "completed")) {
+          const ticketData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            seats: (data.seats || []).map((s: any) => s.seatCode),
+          };
+          const url = await QRCode.toDataURL(JSON.stringify(ticketData));
+          setQrCodeUrl(url);
+        }
       } else {
         void message.error("Không thể tải chi tiết ghế ngồi");
       }
@@ -1010,11 +1027,11 @@ function ManageBooking() {
                       {selectedBookingDetails.seats && selectedBookingDetails.seats.length > 0 ? (
                         selectedBookingDetails.seats.map((seat: any) => (
                           <Tag
-                            color={seat.type?.toUpperCase() === "VIP" ? "gold" : "blue"}
+                            color={(seat.seatType || seat.type)?.toUpperCase() === "VIP" ? "gold" : (seat.seatType || seat.type) === "couple" ? "magenta" : "blue"}
                             key={seat._id}
                             style={{ fontWeight: 700, borderRadius: "4px" }}
                           >
-                            {seat.label || `${seat.row}${seat.col}`} ({seat.type === "vip" ? "VIP" : seat.type === "couple" ? "Đôi" : "Thường"})
+                            {seat.seatCode || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : "-")} ({(seat.seatType || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.type) === "couple" ? "Đôi" : "Thường"})
                           </Tag>
                         ))
                       ) : (
@@ -1078,7 +1095,15 @@ function ManageBooking() {
                     </span>
                   </div>
                   <div style={{ width: "1px", height: "50px", backgroundColor: "#e2e8f0" }} />
-                  <QrcodeOutlined style={{ fontSize: 44, color: "#475569" }} />
+                  {qrCodeUrl ? (
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="Ticket QR Code" 
+                      style={{ width: "80px", height: "80px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }} 
+                    />
+                  ) : (
+                    <QrcodeOutlined style={{ fontSize: 44, color: "#94a3b8" }} />
+                  )}
                 </div>
                 <span style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", maxWidth: "280px" }}>
                   Hệ thống soát vé quét mã QR hoặc đối soát mã hóa đơn để cho phép vào phòng chiếu.
