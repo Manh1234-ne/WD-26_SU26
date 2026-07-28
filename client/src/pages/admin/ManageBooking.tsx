@@ -230,6 +230,43 @@ function ManageBooking() {
     }
   };
 
+  const processScannedTicket = async (bookingId: string) => {
+    try {
+      const res = await getBookingById(bookingId);
+      if (!res?.success || !res?.data?.booking) {
+        void message.error("Không tìm thấy thông tin vé trên hệ thống.");
+        return;
+      }
+
+      const booking = res.data.booking;
+
+      if (booking.status === "confirmed") {
+        try {
+          await completeBooking(bookingId);
+          void message.success("Soát vé thành công! Đã tự động hoàn tất soát vé đơn hàng.");
+          void fetchAllBookings();
+        } catch (completeErr: any) {
+          console.error("Lỗi khi tự động hoàn tất soát vé:", completeErr);
+          void message.error(completeErr?.response?.data?.message || "Không thể tự động hoàn tất soát vé");
+        }
+      } else if (booking.status === "completed") {
+        void message.warning("Vé này đã được soát vé vào rạp trước đó!");
+      } else if (booking.status === "pending") {
+        void message.error("Vé chưa được thanh toán! Vui lòng thanh toán trước khi soát vé.");
+      } else if (booking.status === "cancelled") {
+        void message.error("Vé này đã bị hủy trên hệ thống.");
+      } else {
+        void message.info(`Đơn vé đang ở trạng thái: ${booking.status}`);
+      }
+
+      void handleOpenDetailsById(bookingId);
+
+    } catch (err) {
+      console.error("Lỗi xử lý vé quét:", err);
+      void message.error("Lỗi khi kết nối với máy chủ soát vé.");
+    }
+  };
+
   const handleScanSuccess = async (text: string) => {
     await stopScanner();
     setScannerModalOpen(false);
@@ -238,15 +275,13 @@ function ManageBooking() {
       const data = JSON.parse(text);
       if (data && (data.bookingId || data.bookingCode)) {
         const id = data.bookingId || data.bookingCode;
-        void message.success("Quét mã QR thành công!");
-        void handleOpenDetailsById(id);
+        void processScannedTicket(id);
       } else {
         void message.error("Mã QR không đúng định dạng vé.");
       }
     } catch (e) {
       if (text && text.length === 24) {
-        void message.success("Quét mã QR thành công!");
-        void handleOpenDetailsById(text);
+        void processScannedTicket(text);
       } else {
         void message.error("Quét mã QR thất bại: Dữ liệu không hợp lệ.");
       }
