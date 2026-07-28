@@ -6,6 +6,7 @@ import { App as AntdApp, Table, Tag, Modal, Button, Spin, Divider, Space } from 
 import { format } from "date-fns"
 import { FileOutlined, FilterOutlined, HomeOutlined, EyeOutlined, CloseCircleOutlined, CreditCardOutlined, ClockCircleOutlined } from "@ant-design/icons"
 import Loading from "../../components/Loading/Loading"
+import QRCode from "qrcode"
 
 const CountdownTimer = ({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0)
@@ -54,6 +55,7 @@ function BookingHistory() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
   const [bookingDetail, setBookingDetail] = useState<any>(null)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
 
   const filteredBookings = useMemo(() => {
     if (!statusFilter) return bookings
@@ -117,9 +119,24 @@ function BookingHistory() {
   const handleOpenDetails = async (id: string) => {
     setIsModalOpen(true)
     setDetailLoading(true)
+    setQrCodeUrl("")
     try {
       const res = await getBookingById(id)
-      setBookingDetail(res.data)
+      const data = res.data
+      setBookingDetail(data)
+      if (data.booking && (data.booking.status === "confirmed" || data.booking.status === "completed")) {
+        const ticketData = {
+          bookingId: data.booking._id,
+          bookingCode: data.booking.bookingCode,
+          movie: data.booking.showtime?.movie?.title,
+          cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+          room: data.booking.showtime?.room?.name,
+          time: data.booking.showtime?.startTime,
+          seats: (data.seats || []).map((s: any) => s.seatCode),
+        }
+        const url = await QRCode.toDataURL(JSON.stringify(ticketData))
+        setQrCodeUrl(url)
+      }
     } catch (err) {
       console.error("Lỗi lấy chi tiết vé:", err)
       message.error("Không thể tải chi tiết vé.")
@@ -480,6 +497,24 @@ function BookingHistory() {
                     <span>{bookingDetail.booking.finalAmount?.toLocaleString()} đ</span>
                   </div>
                 </div>
+
+                {qrCodeUrl && (
+                  <div style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    padding: "16px", 
+                    background: "#f9fafb", 
+                    borderRadius: "8px", 
+                    border: "1px dashed #e5e7eb", 
+                    marginTop: "16px" 
+                  }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "#4b5563", fontSize: "14px", fontWeight: 600 }}>📌 QR Code vé của bạn</h4>
+                    <img src={qrCodeUrl} alt="Ticket QR Code" style={{ width: "160px", height: "160px", border: "4px solid #fff", borderRadius: "8px", boxShadow: "0 4px 10px rgba(0,0,0,0.06)" }} />
+                    <span style={{ fontSize: "12px", color: "#6b7280", marginTop: "6px" }}>Vui lòng xuất trình mã này khi vào rạp</span>
+                  </div>
+                )}
               </div>
             </div>
 
