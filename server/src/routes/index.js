@@ -15,6 +15,7 @@ import voucherRoutes from "./voucherRoutes.js";
 import comboRoutes from "./comboRoutes.js";
 import inventoryRoutes from "./inventoryRoutes.js";
 import userRoutes from "./userRoutes.js";
+import ticketRoutes from "./ticketRoutes.js";
 const router = express.Router();
 
 // API Routes
@@ -25,6 +26,7 @@ router.use("/cinemas", cinemaRoutes);
 router.use("/rooms", roomRoutes);
 router.use("/seats", seatRoutes);
 router.use("/bookings", bookingRoutes);
+router.use("/tickets", ticketRoutes);
 router.use("/showtimes", showtimeRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/mock-momo", mockMomoRoutes);
