@@ -206,7 +206,7 @@ function ManageBooking() {
           (decodedText) => {
             void handleScanSuccess(decodedText);
           },
-          (errorMessage) => {
+          () => {
             // Verbose error, ignore
           }
         );
@@ -245,9 +245,10 @@ function ManageBooking() {
           await completeBooking(bookingId);
           void message.success("Soát vé thành công! Đã tự động hoàn tất soát vé đơn hàng.");
           void fetchAllBookings();
-        } catch (completeErr: any) {
+        } catch (completeErr) {
           console.error("Lỗi khi tự động hoàn tất soát vé:", completeErr);
-          void message.error(completeErr?.response?.data?.message || "Không thể tự động hoàn tất soát vé");
+          const err = completeErr as { response?: { data?: { message?: string } } };
+          void message.error(err?.response?.data?.message || "Không thể tự động hoàn tất soát vé");
         }
       } else if (booking.status === "completed") {
         void message.warning("Vé này đã được soát vé vào rạp trước đó!");
@@ -279,7 +280,7 @@ function ManageBooking() {
       } else {
         void message.error("Mã QR không đúng định dạng vé.");
       }
-    } catch (e) {
+    } catch {
       if (text && text.length === 24) {
         void processScannedTicket(text);
       } else {
