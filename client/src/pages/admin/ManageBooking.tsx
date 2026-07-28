@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Table,
   Tag,
@@ -22,6 +22,7 @@ import {
   Progress,
   Result,
   Spin,
+  Modal,
 } from "antd";
 import {
   SearchOutlined,
@@ -42,6 +43,7 @@ import {
   HistoryOutlined,
   QrcodeOutlined,
   FilterOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
@@ -54,6 +56,7 @@ import {
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
 import QRCode from "qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 
 dayjs.extend(isBetween);
 
@@ -141,6 +144,391 @@ function ManageBooking() {
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<BookingWithSeats | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
+
+  const handleOpenDetailsById = async (bookingId: string) => {
+    setSelectedBooking(null);
+    setDrawerOpen(true);
+    setLoadingDetails(true);
+    setSelectedBookingDetails(null);
+    setQrCodeUrl("");
+
+    try {
+      const res = await getBookingById(bookingId);
+      if (res?.success && res?.data) {
+        const data = res.data;
+        setSelectedBookingDetails(data);
+        setSelectedBooking(data.booking);
+        if (data.booking && (data.booking.status === "confirmed" || data.booking.status === "completed")) {
+          const ticketData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            seats: (data.seats || []).map((s: any) => s.seatCode),
+          };
+          const url = await QRCode.toDataURL(JSON.stringify(ticketData));
+          setQrCodeUrl(url);
+        }
+      } else {
+        void message.error("Không thể tải chi tiết vé");
+        setDrawerOpen(false);
+      }
+    } catch (err: any) {
+      console.error(err);
+      void message.error("Lỗi khi tải chi tiết vé");
+      setDrawerOpen(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const startScanner = async () => {
+    try {
+      setTimeout(async () => {
+        const readerElement = document.getElementById("reader");
+        if (!readerElement) {
+          console.error("Không tìm thấy phần tử reader");
+          return;
+        }
+        const scanner = new Html5Qrcode("reader");
+        qrScannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            void handleScanSuccess(decodedText);
+          },
+          () => {
+            // Verbose error, ignore
+          }
+        );
+      }, 300);
+    } catch (err) {
+      console.error("Lỗi khởi động camera:", err);
+      void message.error("Không thể khởi động camera. Vui lòng cấp quyền truy cập camera.");
+    }
+  };
+
+  const stopScanner = async () => {
+    if (qrScannerRef.current) {
+      try {
+        if (qrScannerRef.current.isScanning) {
+          await qrScannerRef.current.stop();
+        }
+      } catch (err) {
+        console.error("Lỗi dừng camera:", err);
+      }
+      qrScannerRef.current = null;
+    }
+  };
+
+  const processScannedTicket = async (bookingId: string) => {
+    try {
+      const res = await getBookingById(bookingId);
+      if (!res?.success || !res?.data?.booking) {
+        void message.error("Không tìm thấy thông tin vé trên hệ thống.");
+        return;
+      }
+
+      const booking = res.data.booking;
+
+      if (booking.status === "confirmed") {
+        try {
+          await completeBooking(bookingId);
+          void message.success("Soát vé thành công! Đã tự động hoàn tất soát vé đơn hàng.");
+          void fetchAllBookings();
+        } catch (completeErr) {
+          console.error("Lỗi khi tự động hoàn tất soát vé:", completeErr);
+          const err = completeErr as { response?: { data?: { message?: string } } };
+          void message.error(err?.response?.data?.message || "Không thể tự động hoàn tất soát vé");
+        }
+      } else if (booking.status === "completed") {
+        void message.warning("Vé này đã được soát vé vào rạp trước đó!");
+      } else if (booking.status === "pending") {
+        void message.error("Vé chưa được thanh toán! Vui lòng thanh toán trước khi soát vé.");
+      } else if (booking.status === "cancelled") {
+        void message.error("Vé này đã bị hủy trên hệ thống.");
+      } else {
+        void message.info(`Đơn vé đang ở trạng thái: ${booking.status}`);
+      }
+
+      void handleOpenDetailsById(bookingId);
+
+    } catch (err) {
+      console.error("Lỗi xử lý vé quét:", err);
+      void message.error("Lỗi khi kết nối với máy chủ soát vé.");
+    }
+  };
+
+  const handleScanSuccess = async (text: string) => {
+    await stopScanner();
+    setScannerModalOpen(false);
+
+    try {
+      const data = JSON.parse(text);
+      if (data && (data.bookingId || data.bookingCode)) {
+        const id = data.bookingId || data.bookingCode;
+        void processScannedTicket(id);
+      } else {
+        void message.error("Mã QR không đúng định dạng vé.");
+      }
+    } catch {
+      if (text && text.length === 24) {
+        void processScannedTicket(text);
+      } else {
+        void message.error("Quét mã QR thất bại: Dữ liệu không hợp lệ.");
+      }
+    }
+  };
+
+  const handlePrintTickets = () => {
+    if (!selectedBookingDetails) return;
+    const { booking, seats } = selectedBookingDetails;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      void message.error("Vui lòng cho phép mở popup để in vé.");
+      return;
+    }
+
+    const movieTitle = booking.showtime?.movie?.title || "Phim chưa xác định";
+    const cinemaName = booking.showtime?.cinema?.name || "Rạp chiếu";
+    const roomName = booking.showtime?.room?.name || "Phòng";
+    const startTime = booking.showtime?.startTime
+      ? dayjs(booking.showtime.startTime).format("DD/MM/YYYY HH:mm")
+      : "Chưa cập nhật";
+    const bookingCode = booking.bookingCode || booking._id;
+
+    const basePrice = booking.showtime?.basePrice || 0;
+    const seatCount = seats?.length || 1;
+
+    let ticketHTML = `
+      <html>
+      <head>
+        <title>In Vé Xem Phim - ${bookingCode}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+          body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            color: #000000;
+          }
+          .tickets-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+          }
+          .ticket {
+            width: 650px;
+            border: 2px solid #000000;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            box-sizing: border-box;
+            page-break-after: always;
+            break-after: page;
+          }
+          .ticket-main {
+            flex: 7;
+            padding: 20px;
+            border-right: 2px dashed #000000;
+            position: relative;
+          }
+          .ticket-stub {
+            flex: 3;
+            padding: 20px;
+            background-color: #fafafa;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+          }
+          .ticket-header {
+            font-size: 16px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 6px;
+          }
+          .movie-title {
+            font-size: 20px;
+            font-weight: 900;
+            margin: 8px 0;
+            text-transform: uppercase;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+          }
+          .info-item {
+            display: flex;
+            flex-direction: column;
+          }
+          .info-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #555555;
+            font-weight: 600;
+          }
+          .info-value {
+            font-size: 14px;
+            font-weight: 800;
+          }
+          .seat-highlight {
+            font-size: 24px;
+            font-weight: 900;
+            background-color: #000000;
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 4px;
+          }
+          .barcode {
+            margin-top: 15px;
+            font-family: 'monospace';
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-align: center;
+          }
+          .stub-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #555555;
+          }
+          .stub-seat {
+            font-size: 28px;
+            font-weight: 900;
+            margin: 10px 0;
+          }
+          .stub-info {
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .ticket-index {
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid #000000;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+          }
+          @media print {
+            body {
+              background-color: #ffffff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .tickets-container {
+              padding: 0;
+              gap: 0;
+            }
+            .ticket {
+              border: 2px solid #000000;
+              margin-bottom: 0;
+              page-break-after: always;
+              break-after: page;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="tickets-container">
+    `;
+
+    seats.forEach((seat: any, index: number) => {
+      const seatCode = seat.seatCode || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : "-");
+      const seatTypeLabel = (seat.seatType || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.type) === "couple" ? "Đôi" : "Thường";
+      const seatPrice = basePrice * (seat.priceMultiplier || 1);
+
+      ticketHTML += `
+        <div class="ticket">
+          <div class="ticket-main">
+            <div class="ticket-header">${cinemaName}</div>
+            <div class="movie-title">${movieTitle}</div>
+            
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Suất Chiếu</span>
+                <span class="info-value">${startTime}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Phòng Chiếu</span>
+                <span class="info-value">${roomName}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Loại Ghế</span>
+                <span class="info-value">${seatTypeLabel}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Mã Giao Dịch</span>
+                <span class="info-value" style="font-family: monospace;">${bookingCode}</span>
+              </div>
+            </div>
+            
+            <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+              <div class="info-item">
+                <span class="info-label">Ghế Ngồi</span>
+                <span class="seat-highlight">${seatCode}</span>
+              </div>
+              <div class="info-item" style="text-align: right;">
+                <span class="info-label">Giá Vé</span>
+                <span class="info-value">${seatPrice.toLocaleString('vi-VN')}đ</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ticket-stub">
+            <div>
+              <div class="ticket-index">VÉ ${index + 1} / ${seatCount}</div>
+              <div class="stub-title">SOÁT VÉ</div>
+            </div>
+            <div class="stub-seat">${seatCode}</div>
+            <div>
+              <div class="stub-info">${roomName}</div>
+              <div class="stub-info" style="font-size: 9px; color: #555555; margin-top: 4px;">${startTime}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    ticketHTML += `
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() {
+              window.close();
+            }, 1000);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(ticketHTML);
+    printWindow.document.close();
+  };
 
   const fetchAllBookings = async () => {
     setLoading(true);
@@ -625,6 +1013,16 @@ function ManageBooking() {
             </Text>
           </div>
           <Space wrap>
+            <Button
+              type="primary"
+              size="large"
+              style={{ background: "#10b981", borderColor: "#10b981", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, borderRadius: "8px" }}
+              icon={<QrcodeOutlined />}
+              onClick={() => setScannerModalOpen(true)}
+            >
+              Quét mã QR soát vé
+            </Button>
+
             <Button
               type="primary"
               size="large"
@@ -1230,6 +1628,18 @@ function ManageBooking() {
                     </Popconfirm>
                   )}
 
+                  {(selectedBookingDetails.booking.status === "confirmed" ||
+                    selectedBookingDetails.booking.status === "completed") && (
+                    <Button
+                      type="primary"
+                      style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
+                      icon={<PrinterOutlined />}
+                      onClick={handlePrintTickets}
+                    >
+                      In vé
+                    </Button>
+                  )}
+
                   <Button onClick={() => setDrawerOpen(false)}>Đóng</Button>
                 </Space>
               </div>
@@ -1245,6 +1655,48 @@ function ManageBooking() {
           </div>
         )}
       </Drawer>
+
+      {/* QR Code Scanner Modal */}
+      <Modal
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <QrcodeOutlined style={{ color: "#10b981", fontSize: 20 }} />
+            <span style={{ fontWeight: 800, fontSize: 16 }}>QUÉT MÃ QR SOÁT VÉ</span>
+          </div>
+        }
+        open={scannerModalOpen}
+        onCancel={() => setScannerModalOpen(false)}
+        footer={null}
+        destroyOnClose
+        afterOpenChange={(open) => {
+          if (open) {
+            void startScanner();
+          } else {
+            void stopScanner();
+          }
+        }}
+        styles={{
+          body: { padding: "20px 24px" }
+        }}
+      >
+        <div style={{ textAlign: "center", margin: "8px 0" }}>
+          <div 
+            id="reader" 
+            style={{ 
+              width: "100%", 
+              maxWidth: "400px", 
+              margin: "0 auto", 
+              overflow: "hidden", 
+              borderRadius: "12px",
+              border: "1px dashed #cbd5e1",
+              backgroundColor: "#f8fafc"
+            }} 
+          />
+          <p style={{ marginTop: 16, color: "#64748b", fontWeight: 500, fontSize: 13 }}>
+            Đưa mã QR trên vé của khách hàng vào khung hình camera để quét soát vé tự động.
+          </p>
+        </div>
+      </Modal>
     </section>
   );
 }
