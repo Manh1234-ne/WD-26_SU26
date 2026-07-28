@@ -288,7 +288,7 @@ function ManageVoucher() {
               </Col>
               <Col xs={24} sm={12} md={8}>
                 <Form.Item name="discountType" label="Loại giảm giá" rules={[{ required: true }]}> 
-                  <Select options={[{ value: 'percent', label: 'Phần trăm' }, { value: 'fixed', label: 'Cố định' }]} />
+                  <Select options={[{ value: 'percent', label: 'Phần trăm' }]} />
                 </Form.Item>
               </Col>
             </Row>

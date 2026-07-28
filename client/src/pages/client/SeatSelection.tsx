@@ -248,6 +248,7 @@ function SeatSelection() {
                 icon: "warning",
                 confirmButtonColor: "#e11d48"
             })
+            return
         }
 
         if (checkAllRowsForIsolation(newSelected)) {

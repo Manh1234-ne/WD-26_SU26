@@ -29,6 +29,7 @@ export type Booking = {
         },
         startTime: string,
         endTime: string,
+        basePrice: number,
     },
     voucher: {
         code: string,
