@@ -14,6 +14,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   GiftOutlined,
+  QrcodeOutlined,
 } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
@@ -30,6 +31,7 @@ function AdminLayout() {
 
   const menuItems: MenuProps["items"] = [
     { key: "/admin", icon: <DashboardOutlined />, label: "Tổng Quát" },
+    { key: "/admin/ticket-scan", icon: <QrcodeOutlined />, label: "Quét vé Check-in" },
     { key: "/admin/movies", icon: <VideoCameraOutlined />, label: "Quản lý phim" },
     { key: "/admin/rooms", icon: <ApartmentOutlined />, label: "Quản lý phòng chiếu" },
     { key: "/admin/showtimes", icon: <FieldTimeOutlined />, label: "Quản lý lịch chiếu" },
