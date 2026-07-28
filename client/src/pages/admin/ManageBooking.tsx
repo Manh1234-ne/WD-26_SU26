@@ -458,7 +458,7 @@ function ManageBooking() {
     seats.forEach((seat: any, index: number) => {
       const seatCode = seat.seatCode || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : "-");
       const seatTypeLabel = (seat.seatType || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.type) === "couple" ? "Đôi" : "Thường";
-      const seatPrice = basePrice * (seat.priceMultiplier || 1);
+      const seatPrice = seat.price || (basePrice * (seat.priceMultiplier || 1));
 
       ticketHTML += `
         <div class="ticket">
