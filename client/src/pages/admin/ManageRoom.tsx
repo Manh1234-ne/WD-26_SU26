@@ -38,7 +38,7 @@ import {
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 type RoomFormFields = {
   cinema: string
@@ -257,20 +257,44 @@ function ManageRoom() {
       <Space direction="vertical" size={24} style={{ width: '100%' }}>
         <Card
           bordered={false}
-          style={{ boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', borderRadius: '12px' }}
+          style={{
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            background: '#ffffff',
+          }}
           title={
-            <Space>
-              <LayoutOutlined style={{ color: '#e11d48', fontSize: '20px' }} />
-              <Title level={4} style={{ margin: 0 }}>
-                {editingId ? 'Cập Nhật Phòng Chiếu' : 'Thêm Phòng Chiếu'}
-              </Title>
+            <Space size={12}>
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #e11d48, #be123c)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)'
+              }}>
+                <LayoutOutlined style={{ color: '#ffffff', fontSize: '20px' }} />
+              </div>
+              <div>
+                <Title level={4} style={{ margin: 0, fontWeight: 800, color: '#0f172a' }}>
+                  {editingId ? 'Cập Nhật Phòng Chiếu' : 'Thêm Phòng Chiếu'}
+                </Title>
+                <Text type="secondary" style={{ fontSize: '13px' }}>
+                  {editingId ? 'Thay đổi thông tin phòng chiếu' : 'Thêm thông tin cho phòng chiếu mới'}
+                </Text>
+              </div>
             </Space>
           }
           extra={
             editingId && (
               <Button
                 icon={<CloseOutlined />}
-                size="small"
+                shape="round"
+                type="default"
+                danger
                 onClick={() => {
                   setEditingId(null)
                   antdForm.resetFields()
@@ -288,19 +312,23 @@ function ManageRoom() {
             onFinish={handleSubmit}
             requiredMark="optional"
           >
-            <Row gutter={16}>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  label="Tên phòng chiếu"
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
+              <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
+                📌 1. THÔNG TIN PHÒNG CHIẾU
+              </Text>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label={<span style={{ fontWeight: 700, color: '#334155' }}>Tên phòng chiếu</span>}
                   name="name"
                   rules={[{ required: true, message: 'Vui lòng nhập tên phòng!' }]}
                 >
-                  <Input placeholder="Ví dụ: P01, P02, IMAX 1" />
+                  <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: P01, P02, IMAX 1" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12}>
-                <Form.Item label="Loại phòng" name="roomType">
-                  <Select>
+                <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Loại phòng</span>} name="roomType">
+                  <Select size="large" style={{ borderRadius: '8px' }}>
                     <Select.Option value="2D">2D Tiêu chuẩn</Select.Option>
                     <Select.Option value="3D">3D Trải nghiệm</Select.Option>
                     <Select.Option value="IMAX">IMAX</Select.Option>
@@ -309,66 +337,79 @@ function ManageRoom() {
                 </Form.Item>
               </Col>
             </Row>
+            </div>
 
-            <Row gutter={16}>
-              <Col xs={24} sm={8}>
-                <Form.Item
-                  label="Số hàng ghế (ngang)"
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
+              <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
+                💺 2. CẤU HÌNH GHẾ & SỨC CHỨA
+              </Text>
+              <Row gutter={16}>
+                <Col xs={24} sm={8}>
+                  <Form.Item
+                    label={<span style={{ fontWeight: 700, color: '#334155' }}>Số hàng ghế (ngang)</span>}
                   name="totalRows"
                   rules={[{ required: true, message: 'Nhập số hàng ghế!' }]}
                   help="Tối đa 15 hàng (từ A đến O)"
                 >
-                  <InputNumber min={1} max={15} style={{ width: '100%' }} />
+                  <InputNumber size="large" min={1} max={15} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={8}>
                 <Form.Item
-                  label="Số ghế mỗi hàng (dọc)"
+                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Số ghế mỗi hàng (dọc)</span>}
                   name="seatsPerRow"
                   rules={[{ required: true, message: 'Nhập số ghế mỗi hàng!' }]}
                   help="Tối đa 20 ghế mỗi hàng"
                 >
-                  <InputNumber min={1} max={20} style={{ width: '100%' }} />
+                  <InputNumber size="large" min={1} max={20} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={8}>
                 <Form.Item
-                  label="Tổng sức chứa"
+                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Tổng sức chứa</span>}
                   name="capacity"
                   help="Tự tính toán (tối đa 300 ghế)"
                 >
-                  <InputNumber style={{ width: '100%' }} readOnly disabled />
+                  <InputNumber size="large" style={{ width: '100%' }} readOnly disabled />
                 </Form.Item>
               </Col>
             </Row>
+            </div>
 
-            <Row gutter={16}>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  label="Vị trí cột làm lối đi dọc (aisleColumns)"
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
+              <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
+                🛤️ 3. THIẾT LẬP LỐI ĐI
+              </Text>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label={<span style={{ fontWeight: 700, color: '#334155' }}>Vị trí cột làm lối đi dọc (aisleColumns)</span>}
                   name="aisleColumns"
                   help="Nhập số cột muốn để trống làm lối đi dọc, cách nhau bằng dấu phẩy. Ví dụ: 5, 15"
                 >
-                  <Input placeholder="Ví dụ: 5, 15" />
+                  <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: 5, 15" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12}>
                 <Form.Item
-                  label="Vị trí hàng làm lối đi ngang (aisleRows)"
+                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Vị trí hàng làm lối đi ngang (aisleRows)</span>}
                   name="aisleRows"
                   help="Nhập chữ cái hàng muốn để lối đi ngang phía sau, cách nhau bằng dấu phẩy. Ví dụ: E, H"
                 >
-                  <Input placeholder="Ví dụ: E, H" />
+                  <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: E, H" />
                 </Form.Item>
               </Col>
             </Row>
 
-            <Row gutter={24} align="bottom" style={{ marginTop: '16px' }}>
+            </div>
+
+            {/* ACTION ROW */}
+            <Row gutter={24} align="bottom">
               <Col xs={24} sm={8} md={6}>
                 <Form.Item
                   name="isActive"
                   valuePropName="checked"
-                  label="Trạng thái"
+                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Trạng thái</span>}
                   style={{ marginBottom: 0 }}
                 >
                   <Switch checkedChildren="Hoạt động" unCheckedChildren="Bảo trì" style={{ width: '100px' }} />

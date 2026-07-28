@@ -277,7 +277,7 @@ function ManageShowtime() {
             width: 220,
             render: (_, record) => (
                 <Text strong style={{ fontSize: 13 }}>
-                    {record.movie.title}
+                    {record.movie?.title || 'Phim không tồn tại'}
                 </Text>
             ),
         },
@@ -285,7 +285,7 @@ function ManageShowtime() {
             title: 'Phòng chiếu',
             key: 'room',
             render: (_, record) => (
-                <strong style={{ color: '#e11d48' }}>{record.room.name}</strong>
+                <strong style={{ color: '#e11d48' }}>{record.room?.name || 'Phòng không tồn tại'}</strong>
             ),
         },
         {

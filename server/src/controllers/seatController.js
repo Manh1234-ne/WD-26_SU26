@@ -1,5 +1,6 @@
 import Seat from "../models/Seat.js";
 import Room from "../models/Room.js";
+import BookingSeat from "../models/BookingSeat.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 
 const ok = (res, data, meta = {}) =>
@@ -171,6 +172,11 @@ return fail(res, 404, "không tìm thấy ghế");
 
 const roomId = seat.room;
 const row = seat.row;
+
+const isBooked = await BookingSeat.findOne({ seat: id, status: { $in: ["held", "booked"] } });
+if (isBooked) {
+  return fail(res, 400, "Ghế này đã có người đặt, không thể xóa");
+}
 
 await Seat.findByIdAndDelete(id);
 
