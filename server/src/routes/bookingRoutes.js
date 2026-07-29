@@ -8,6 +8,7 @@ import {
   cancelBooking,
   completeBooking,
   applyVoucherToBooking,
+  updateBookingSeats
 } from "../controllers/bookingController.js";
 
 const routerBooking = express.Router();
@@ -19,7 +20,9 @@ routerBooking.get("/user/:userId", getBookingsByUser);
 
 routerBooking.get("/:id", getBookingById);
 
+routerBooking.patch("/:id/seats", updateBookingSeats);
 routerBooking.patch("/:id/cancel", cancelBooking);
+
 
 routerBooking.patch(
   "/:id/complete",
@@ -30,5 +33,6 @@ routerBooking.patch(
   "/:id/apply-voucher",
   applyVoucherToBooking
 );
+
 
 export default routerBooking;

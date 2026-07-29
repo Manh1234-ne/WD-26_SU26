@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 import Loading from '../../components/Loading/Loading'
-import { cancelBooking, getBookingsByUser, getBookingById } from '../../features/booking/booking.service'
+import { cancelBooking, getBookingsByUser, getBookingById, createBooking, updateBookingSeats } from '../../features/booking/booking.service'
 import { ClockCircleOutlined } from '@ant-design/icons'
 
 interface Seat {
@@ -149,6 +149,16 @@ function SeatSelection() {
             try {
                 const res = await getBookingById(holdingSession.bookingId);
                 if (!isMounted) return;
+
+                const booking = res?.data?.booking;
+                if (booking && booking.status !== "pending") {
+                    sessionStorage.removeItem(SESSION_KEY);
+                    setHoldingSession(null);
+                    setHoldingTimeLeft(null);
+                    setSelectedSeats([]);
+                    return;
+                }
+
                 const bookingSeats = res?.data?.seats || [];
                 const holdingSeatIds = new Set(bookingSeats.map((bs: any) => typeof bs.seat === 'object' ? bs.seat._id : bs.seat));
                 const restored = (seatData.seats as Seat[]).filter((s) => holdingSeatIds.has(s._id));
@@ -157,6 +167,10 @@ function SeatSelection() {
                 }
             } catch (error) {
                 console.error("Failed to restore holding seats:", error);
+                sessionStorage.removeItem(SESSION_KEY);
+                setHoldingSession(null);
+                setHoldingTimeLeft(null);
+                setSelectedSeats([]);
             }
         };
         void restoreHoldingSeats();
@@ -233,7 +247,7 @@ function SeatSelection() {
         )
     }
 
-    const toggleSeat = (seat: Seat) => {
+    const toggleSeat = async (seat: Seat) => {
         if (occupiedSet.has(seat._id)) return
 
         const isAlreadySelected = selectedSeats.some((s) => s._id === seat._id)
@@ -261,7 +275,82 @@ function SeatSelection() {
             return
         }
 
-        setSelectedSeats(newSelected)
+        try {
+console.log("HOLDING SESSION:", holdingSession);
+            if (!holdingSession) {
+
+                const payload = {
+                    user: user?._id,
+                    showtime: showtimeId,
+                    seatIds: newSelected.map(s => s._id),
+                };
+
+                const res = await createBooking(payload);
+
+                const booking = res.data;
+
+                const session = {
+                    bookingId: booking._id,
+                    expiresAt: new Date(booking.expiresAt).getTime(),
+                };
+
+                sessionStorage.setItem(
+                    SESSION_KEY,
+                    JSON.stringify(session)
+                );
+
+                setHoldingSession(session);
+
+            } else {
+
+                // Nếu bỏ hết ghế thì hủy booking luôn
+                if (newSelected.length === 0) {
+                    await cancelBooking(holdingSession.bookingId);
+
+                    sessionStorage.removeItem(SESSION_KEY);
+                    setHoldingSession(null);
+                    setSelectedSeats([]);
+
+                    await refetchOccupied();
+                    return;
+                }
+
+                const res = await updateBookingSeats(
+                    holdingSession.bookingId,
+                    newSelected.map(s => s._id)
+                );
+
+                console.log("Booking trả về:", res.data);
+
+                const session = {
+                    bookingId: holdingSession.bookingId,
+                    expiresAt: new Date(res.data.expiresAt).getTime(),
+                };
+
+                sessionStorage.setItem(
+                    SESSION_KEY,
+                    JSON.stringify(session)
+                );
+
+                setHoldingSession(session);
+            }
+
+            setSelectedSeats(newSelected);
+
+            await refetchOccupied();
+
+        } catch (err: any) {
+
+            Swal.fire({
+                icon: "error",
+                title: "Không thể giữ ghế",
+                text:
+                    err.response?.data?.message ||
+                    "Có lỗi xảy ra"
+            });
+
+            await refetchOccupied();
+        }
     }
 
     const totalSeatPrice = selectedSeats.reduce((sum, seat) => {
@@ -284,41 +373,16 @@ function SeatSelection() {
 
     const handleBookingSubmit = async () => {
         if (selectedSeats.length === 0) {
-            message.error('Vui lòng chọn ít nhất một ghế để tiếp tục.')
-            return
+            message.error("Vui lòng chọn ghế");
+            return;
         }
 
-        setIsSubmitting(true)
-        try {
-            if (holdingSession?.bookingId) {
-                try {
-                    await cancelBooking(holdingSession.bookingId)
-                } catch { }
-            }
-            const payload: Record<string, unknown> = {
-                user: user?._id,
-                showtime: showtimeId,
-                seatIds: selectedSeats.map((s) => s._id),
-            }
-            const res = await api.post('/bookings', payload)
-
-            sessionStorage.removeItem(SESSION_KEY)
-            setHoldingSession(null)
-            setHoldingTimeLeft(null)
-            navigate(`/payment/${res.data.data._id}`)
-        } catch (err: any) {
-            console.error(err)
-            const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra trong quá trình giữ ghế.'
-            Swal.fire({
-                title: 'Đặt Vé Thất Bại',
-                text: errorMsg,
-                icon: 'error',
-                confirmButtonColor: '#e11d48',
-            })
-            refetchOccupied()
-        } finally {
-            setIsSubmitting(false)
+        if (!holdingSession?.bookingId) {
+            message.error("Không tìm thấy phiên giữ ghế");
+            return;
         }
+
+        navigate(`/payment/${holdingSession.bookingId}`);
     }
 
     return (

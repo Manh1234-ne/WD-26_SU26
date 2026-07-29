@@ -3,7 +3,7 @@ import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
 import Voucher from "../models/Voucher.js";
 import { asyncHandler } from "../utils/asynHandler.js";
-import { createBookingService } from "../services/bookingService.js";
+import { createBookingService, updateBookingSeatsService } from "../services/bookingService.js";
 import BookingCombo from "../models/BookingCombo.js";
 
 import {
@@ -335,4 +335,38 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     discountAmount: updatedBooking.discountAmount,
     finalAmount: updatedBooking.finalAmount
   });
+});
+
+export const updateBookingSeats = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { seatIds } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  if (!Array.isArray(seatIds) || seatIds.length === 0) {
+    return fail(res, 400, "Danh sách ghế không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (booking.status !== "pending") {
+    return fail(res, 400, "Booking không thể chỉnh sửa");
+  }
+
+  if (booking.expiresAt && booking.expiresAt < new Date()) {
+    return fail(res, 400, "Booking đã hết hạn");
+  }
+
+  const updatedBooking = await updateBookingSeatsService({
+    booking,
+    seatIds,
+  });
+
+  return ok(res, updatedBooking);
 });
