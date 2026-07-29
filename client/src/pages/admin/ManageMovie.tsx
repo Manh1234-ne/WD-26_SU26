@@ -63,6 +63,7 @@ type MovieFormFields = {
   originalTitle: string
   description: string
   genres: string[]
+  formats: string[]
   duration: number
   releaseDate: dayjs.Dayjs
   ageRating: MoviePayload['ageRating']
@@ -81,6 +82,7 @@ const emptyFormValues = {
   originalTitle: '',
   description: '',
   genres: [],
+  formats: ['2D'],
   duration: 90,
   releaseDate: dayjs(),
   ageRating: 'P' as const,
@@ -107,6 +109,7 @@ function toPayload(formValues: MovieFormFields): MoviePayload {
     originalTitle: formValues.originalTitle?.trim() || '',
     description: formValues.description.trim(),
     genres: formValues.genres,
+    formats: formValues.formats,
     duration: formValues.duration,
     releaseDate: formValues.releaseDate.format('YYYY-MM-DD'),
     ageRating: formValues.ageRating,
@@ -127,6 +130,7 @@ function toFormFields(movie: Movie): Partial<MovieFormFields> {
     originalTitle: movie.originalTitle || '',
     description: movie.description,
     genres: movie.genres || [],
+    formats: movie.formats || ['2D'],
     duration: movie.duration,
     releaseDate: dayjs(movie.releaseDate),
     ageRating: movie.ageRating,
@@ -327,6 +331,9 @@ function ManageMovie() {
               {record.genres?.map((g) => (
                 <Tag key={g} style={{ fontSize: '11px', marginInlineEnd: 0 }}>{g}</Tag>
               ))}
+              {record.formats?.map((f) => (
+                <Tag key={f} color="purple" style={{ fontSize: '11px', marginInlineEnd: 0 }}>{f}</Tag>
+              ))}
             </div>
           </div>
         </Space>
@@ -502,7 +509,7 @@ function ManageMovie() {
                 <span style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>2. Chi tiết sản xuất & Nội dung</span>
               </div>
               <Row gutter={16}>
-                <Col xs={24} sm={12} md={8}>
+                <Col xs={24} sm={12} md={6}>
                   <Form.Item
                     label={<span><TagsOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Thể loại phim</strong></span>}
                     name="genres"
@@ -522,12 +529,25 @@ function ManageMovie() {
                     </Select>
                   </Form.Item>
                 </Col>
-                <Col xs={24} sm={12} md={8}>
+                <Col xs={24} sm={12} md={6}>
+                  <Form.Item
+                    label={<span><VideoCameraOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Định dạng hỗ trợ</strong></span>}
+                    name="formats"
+                    rules={[{ required: true, message: 'Vui lòng chọn định dạng!' }]}
+                  >
+                    <Select mode="multiple" placeholder="Chọn định dạng" style={{ borderRadius: '6px' }}>
+                      <Select.Option value="2D">2D</Select.Option>
+                      <Select.Option value="3D">3D</Select.Option>
+                      <Select.Option value="IMAX">IMAX</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
                   <Form.Item label={<span><UserOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Đạo diễn</strong></span>} name="director">
                     <Input prefix={<UserOutlined style={{ color: '#94a3b8' }} />} placeholder="Tên đạo diễn" style={{ borderRadius: '6px' }} />
                   </Form.Item>
                 </Col>
-                <Col xs={24} sm={12} md={8}>
+                <Col xs={24} sm={12} md={6}>
                   <Form.Item
                     label={<span><TeamOutlined style={{ color: '#e11d48', marginInlineEnd: '6px' }} /><strong>Dàn diễn viên</strong></span>}
                     name="cast"

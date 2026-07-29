@@ -186,6 +186,11 @@ function ManageSeat() {
           if (s.number > maxNumber) maxNumber = s.number
         })
 
+        if (maxNumber + Number(values.quantity) > 20) {
+          void message.error(`Hàng ${rowUpper} không thể vượt quá 20 ghế (đã có đến ghế số ${maxNumber}).`)
+          return
+        }
+
         const createPromises = []
         for (let i = 1; i <= values.quantity; i++) {
           const newNumber = maxNumber + i
@@ -220,8 +225,9 @@ function ManageSeat() {
       void message.success(`Đã xóa ghế ${editingSeat.code}.`)
       closeEditModal()
       await loadSeats(selectedRoom)
-    } catch {
-      void message.error('Xóa ghế thất bại.')
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Xóa ghế thất bại.'
+      void message.error(msg)
     }
   }
 
@@ -247,7 +253,13 @@ function ManageSeat() {
               <Select
                 style={{ width: '100%' }}
                 placeholder="Vui lòng chọn phòng..."
-                options={rooms.map(r => ({ label: `${r.name} (${r.roomType})`, value: r._id }))}
+                options={rooms.map(r => {
+                  let typeName: string = r.roomType;
+                  if (r.roomType === '2D') typeName = 'Tiêu chuẩn';
+                  if (r.roomType === 'VIP') typeName = 'VIP';
+                  if (r.roomType === 'IMAX') typeName = 'IMAX';
+                  return { label: `${r.name} (${typeName})`, value: r._id };
+                })}
                 value={selectedRoom}
                 onChange={(val) => setSelectedRoom(val)}
                 loading={isLoadingRooms}
@@ -322,90 +334,76 @@ function ManageSeat() {
 
                 {/* Grid */}
                 <div style={{ overflowX: 'auto', paddingBottom: '24px' }}>
-                  <div style={{ minWidth: 'min-content', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: 'max-content', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
                     {seatGrid.map(([rowName, rowSeats]) => {
                       const parsedAisles = currentRoomInfo?.aisleColumns || []
                       const parsedAisleRows = currentRoomInfo?.aisleRows || []
                       const isAisleRow = parsedAisleRows.includes(rowName.toUpperCase())
 
                       return (
-                        <div key={rowName} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', width: '100%' }}>
+                        <div key={rowName} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', width: '100%' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', color: '#595959' }}>
                               {rowName}
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                              {rowSeats.map((seat) => {
-                                const isCouple = seat.type === 'couple'
-                                const isAisle = parsedAisles.includes(seat.number)
+                              {(() => {
+                                let currentCol = 1;
+                                return rowSeats.map((seat) => {
+                                  const isCouple = seat.type === 'couple'
+                                  const colsOccupied = isCouple ? 2 : 1;
 
-                                return (
-                                  <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <div
-                                      onClick={() => openEditModal(seat)}
-                                      style={{
-                                        width: isCouple ? '72px' : '32px',
-                                        height: '32px',
-                                        backgroundColor: getSeatColor(seat),
-                                        borderRadius: '6px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: seat.isActive ? '#000' : '#8c8c8c',
-                                        fontWeight: 600,
-                                        fontSize: '11px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        border: '1px solid rgba(0,0,0,0.1)',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                        overflow: 'hidden',
-                                      }}
-                                      title={`Ghế ${seat.code} - ${seat.type}`}
-                                    >
-                                      {isCouple ? (
-                                        <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-                                          <div style={{
-                                            flex: 1,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            borderRight: '2px solid rgba(255,255,255,0.7)'
-                                          }}>
-                                            {seat.number}
-                                          </div>
-                                          <div style={{
-                                            flex: 1,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                          }}>
-                                            <span style={{ opacity: 0.6 }}>{seat.number}</span>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        seat.number
-                                      )}
-                                    </div>
-                                    {isAisle && (
+                                  const seatPhysicalCols = Array.from({ length: colsOccupied }, (_, i) => currentCol + i);
+                                  const isAisle = parsedAisles.some(a => seatPhysicalCols.includes(a));
+
+                                  currentCol += colsOccupied;
+
+                                  return (
+                                    <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                       <div
+                                        onClick={() => openEditModal(seat)}
                                         style={{
-                                          width: '24px',
+                                          width: isCouple ? '72px' : '32px',
                                           height: '32px',
+                                          backgroundColor: getSeatColor(seat),
+                                          borderRadius: '6px',
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
-                                          fontSize: '9px',
-                                          color: '#cbd5e1',
-                                          fontWeight: 700,
-                                          userSelect: 'none'
+                                          color: seat.isActive ? '#000' : '#8c8c8c',
+                                          fontWeight: 600,
+                                          fontSize: '11px',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s',
+                                          border: '1px solid rgba(0,0,0,0.1)',
+                                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                          overflow: 'hidden',
                                         }}
+                                        title={`Ghế ${seat.code} - ${seat.type}`}
                                       >
-                                        |
+                                        {seat.number}
                                       </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
+                                      {isAisle && (
+                                        <div
+                                          style={{
+                                            width: '24px',
+                                            height: '32px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '9px',
+                                            color: '#cbd5e1',
+                                            fontWeight: 700,
+                                            userSelect: 'none'
+                                          }}
+                                        >
+                                          |
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })
+                              })()}
                             </div>
                             <div style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', color: '#595959' }}>
                               {rowName}
@@ -462,13 +460,26 @@ function ManageSeat() {
           {modalMode === 'create' && (
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item label="Hàng ghế (vd: A)" name="row" rules={[{ required: true, message: 'Vui lòng nhập hàng!' }]}>
-                  <Input maxLength={2} style={{ textTransform: 'uppercase' }} placeholder="Nhập chữ, vd: A" />
+                <Form.Item
+                  label="Hàng ghế (vd: A)"
+                  name="row"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập hàng!' },
+                    { pattern: /^[A-Oa-o]$/, message: 'Chỉ được nhập từ A đến O!' }
+                  ]}
+                  help="Từ A đến O"
+                >
+                  <Input maxLength={1} style={{ textTransform: 'uppercase' }} placeholder="Nhập chữ, vd: A" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item label="Số lượng ghế cần thêm" name="quantity" rules={[{ required: true, message: 'Vui lòng nhập số lượng!' }]}>
-                  <InputNumber min={1} max={50} style={{ width: '100%' }} />
+                <Form.Item
+                  label="Số lượng ghế cần thêm"
+                  name="quantity"
+                  rules={[{ required: true, message: 'Vui lòng nhập số lượng!' }]}
+                  help="Tối đa 20 ghế mỗi hàng"
+                >
+                  <InputNumber min={1} max={20} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
             </Row>
