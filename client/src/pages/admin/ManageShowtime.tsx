@@ -56,6 +56,7 @@ import dayjs from 'dayjs'
 const { Title, Text } = Typography
 const { Option } = Select
 
+import { MassCreateShowtimeModal } from './MassCreateShowtimeModal'
 
 interface ShowtimePayload {
     movieId: string
@@ -83,6 +84,7 @@ function ManageShowtime() {
     const [showtimes, setShowtimes] = useState<Showtime[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const [isMassCreateOpen, setIsMassCreateOpen] = useState(false)
 
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
@@ -179,7 +181,7 @@ function ManageShowtime() {
         const start = new Date(startTimeValue)
         if (isNaN(start.getTime())) return
 
-        const end = new Date(start.getTime() + (duration + 20) * 60 * 1000)
+        const end = new Date(start.getTime() + (Number(duration) + 20) * 60 * 1000)
         const pad = (n: number) => String(n).padStart(2, '0')
         const endStr = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
         setValue('endTime', endStr)
@@ -790,6 +792,24 @@ function ManageShowtime() {
                                     </Button>
                                 </Col>
                             )}
+                            {!editingId && (
+                                <Col xs={24} sm={8} md={6}>
+                                    <Button
+                                        size="large"
+                                        block
+                                        style={{
+                                            borderRadius: '8px',
+                                            borderColor: '#2563eb',
+                                            color: '#2563eb',
+                                            fontWeight: 600,
+                                            height: '44px'
+                                        }}
+                                        onClick={() => setIsMassCreateOpen(true)}
+                                    >
+                                        Tạo Hàng Loạt
+                                    </Button>
+                                </Col>
+                            )}
                             <Col xs={24} sm={8} md={6}>
                                 <Button
                                     type="primary"
@@ -981,6 +1001,15 @@ function ManageShowtime() {
                     )
                 })()}
             </Modal>
+
+            <MassCreateShowtimeModal 
+                isOpen={isMassCreateOpen}
+                onClose={() => setIsMassCreateOpen(false)}
+                movies={movies}
+                rooms={rooms}
+                existingShowtimes={showtimes}
+                onSuccess={() => void loadShowtimes()}
+            />
         </div>
     )
 }
