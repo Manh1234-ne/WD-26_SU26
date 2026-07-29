@@ -90,17 +90,29 @@ function SeatSelection() {
             setHoldingTimeLeft(remaining)
             if (remaining <= 0) {
                 if (holdingTimerRef.current) clearInterval(holdingTimerRef.current)
+                
+                const expiredBookingId = holdingSession.bookingId
+                
                 setHoldingSession(null)
                 setHoldingTimeLeft(null)
                 setSelectedSeats([])
                 sessionStorage.removeItem(SESSION_KEY)
+
+                cancelBooking(expiredBookingId)
+                    .then(() => {
+                        void refetchOccupied()
+                    })
+                    .catch((err) => {
+                        console.error("Error auto-cancelling expired booking on client:", err)
+                        void refetchOccupied()
+                    })
+
                 Swal.fire({
                     title: 'Hết thời gian giữ chỗ',
                     text: 'Phần giữ ghế của bạn đã hết hạn. Vui lòng chọn lại ghế.',
                     icon: 'warning',
                     confirmButtonColor: '#e11d48',
                 })
-                void refetchOccupied()
             }
         }
         tick()
