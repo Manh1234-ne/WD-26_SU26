@@ -253,7 +253,13 @@ function ManageSeat() {
               <Select
                 style={{ width: '100%' }}
                 placeholder="Vui lòng chọn phòng..."
-                options={rooms.map(r => ({ label: `${r.name} (${r.roomType})`, value: r._id }))}
+                options={rooms.map(r => {
+                  let typeName: string = r.roomType;
+                  if (r.roomType === '2D') typeName = 'Tiêu chuẩn';
+                  if (r.roomType === 'VIP') typeName = 'VIP';
+                  if (r.roomType === 'IMAX') typeName = 'IMAX';
+                  return { label: `${r.name} (${typeName})`, value: r._id };
+                })}
                 value={selectedRoom}
                 onChange={(val) => setSelectedRoom(val)}
                 loading={isLoadingRooms}

@@ -192,11 +192,14 @@ function ManageRoom() {
       render: (type) => {
         const colors: Record<string, string> = {
           '2D': 'blue',
-          '3D': 'purple',
           'IMAX': 'orange',
           'VIP': 'gold',
         }
-        return <Tag color={colors[type] || 'default'}>{type}</Tag>
+        let typeName = type;
+        if (type === '2D') typeName = 'Tiêu chuẩn (Standard)';
+        if (type === 'VIP') typeName = 'VIP';
+        if (type === 'IMAX') typeName = 'IMAX';
+        return <Tag color={colors[type] || 'default'}>{typeName}</Tag>
       },
     },
     {
@@ -329,10 +332,9 @@ function ManageRoom() {
               <Col xs={24} sm={12}>
                 <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Loại phòng</span>} name="roomType">
                   <Select size="large" style={{ borderRadius: '8px' }}>
-                    <Select.Option value="2D">2D Tiêu chuẩn</Select.Option>
-                    <Select.Option value="3D">3D Trải nghiệm</Select.Option>
+                    <Select.Option value="2D">Tiêu chuẩn</Select.Option>
+                    <Select.Option value="VIP">VIP</Select.Option>
                     <Select.Option value="IMAX">IMAX</Select.Option>
-                    <Select.Option value="VIP">Phòng VIP</Select.Option>
                   </Select>
                 </Form.Item>
               </Col>
