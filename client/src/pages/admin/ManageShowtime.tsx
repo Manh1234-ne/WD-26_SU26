@@ -179,7 +179,7 @@ function ManageShowtime() {
         const start = new Date(startTimeValue)
         if (isNaN(start.getTime())) return
 
-        const end = new Date(start.getTime() + duration * 60 * 1000)
+        const end = new Date(start.getTime() + (duration + 20) * 60 * 1000)
         const pad = (n: number) => String(n).padStart(2, '0')
         const endStr = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
         setValue('endTime', endStr)
@@ -589,7 +589,7 @@ function ManageShowtime() {
                             }}>
                                 <ClockCircleOutlined style={{ fontSize: '18px', color: '#2563eb' }} />
                                 <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                                    Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> — Giờ kết thúc sẽ được tính toán tự động sau khi chọn giờ bắt đầu.
+                                    Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> + <strong style={{ color: '#059669', fontSize: '14px' }}>20 phút Quãng Nghỉ</strong>. Giờ kết thúc tự động tính toán.
                                 </span>
                             </div>
                         )}
@@ -679,10 +679,12 @@ function ManageShowtime() {
                                                     style={{
                                                         borderRadius: '8px',
                                                         fontWeight: 600,
-                                                        color: '#0f172a'
+                                                        color: '#0f172a',
+                                                        backgroundColor: '#f1f5f9',
+                                                        cursor: 'not-allowed'
                                                     }}
                                                     value={field.value ? field.value.slice(0, 16) : ''}
-                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    readOnly
                                                 />
                                             )}
                                         />

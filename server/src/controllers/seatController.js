@@ -135,6 +135,11 @@ if (!seat) {
 return fail(res, 404, "không tìm thấy ghế");
 }
 
+const isBooked = await BookingSeat.findOne({ seat: id, status: { $in: ["held", "booked"] } });
+if (isBooked) {
+  return fail(res, 400, "Ghế này đã có người đặt, không thể thay đổi thông tin");
+}
+
 seat.row = req.body.row
 ? req.body.row.toUpperCase()
 : seat.row;
