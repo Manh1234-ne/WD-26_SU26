@@ -100,6 +100,12 @@ function Payment() {
         } catch (error) {
             console.error("Error cancelling expired booking:", error)
         }
+
+        const showtimeId = booking?.showtime?._id || booking?.showtime;
+        if (showtimeId) {
+            sessionStorage.removeItem(`cinema_holding_${showtimeId}`);
+        }
+
         Swal.fire({
             title: "Hết thời gian thanh toán",
             text: "Đặt vé của bạn đã hết hạn và ghế đã được giải phóng.",

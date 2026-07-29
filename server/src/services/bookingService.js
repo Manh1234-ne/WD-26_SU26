@@ -12,8 +12,8 @@ import {
 import {
   reserveComboStock,
 } from "./inventoryService.js";
-
 export const createBookingService = async ({
+  
   user,
   showtime,
   seatIds,
@@ -21,6 +21,7 @@ export const createBookingService = async ({
   comboIds = [],
   customExpiresAt,
 }) => {
+   console.log("CREATE BOOKING CALLED", seatIds);
   const showtimeExists =
     await Showtime.findById(showtime);
 
@@ -116,7 +117,7 @@ export const createBookingService = async ({
     if (
       voucher.usageLimit != null &&
       voucher.usedCount >=
-        voucher.usageLimit
+      voucher.usageLimit
     ) {
       throw new Error(
         "Voucher đã hết lượt sử dụng"
@@ -132,8 +133,8 @@ export const createBookingService = async ({
     if (
       voucher.usageLimit != null &&
       voucher.usedCount +
-        pendingBookingCount >=
-        voucher.usageLimit
+      pendingBookingCount >=
+      voucher.usageLimit
     ) {
       throw new Error(
         "Voucher sắp hết lượt sử dụng"
@@ -296,4 +297,162 @@ export const createBookingService = async ({
   }
 
   return booking;
+};
+export const updateBookingSeatsService = async ({
+  booking,
+  seatIds,
+}) => {
+    console.log("UPDATE SEATS CALLED", seatIds);
+  const showtime = await Showtime.findById(booking.showtime);
+
+  if (!showtime) {
+    throw new Error("Không tìm thấy suất chiếu");
+  }
+
+  // Lấy các ghế mới
+  const seats = await Seat.find({
+    _id: { $in: seatIds },
+    room: showtime.room,
+    isActive: true,
+  });
+
+  if (seats.length !== seatIds.length) {
+    throw new Error("Ghế không hợp lệ");
+  }
+
+  // Ghế hiện tại của booking
+  const currentBookingSeats = await BookingSeat.find({
+    booking: booking._id,
+    status: { $ne: "cancelled" },
+  });
+
+  const currentSeatIds = currentBookingSeats.map((s) =>
+    s.seat.toString()
+  );
+
+  // Ghế cần thêm
+  const addSeatIds = seatIds.filter(
+    (id) => !currentSeatIds.includes(id)
+  );
+
+  // Ghế cần bỏ
+  const removeSeatIds = currentSeatIds.filter(
+    (id) => !seatIds.includes(id)
+  );
+
+  /**
+   * Kiểm tra ghế mới có bị người khác giữ không
+   */
+  if (addSeatIds.length > 0) {
+    const activeBookings = await Booking.find({
+      showtime: booking.showtime,
+      _id: { $ne: booking._id },
+      $or: [
+        {
+          status: {
+            $in: ["confirmed", "completed"],
+          },
+        },
+        {
+          status: "pending",
+          expiresAt: { $gt: new Date() },
+        },
+      ],
+    }).select("_id");
+
+    const activeBookingIds = activeBookings.map((b) => b._id);
+
+    const unavailableSeats = await BookingSeat.find({
+      showtime: booking.showtime,
+      booking: {
+        $in: activeBookingIds,
+      },
+      seat: {
+        $in: addSeatIds,
+      },
+      status: {
+        $in: ["held", "booked"],
+      },
+    });
+
+    if (unavailableSeats.length > 0) {
+      throw new Error(
+        "Ghế đã được người khác giữ hoặc đã đặt"
+      );
+    }
+  }
+
+  /**
+   * Huỷ các ghế bỏ chọn
+   */
+  if (removeSeatIds.length > 0) {
+  console.log("REMOVE SEATS:", removeSeatIds);
+
+  await BookingSeat.deleteMany({
+    booking: booking._id,
+    seat: {
+      $in: removeSeatIds
+    }
+  });
+}
+
+  /**
+   * Thêm ghế mới
+   */
+  // Thêm ghế mới
+// Thêm ghế mới
+if (addSeatIds.length > 0) {
+  const addSeats = seats.filter((s) =>
+    addSeatIds.includes(s._id.toString())
+  );
+
+
+  const newBookingSeats = addSeats.map((seat) => ({
+    booking: booking._id,
+    showtime: booking.showtime,
+    seat: seat._id,
+    seatCode: seat.code,
+    seatType: seat.type,
+    price: showtime.basePrice * seat.priceMultiplier,
+    status: "held",
+  }));
+
+  await BookingSeat.insertMany(newBookingSeats);
+}
+  /**
+   * Tính lại tiền ghế
+   */
+  booking.totalSeatPrice = seats.reduce(
+    (sum, seat) =>
+      sum +
+      showtime.basePrice *
+      seat.priceMultiplier,
+    0
+  );
+
+  booking.finalAmount =
+    booking.totalSeatPrice +
+    (booking.totalComboPrice || 0) -
+    (booking.discountAmount || 0);
+
+  if (booking.finalAmount < 0) {
+    booking.finalAmount = 0;
+  }
+
+  await booking.save();
+
+  return await Booking.findById(booking._id)
+    .populate("user")
+    .populate("voucher")
+    .populate({
+      path: "showtime",
+      populate: [
+        {
+          path: "movie",
+        },
+        {
+          path: "room",
+        },
+      ],
+    });
 };

@@ -82,6 +82,16 @@ function PaymentSuccess() {
         }
         handleVerify()
     }, [searchParams, navigate, message])
+
+    useEffect(() => {
+        if (paymentStatus === "success" && booking) {
+            const showtimeId = typeof booking.showtime === "object" ? booking.showtime?._id : booking.showtime;
+            if (showtimeId) {
+                sessionStorage.removeItem(`cinema_holding_${showtimeId}`);
+            }
+        }
+    }, [paymentStatus, booking]);
+
     if (loading) {
         return (
             <Loading text="Đang kiểm tra và xác thực giao dịch thanh toán..." />
