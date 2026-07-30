@@ -4,6 +4,7 @@ import type {
   Booking,
   BookingWithSeats,
   CreateBookingPayload,
+  UpdateBookingSeatsPayload,
 } from "./booking.types";
 
 export const createBooking = async (booking: CreateBookingPayload) => {
@@ -46,11 +47,10 @@ export const updateBookingSeats = async (
   bookingId: string,
   seatIds: string[]
 ) => {
+  const payload: UpdateBookingSeatsPayload = { seatIds };
   const response = await api.patch<ApiResponse<Booking>>(
     `/bookings/${bookingId}/seats`,
-    {
-      seatIds,
-    }
+    payload
   );
 
   return response.data;
