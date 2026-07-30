@@ -3,9 +3,10 @@ import type {
   ApiResponse,
   Booking,
   BookingWithSeats,
+  CreateBookingPayload,
 } from "./booking.types";
 
-export const createBooking = async (booking: Booking) => {
+export const createBooking = async (booking: CreateBookingPayload) => {
   const response = await api.post<ApiResponse<Booking>>(
     "/bookings",
     booking

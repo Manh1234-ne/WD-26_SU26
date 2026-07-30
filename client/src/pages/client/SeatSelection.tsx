@@ -303,7 +303,7 @@ console.log("HOLDING SESSION:", holdingSession);
 
                 const session = {
                     bookingId: booking._id,
-                    expiresAt: new Date(booking.expiresAt).getTime(),
+                    expiresAt: booking.expiresAt ? new Date(booking.expiresAt).getTime() : Date.now() + 10 * 60 * 1000,
                 };
 
                 sessionStorage.setItem(
