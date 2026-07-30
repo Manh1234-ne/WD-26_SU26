@@ -13,6 +13,7 @@ export type Movie = {
   country?: string
   director?: string
   cast?: string[]
+  formats?: string[]
   posterUrl?: string
   backdropUrl?: string
   trailerUrl?: string
@@ -26,6 +27,7 @@ export type Movie = {
 export type MoviePayload = Omit<Movie, '_id' | 'createdAt' | 'updatedAt'> & {
   genres: string[]
   cast: string[]
+  formats: string[]
 }
 
 export type ApiResponse<T> = {

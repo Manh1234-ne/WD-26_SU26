@@ -56,7 +56,7 @@ import dayjs from 'dayjs'
 const { Title, Text } = Typography
 const { Option } = Select
 
-const FORMAT_OPTIONS = ['2D', '3D', 'IMAX', '4DX', 'ScreenX']
+import { MassCreateShowtimeModal } from './MassCreateShowtimeModal'
 
 interface ShowtimePayload {
     movieId: string
@@ -84,6 +84,7 @@ function ManageShowtime() {
     const [showtimes, setShowtimes] = useState<Showtime[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const [isMassCreateOpen, setIsMassCreateOpen] = useState(false)
 
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
@@ -118,6 +119,7 @@ function ManageShowtime() {
         handleSubmit,
         watch,
         setValue,
+        getValues,
         reset,
         control,
         formState: { errors },
@@ -137,6 +139,38 @@ function ManageShowtime() {
 
     const selectedMovieId = watch('movieId')
     const startTimeValue = watch('startTime')
+    const selectedRoomId = watch('roomId')
+
+    const selectedMovie = movies.find((m) => m._id === selectedMovieId)
+    const selectedRoom = rooms.find((r) => r._id === selectedRoomId)
+
+    let availableFormats: string[] = []
+
+    const movieFormats = selectedMovie?.formats && selectedMovie.formats.length > 0
+        ? selectedMovie.formats
+        : ['2D']
+
+    if (selectedRoom) {
+        if (selectedRoom.roomType === 'IMAX') {
+            availableFormats = movieFormats.includes('IMAX') ? ['IMAX'] : []
+        } else {
+            availableFormats = movieFormats.filter(f => f === '2D' || f === '3D')
+        }
+    } else {
+        availableFormats = movieFormats
+    }
+
+    const availableFormatsStr = availableFormats.join(',')
+
+    useEffect(() => {
+        const formatsArray = availableFormatsStr ? availableFormatsStr.split(',') : []
+        const currentFormat = getValues('format')
+        if (formatsArray.length > 0 && !formatsArray.includes(currentFormat)) {
+            setValue('format', formatsArray[0])
+        } else if (formatsArray.length === 0) {
+            setValue('format', '')
+        }
+    }, [availableFormatsStr, setValue, getValues])
 
     useEffect(() => {
         if (!selectedMovieId || !startTimeValue) return
@@ -147,7 +181,7 @@ function ManageShowtime() {
         const start = new Date(startTimeValue)
         if (isNaN(start.getTime())) return
 
-        const end = new Date(start.getTime() + duration * 60 * 1000)
+        const end = new Date(start.getTime() + (Number(duration) + 20) * 60 * 1000)
         const pad = (n: number) => String(n).padStart(2, '0')
         const endStr = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
         setValue('endTime', endStr)
@@ -267,7 +301,6 @@ function ManageShowtime() {
         }
     }
 
-    const selectedMovie = movies.find((m) => m._id === selectedMovieId)
     const movieDuration = (selectedMovie as Movie & { duration?: number })?.duration
 
     const columns: ColumnsType<Showtime> = [
@@ -277,16 +310,24 @@ function ManageShowtime() {
             width: 220,
             render: (_, record) => (
                 <Text strong style={{ fontSize: 13 }}>
-                    {record.movie.title}
+                    {record.movie?.title || 'Phim không tồn tại'}
                 </Text>
             ),
         },
         {
             title: 'Phòng chiếu',
             key: 'room',
-            render: (_, record) => (
-                <strong style={{ color: '#e11d48' }}>{record.room.name}</strong>
-            ),
+            render: (_, record) => {
+                let typeName: string = record.room?.roomType || '';
+                if (record.room?.roomType === '2D') typeName = 'Tiêu chuẩn';
+                if (record.room?.roomType === 'VIP') typeName = 'VIP';
+                if (record.room?.roomType === 'IMAX') typeName = 'IMAX';
+                return (
+                    <strong style={{ color: '#e11d48' }}>
+                        {record.room ? `${record.room.name} - ${typeName}` : 'Phòng không tồn tại'}
+                    </strong>
+                );
+            },
         },
         {
             title: 'Bắt đầu',
@@ -496,10 +537,16 @@ function ManageShowtime() {
                                                     loading={isLoading}
                                                     size="large"
                                                     style={{ width: '100%' }}
-                                                    options={rooms.map((r) => ({
-                                                        label: `${r.name} (${r.roomType})`,
-                                                        value: r._id,
-                                                    }))}
+                                                    options={rooms.map((r) => {
+                                                        let typeName: string = r.roomType;
+                                                        if (r.roomType === '2D') typeName = 'Tiêu chuẩn';
+                                                        if (r.roomType === 'VIP') typeName = 'VIP';
+                                                        if (r.roomType === 'IMAX') typeName = 'IMAX';
+                                                        return {
+                                                            label: `${r.name} - ${typeName}`,
+                                                            value: r._id,
+                                                        }
+                                                    })}
                                                 />
                                             )}
                                         />
@@ -512,11 +559,15 @@ function ManageShowtime() {
                                             control={control}
                                             render={({ field }) => (
                                                 <Select {...field} size="large" style={{ width: '100%' }}>
-                                                    {FORMAT_OPTIONS.map((f) => (
-                                                        <Option key={f} value={f}>
-                                                            {f}
-                                                        </Option>
-                                                    ))}
+                                                    {availableFormats.length === 0 ? (
+                                                        <Option value="" disabled>Không có định dạng phù hợp</Option>
+                                                    ) : (
+                                                        availableFormats.map((f) => (
+                                                            <Option key={f} value={f}>
+                                                                {f}
+                                                            </Option>
+                                                        ))
+                                                    )}
                                                 </Select>
                                             )}
                                         />
@@ -540,7 +591,7 @@ function ManageShowtime() {
                             }}>
                                 <ClockCircleOutlined style={{ fontSize: '18px', color: '#2563eb' }} />
                                 <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                                    Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> — Giờ kết thúc sẽ được tính toán tự động sau khi chọn giờ bắt đầu.
+                                    Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> + <strong style={{ color: '#059669', fontSize: '14px' }}>20 phút Quãng Nghỉ</strong>. Giờ kết thúc tự động tính toán.
                                 </span>
                             </div>
                         )}
@@ -630,10 +681,12 @@ function ManageShowtime() {
                                                     style={{
                                                         borderRadius: '8px',
                                                         fontWeight: 600,
-                                                        color: '#0f172a'
+                                                        color: '#0f172a',
+                                                        backgroundColor: '#f1f5f9',
+                                                        cursor: 'not-allowed'
                                                     }}
                                                     value={field.value ? field.value.slice(0, 16) : ''}
-                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    readOnly
                                                 />
                                             )}
                                         />
@@ -664,15 +717,17 @@ function ManageShowtime() {
                                                 min: { value: 0, message: 'Giá không hợp lệ' },
                                             }}
                                             render={({ field }) => (
-                                                <InputNumber
-                                                    {...field}
-                                                    size="large"
-                                                    style={{ width: '100%' }}
-                                                    min={0}
-                                                    step={5000}
-                                                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                                    addonAfter="VNĐ"
-                                                />
+                                                <Space.Compact style={{ width: '100%' }}>
+                                                    <InputNumber
+                                                        {...field}
+                                                        size="large"
+                                                        style={{ width: '100%' }}
+                                                        min={0}
+                                                        step={5000}
+                                                        formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                                    />
+                                                    <Button size="large" style={{ backgroundColor: '#fafafa', color: 'rgba(0,0,0,0.65)', cursor: 'default', borderLeft: 0 }}>VNĐ</Button>
+                                                </Space.Compact>
                                             )}
                                         />
                                     </Form.Item>
@@ -734,6 +789,24 @@ function ManageShowtime() {
                                         }}
                                     >
                                         Hủy
+                                    </Button>
+                                </Col>
+                            )}
+                            {!editingId && (
+                                <Col xs={24} sm={8} md={6}>
+                                    <Button
+                                        size="large"
+                                        block
+                                        style={{
+                                            borderRadius: '8px',
+                                            borderColor: '#2563eb',
+                                            color: '#2563eb',
+                                            fontWeight: 600,
+                                            height: '44px'
+                                        }}
+                                        onClick={() => setIsMassCreateOpen(true)}
+                                    >
+                                        Tạo Hàng Loạt
                                     </Button>
                                 </Col>
                             )}
@@ -928,6 +1001,15 @@ function ManageShowtime() {
                     )
                 })()}
             </Modal>
+
+            <MassCreateShowtimeModal 
+                isOpen={isMassCreateOpen}
+                onClose={() => setIsMassCreateOpen(false)}
+                movies={movies}
+                rooms={rooms}
+                existingShowtimes={showtimes}
+                onSuccess={() => void loadShowtimes()}
+            />
         </div>
     )
 }

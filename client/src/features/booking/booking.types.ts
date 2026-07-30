@@ -46,6 +46,16 @@ export type Booking = {
     cancelledAt?: string | null,
     createdAt: string,
     updatedAt: string,
+    expiresAt?: string,
+}
+
+export type CreateBookingPayload = {
+    user?: string;
+    showtime?: string;
+    seatIds: string[];
+    voucherCode?: string;
+    comboIds?: string[];
+    customExpiresAt?: string | Date;
 }
 
 export type Seat = {
