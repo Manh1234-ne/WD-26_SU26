@@ -6,6 +6,7 @@ import {
   getBookingById,
   getBookingsByUser,
   cancelBooking,
+  cancelBookingBeacon,
   completeBooking,
   applyVoucherToBooking,
   updateBookingSeats
@@ -22,6 +23,8 @@ routerBooking.get("/:id", getBookingById);
 
 routerBooking.patch("/:id/seats", updateBookingSeats);
 routerBooking.patch("/:id/cancel", cancelBooking);
+
+routerBooking.post("/:id/cancel-beacon", cancelBookingBeacon);
 
 
 routerBooking.patch(

@@ -10,6 +10,7 @@ import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 import Loading from '../../components/Loading/Loading'
 import { cancelBooking, getBookingsByUser, getBookingById, createBooking, updateBookingSeats } from '../../features/booking/booking.service'
+import { useBookingUnloadGuard } from '../../features/booking/useBookingUnloadGuard'
 import { ClockCircleOutlined } from '@ant-design/icons'
 
 interface Seat {
@@ -32,6 +33,11 @@ function SeatSelection() {
 
     const SESSION_KEY = `cinema_holding_${showtimeId}`;
     const [holdingSession, setHoldingSession] = useState<{ bookingId: string; expiresAt: number } | null>(null);
+
+    useBookingUnloadGuard(
+        holdingSession?.bookingId ?? null,
+        holdingSession !== null
+    );
 
     const [holdingTimeLeft, setHoldingTimeLeft] = useState<number | null>(null)
     const holdingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -90,9 +96,9 @@ function SeatSelection() {
             setHoldingTimeLeft(remaining)
             if (remaining <= 0) {
                 if (holdingTimerRef.current) clearInterval(holdingTimerRef.current)
-                
+
                 const expiredBookingId = holdingSession.bookingId
-                
+
                 setHoldingSession(null)
                 setHoldingTimeLeft(null)
                 setSelectedSeats([])
@@ -288,7 +294,7 @@ function SeatSelection() {
         }
 
         try {
-console.log("HOLDING SESSION:", holdingSession);
+            console.log("HOLDING SESSION:", holdingSession);
             if (!holdingSession) {
 
                 const payload = {

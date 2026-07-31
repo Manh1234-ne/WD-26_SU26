@@ -185,6 +185,50 @@ export const cancelBooking = asyncHandler(async (req, res) => {
 
   return ok(res, booking);
 });
+export const cancelBookingBeacon = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(204).end();
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (
+    !booking ||
+    booking.status === "cancelled" ||
+    booking.status === "expired" ||
+    booking.status === "completed" ||
+    booking.status === "confirmed"
+  ) {
+    return res.status(204).end();
+  }
+
+  booking.status = "cancelled";
+  booking.cancelledAt = new Date();
+  await booking.save();
+
+  await BookingSeat.updateMany(
+    { booking: booking._id },
+    { status: "cancelled" }
+  );
+
+  const bookingCombos = await BookingCombo.find({ booking: booking._id });
+  if (bookingCombos.length > 0) {
+    const comboIds = bookingCombos.map((item) => ({
+      combo: item.combo,
+      quantity: item.quantity,
+    }));
+    try {
+      await releaseReservedStock(comboIds);
+    } catch (err) {
+      console.error("[beacon] releaseReservedStock error:", err.message);
+    }
+  }
+
+  console.log(`[beacon] Booking ${booking.bookingCode} cancelled via beacon/keepalive`);
+  return res.status(204).end();
+});
 
 export const applyVoucherToBooking = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -200,8 +244,8 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
   }
 
   const orderAmount =
-      booking.totalSeatPrice +
-      (booking.totalComboPrice || 0);
+    booking.totalSeatPrice +
+    (booking.totalComboPrice || 0);
 
 
   if (!voucherCode) {
