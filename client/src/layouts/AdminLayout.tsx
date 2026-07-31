@@ -15,6 +15,7 @@ import {
   LogoutOutlined,
   GiftOutlined,
   CoffeeOutlined,
+  InboxOutlined,
 } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
@@ -39,6 +40,7 @@ function AdminLayout() {
     { key: "/admin/users", icon: <UserOutlined />, label: "Quản lý người dùng" },
     { key: "/admin/vouchers", icon: <GiftOutlined />, label: "Quản lý voucher" },
     { key: "/admin/combos", icon: <CoffeeOutlined />, label: "Quản lý combo" },
+    { key: "/admin/inventory", icon: <InboxOutlined />, label: "Quản lý tồn kho" },
   ];
 
   return (

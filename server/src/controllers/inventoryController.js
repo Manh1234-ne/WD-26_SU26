@@ -29,13 +29,17 @@ const fail = (
   });
 export const getAllInventory =
   asyncHandler(async (req, res) => {
-    const items = await InventoryItem.find({
-      isActive: true,
-    }).sort({
+    const filter = req.query.admin === "true" ? {} : { isActive: true };
+    const items = await InventoryItem.find(filter).sort({
       name: 1,
     });
 
-    return ok(res, items);
+    const result = items.map((item) => ({
+      ...item.toObject(),
+      availableQuantity: item.stockQuantity - item.reservedQuantity,
+    }));
+
+    return ok(res, result);
   });
 export const getInventoryById =
   asyncHandler(async (req, res) => {
@@ -44,7 +48,7 @@ export const getInventoryById =
         req.params.id
       );
 
-    if (!item || !item.isActive) {
+    if (!item || (!item.isActive && req.query.admin !== "true")) {
       return fail(
         res,
         404,
@@ -52,7 +56,10 @@ export const getInventoryById =
       );
     }
 
-    return ok(res, item);
+    return ok(res, {
+      ...item.toObject(),
+      availableQuantity: item.stockQuantity - item.reservedQuantity,
+    });
   });
 export const createInventory =
   asyncHandler(async (req, res) => {
@@ -61,6 +68,7 @@ export const createInventory =
       unit,
       stockQuantity = 0,
       lowStockThreshold = 10,
+      isActive = true,
     } = req.body;
 
     if (!name) {
@@ -100,9 +108,10 @@ export const createInventory =
     const item =
       await InventoryItem.create({
         name: name.trim(),
-        unit,
-        stockQuantity,
-        lowStockThreshold,
+        unit: unit?.trim() || "suất",
+        stockQuantity: Number(stockQuantity),
+        lowStockThreshold: Number(lowStockThreshold),
+        isActive: Boolean(isActive),
       });
 
     return created(
@@ -131,7 +140,11 @@ export const updateInventory =
     }
 
     if (req.body.unit) {
-      item.unit = req.body.unit;
+      item.unit = req.body.unit.trim();
+    }
+
+    if (req.body.stockQuantity !== undefined) {
+      item.stockQuantity = Number(req.body.stockQuantity);
     }
 
     if (
@@ -139,14 +152,14 @@ export const updateInventory =
       undefined
     ) {
       item.lowStockThreshold =
-        req.body.lowStockThreshold;
+        Number(req.body.lowStockThreshold);
     }
 
     if (
       req.body.isActive !== undefined
     ) {
       item.isActive =
-        req.body.isActive;
+        Boolean(req.body.isActive);
     }
 
     await item.save();
