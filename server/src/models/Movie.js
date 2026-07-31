@@ -27,6 +27,16 @@ const movieSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+    formats: {
+      type: [{
+        type: String,
+        enum: {
+          values: ["2D", "3D", "IMAX"],
+          message: "Định dạng phim không hợp lệ",
+        },
+      }],
+      default: ["2D"],
+    },
     duration: {
       type: Number,
       required: [true, "Thời lượng phim là bắt buộc"],

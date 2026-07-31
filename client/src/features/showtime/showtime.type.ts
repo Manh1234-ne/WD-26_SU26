@@ -12,6 +12,7 @@ export type Showtime = {
     room: {
         _id: string,
         name: string,
+        roomType?: string,
     },
     startTime: Date,
     endTime: Date,

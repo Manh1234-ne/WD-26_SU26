@@ -5,66 +5,66 @@ import { releaseReservedStock } from "../services/inventoryService.js";
 
 export const startBookingTimeoutCheck = () => {
   console.log(
-    "⏰ Trình quét booking đã được kích hoạt..."
+    "Trình quét booking đã được kích hoạt (interval: 30s)..."
   );
 
   setInterval(async () => {
     try {
-      /**
-       * =========================
-       * HỦY BOOKING HẾT HẠN
-       * =========================
-       */
+
+      const now = new Date();
+
       const expiredBookings = await Booking.find({
         status: "pending",
-        expiresAt: { $lt: new Date() },
-      });
+        expiresAt: { $lt: now },
+      }).select("_id bookingCode");
 
       if (expiredBookings.length > 0) {
         console.log(
-          `🧹 Phát hiện ${expiredBookings.length} booking hết hạn`
+          `🧹 Phát hiện ${expiredBookings.length} booking hết hạn – đang xử lý...`
         );
 
+        const expiredIds = expiredBookings.map((b) => b._id);
+
+        // Batch cancel tất cả BookingSeat liên quan – nhanh hơn loop
+        await BookingSeat.updateMany(
+          { booking: { $in: expiredIds } },
+          { status: "cancelled" }
+        );
+
+
         for (const booking of expiredBookings) {
-
-          // Hủy giữ ghế
-          await BookingSeat.updateMany(
-            { booking: booking._id },
-            { status: "cancelled" }
-          );
-
-          // Lấy combo của booking
-          const bookingCombos =
-            await BookingCombo.find({
+          try {
+            // Trả lại số lượng combo đã reserv
+            const bookingCombos = await BookingCombo.find({
               booking: booking._id,
             });
 
-          if (bookingCombos.length > 0) {
-
-            const comboIds =
-              bookingCombos.map((item) => ({
+            if (bookingCombos.length > 0) {
+              const comboIds = bookingCombos.map((item) => ({
                 combo: item.combo,
                 quantity: item.quantity,
               }));
+              await releaseReservedStock(comboIds);
+            }
 
-            // Trả lại số lượng đã reserve
-            await releaseReservedStock(
-              comboIds
+            // Dùng "expired" để phân biệt với "cancelled" do user chủ động hủy
+            booking.status = "expired";
+            booking.cancelledAt = now;
+            await booking.save();
+
+            console.log(
+              ` Booking ${booking.bookingCode} → expired`
+            );
+          } catch (innerErr) {
+            console.error(
+              `Lỗi xử lý booking ${booking.bookingCode}:`,
+              innerErr.message
             );
           }
-
-          booking.status = "cancelled";
-          booking.cancelledAt = new Date();
-
-          await booking.save();
         }
       }
 
-      /**
-       * =========================
-       * AUTO COMPLETED
-       * =========================
-       */
+
       const confirmedBookings = await Booking.find({
         status: "confirmed",
       }).populate("showtime");
@@ -80,15 +80,15 @@ export const startBookingTimeoutCheck = () => {
           await booking.save();
 
           console.log(
-            `✅ Booking ${booking.bookingCode} completed`
+            `🎬 Booking ${booking.bookingCode} → completed`
           );
         }
       }
     } catch (error) {
       console.error(
-        "❌ Cron Job Error:",
+        " Cron Job Error:",
         error.message
       );
     }
-  }, 60000);
+  }, 30000);
 };

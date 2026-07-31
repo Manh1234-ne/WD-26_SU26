@@ -45,7 +45,7 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "cancelled", "completed"],
+      enum: ["pending", "confirmed", "cancelled", "expired", "completed"],
       default: "pending",
     },
     expiresAt: {
@@ -66,5 +66,9 @@ const bookingSchema = new mongoose.Schema(
 
 bookingSchema.index({ user: 1, createdAt: -1 });
 bookingSchema.index({ showtime: 1 });
+bookingSchema.index(
+  { status: 1, expiresAt: 1 },
+  { name: "booking_pending_expires_idx" }
+);
 
 export default mongoose.model("Booking", bookingSchema);

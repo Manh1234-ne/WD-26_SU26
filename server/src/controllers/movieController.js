@@ -108,6 +108,7 @@ class MovieController {
         originalTitle,
         description,
         genres,
+        formats,
         duration,
         releaseDate,
         ageRating,
@@ -198,6 +199,7 @@ class MovieController {
         originalTitle: originalTitle?.trim() || "",
         description: description.trim(),
         genres: genres || [],
+        formats: formats || ["2D"],
         duration,
         releaseDate,
         ageRating: ageRating || "P",
@@ -246,6 +248,7 @@ class MovieController {
         originalTitle,
         description,
         genres,
+        formats,
         duration,
         releaseDate,
         ageRating,
@@ -324,6 +327,7 @@ class MovieController {
         movie.originalTitle = originalTitle?.trim() || "";
       if (description) movie.description = description.trim();
       if (genres !== undefined) movie.genres = genres || [];
+      if (formats !== undefined) movie.formats = formats || ["2D"];
       if (duration !== undefined) movie.duration = duration;
       if (releaseDate !== undefined) movie.releaseDate = releaseDate;
       if (ageRating !== undefined) movie.ageRating = ageRating;

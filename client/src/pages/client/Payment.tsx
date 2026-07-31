@@ -3,6 +3,7 @@ import { App as antdApp } from "antd"
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getBookingById } from "../../features/booking/booking.service";
+import { useBookingUnloadGuard } from "../../features/booking/useBookingUnloadGuard";
 import Swal from "sweetalert2";
 import { createMockMomoPayment, createVnPayUrl } from "../../features/payment/payment.service";
 import { ArrowLeftOutlined, ClockCircleOutlined, SafetyCertificateOutlined, VideoCameraOutlined, WalletOutlined } from "@ant-design/icons";
@@ -37,6 +38,13 @@ function Payment() {
     const bookingData = responseData?.data as any
     const booking = bookingData?.booking
     const seats = bookingData?.seats || []
+
+    // Lớp phòng ngừa phụ: hủy booking khi user đóng tab trong lúc thanh toán.
+    // Lớp bảo vệ chính vẫn là cron job backend (30s).
+    useBookingUnloadGuard(
+        bookingId ?? null,
+        booking?.status === "pending"
+    );
 
     useEffect(() => {
         if (booking) {
@@ -100,6 +108,12 @@ function Payment() {
         } catch (error) {
             console.error("Error cancelling expired booking:", error)
         }
+
+        const showtimeId = booking?.showtime?._id || booking?.showtime;
+        if (showtimeId) {
+            sessionStorage.removeItem(`cinema_holding_${showtimeId}`);
+        }
+
         Swal.fire({
             title: "Hết thời gian thanh toán",
             text: "Đặt vé của bạn đã hết hạn và ghế đã được giải phóng.",
