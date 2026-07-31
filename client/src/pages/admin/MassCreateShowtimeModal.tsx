@@ -82,7 +82,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             format: '2D',
             language: 'Tiếng Việt',
             subtitle: '',
-            basePrice: 50000
+            basePrice: 90000
         }
     })
 
@@ -158,7 +158,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             for (const timeSlot of data.timeSlots) {
                 const hour = timeSlot.hour()
                 const minute = timeSlot.minute()
-                
+
                 const startObj = currentDay.hour(hour).minute(minute).second(0).toDate()
                 // endTime = startTime + duration + 20 mins
                 const endObj = new Date(startObj.getTime() + (Number(duration) + 20) * 60 * 1000)
@@ -168,10 +168,10 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                     const exRoomId = typeof existing.room === 'object' ? (existing.room as any)._id : existing.room;
                     if (exRoomId !== data.roomId) return false;
                     if ((existing as any).status === 'cancelled') return false;
-                    
+
                     const exStart = new Date(existing.startTime)
                     const exEnd = new Date(existing.endTime)
-                    
+
                     // overlap condition: start < exEnd AND end > exStart
                     return startObj < exEnd && endObj > exStart
                 })
@@ -209,7 +209,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
     const handleConfirmCreate = async () => {
         const data = getValues()
         const validItems = previewList.filter(item => !item.isOverlap)
-        
+
         if (validItems.length === 0) {
             message.warning('Không có suất chiếu nào hợp lệ để tạo')
             return
@@ -246,7 +246,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
         if (failCount > 0) {
             message.error(`Có ${failCount} suất chiếu tạo thất bại`)
         }
-        
+
         if (successCount > 0) {
             reset()
             setShowPreview(false)
@@ -293,10 +293,10 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             title: 'Hành động',
             key: 'action',
             render: (_: any, record: PreviewItem) => (
-                <Button 
-                    type="text" 
-                    danger 
-                    icon={<DeleteOutlined />} 
+                <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
                     onClick={() => handleRemovePreviewItem(record.id)}
                     title="Xóa suất chiếu này"
                 />
@@ -410,11 +410,11 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                             </Form.Item>
                         </Col>
                     </Row>
-                    
+
                     <div style={{ margin: '24px 0 16px', borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
                         <Text strong style={{ fontSize: 16 }}>Thiết lập thời gian</Text>
                     </div>
-                    
+
                     <Row gutter={[16, 16]}>
                         <Col span={12}>
                             <Form.Item label="Khoảng ngày chiếu" required>
@@ -423,9 +423,9 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                                     control={control}
                                     rules={{ required: 'Bắt buộc' }}
                                     render={({ field }) => (
-                                        <RangePicker 
-                                            {...field} 
-                                            style={{ width: '100%' }} 
+                                        <RangePicker
+                                            {...field}
+                                            style={{ width: '100%' }}
                                             format="DD/MM/YYYY"
                                         />
                                     )}
@@ -465,9 +465,9 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                                         render={({ field }) => (
                                             <Space wrap>
                                                 {field.value.map((time, index) => (
-                                                    <Tag 
-                                                        key={index} 
-                                                        closable 
+                                                    <Tag
+                                                        key={index}
+                                                        closable
                                                         onClose={() => {
                                                             const newTimes = [...field.value]
                                                             newTimes.splice(index, 1)
@@ -485,7 +485,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                             </Form.Item>
                         </Col>
                     </Row>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
                         <Space>
                             <Button onClick={onClose}>Hủy</Button>
@@ -501,15 +501,15 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                 <div>
                     <div style={{ marginBottom: 16 }}>
                         <Text strong style={{ fontSize: 16 }}>Danh sách suất chiếu dự kiến</Text>
-                        <br/>
+                        <br />
                         <Text type="secondary">
-                            Tổng cộng: {previewList.length} suất chiếu 
+                            Tổng cộng: {previewList.length} suất chiếu
                             ({previewList.filter(i => !i.isOverlap).length} hợp lệ, {previewList.filter(i => i.isOverlap).length} trùng lịch)
                         </Text>
                     </div>
-                    <Table 
-                        dataSource={previewList} 
-                        columns={columns} 
+                    <Table
+                        dataSource={previewList}
+                        columns={columns}
                         rowKey="id"
                         pagination={{ pageSize: 5 }}
                         size="small"
@@ -517,9 +517,9 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
                         <Space>
                             <Button onClick={() => setShowPreview(false)}>Quay lại chỉnh sửa</Button>
-                            <Button 
-                                type="primary" 
-                                onClick={handleConfirmCreate} 
+                            <Button
+                                type="primary"
+                                onClick={handleConfirmCreate}
                                 loading={isCreating}
                                 disabled={previewList.filter(i => !i.isOverlap).length === 0}
                             >

@@ -248,3 +248,57 @@ createdSeats,
 `Đã tạo ${createdSeats.length} ghế thành công`
 );
 });
+
+export const mergeCoupleSeats = asyncHandler(async (req, res) => {
+  const { seatId1, seatId2 } = req.body;
+
+  if (!seatId1 || !seatId2) {
+    return fail(res, 400, "Vui lòng chọn 2 ghế để ghép");
+  }
+
+  const seat1 = await Seat.findById(seatId1);
+  const seat2 = await Seat.findById(seatId2);
+
+  if (!seat1 || !seat2) {
+    return fail(res, 404, "Không tìm thấy ghế");
+  }
+
+  if (seat1.room.toString() !== seat2.room.toString() || seat1.row !== seat2.row) {
+    return fail(res, 400, "2 ghế phải cùng phòng và cùng hàng");
+  }
+
+  const isBooked1 = await BookingSeat.findOne({ seat: seatId1, status: { $in: ["held", "booked"] } });
+  const isBooked2 = await BookingSeat.findOne({ seat: seatId2, status: { $in: ["held", "booked"] } });
+
+  if (isBooked1 || isBooked2) {
+    return fail(res, 400, "Một trong hai ghế đã có người đặt, không thể ghép");
+  }
+
+  // Define which one comes first in physical position
+  const firstSeat = seat1.number < seat2.number ? seat1 : seat2;
+  const secondSeat = seat1.number < seat2.number ? seat2 : seat1;
+
+  if (Math.abs(secondSeat.number - firstSeat.number) !== 1) {
+    return fail(res, 400, "2 ghế phải liền kề nhau");
+  }
+
+  // Update first seat to couple
+  firstSeat.type = "couple";
+  await firstSeat.save();
+
+  // Delete second seat
+  await Seat.findByIdAndDelete(secondSeat._id);
+
+  // Shift numbering
+  const remainingSeats = await Seat.find({ room: firstSeat.room, row: firstSeat.row }).sort({ number: 1 });
+  for (let i = 0; i < remainingSeats.length; i++) {
+    const correctNumber = i + 1;
+    if (remainingSeats[i].number !== correctNumber) {
+      remainingSeats[i].number = correctNumber;
+      remainingSeats[i].code = `${firstSeat.row}${correctNumber}`;
+      await remainingSeats[i].save();
+    }
+  }
+
+  return ok(res, firstSeat);
+});

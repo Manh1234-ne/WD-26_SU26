@@ -5,6 +5,7 @@ import {
   updateSeat,
   deleteSeat,
   createSeat,
+  mergeCoupleSeats,
 } from '../../features/seat/seat.service'
 import { getRooms } from '../../features/room/room.service'
 import type { Seat, SeatPayload } from '../../features/seat/seat.types'
@@ -52,8 +53,12 @@ function ManageSeat() {
   // Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSeat, setEditingSeat] = useState<Seat | null>(null)
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('edit')
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'mass_edit'>('edit')
   const [form] = Form.useForm()
+
+  // Mass Select State
+  const [isMassSelectMode, setIsMassSelectMode] = useState(false)
+  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([])
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -163,6 +168,29 @@ function ManageSeat() {
     setIsModalOpen(true)
   }
 
+  const openMassEditModal = () => {
+    setModalMode('mass_edit')
+    form.resetFields()
+    form.setFieldsValue({
+      type: undefined,
+      priceMultiplier: undefined,
+      isActive: undefined
+    })
+    setIsModalOpen(true)
+  }
+
+  const handleSeatClick = (seat: Seat) => {
+    if (isMassSelectMode) {
+      if (selectedSeatIds.includes(seat._id)) {
+        setSelectedSeatIds(selectedSeatIds.filter(id => id !== seat._id))
+      } else {
+        setSelectedSeatIds([...selectedSeatIds, seat._id])
+      }
+    } else {
+      openEditModal(seat)
+    }
+  }
+
   const closeEditModal = () => {
     setIsModalOpen(false)
     setEditingSeat(null)
@@ -172,7 +200,19 @@ function ManageSeat() {
   const handleSaveSeat = async (values: any) => {
     if (!selectedRoom) return
     try {
-      if (modalMode === 'edit') {
+      if (modalMode === 'mass_edit') {
+        const createPromises = selectedSeatIds.map(id => {
+            const payload: any = {};
+            if (values.type !== undefined) payload.type = values.type;
+            if (values.priceMultiplier !== undefined && values.priceMultiplier !== null) payload.priceMultiplier = values.priceMultiplier;
+            if (values.isActive !== undefined) payload.isActive = values.isActive;
+            return updateSeat(id, payload);
+        });
+        await Promise.all(createPromises)
+        void message.success(`Cập nhật thành công ${selectedSeatIds.length} ghế.`)
+        setSelectedSeatIds([])
+        setIsMassSelectMode(false)
+      } else if (modalMode === 'edit') {
         if (!editingSeat) return
         await updateSeat(editingSeat._id, values)
         void message.success(`Cập nhật ghế ${editingSeat.code} thành công.`)
@@ -231,6 +271,47 @@ function ManageSeat() {
     }
   }
 
+  const handleMassDeleteSeat = async () => {
+    if (selectedSeatIds.length === 0 || !selectedRoom) return
+    setIsGenerating(true)
+    try {
+      const results = await Promise.allSettled(selectedSeatIds.map(id => deleteSeat(id)))
+      
+      const fulfilled = results.filter(r => r.status === 'fulfilled')
+      const rejected = results.filter(r => r.status === 'rejected')
+      
+      if (fulfilled.length > 0) {
+        void message.success(`Đã xóa thành công ${fulfilled.length} ghế.`)
+      }
+      if (rejected.length > 0) {
+        void message.error(`Có ${rejected.length} ghế không thể xóa (có thể đã có người đặt).`)
+      }
+      
+      setSelectedSeatIds([])
+      setIsMassSelectMode(false)
+      await loadSeats(selectedRoom)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleMergeCouple = async () => {
+    if (selectedSeatIds.length !== 2 || !selectedRoom) return
+    setIsGenerating(true)
+    try {
+      await mergeCoupleSeats(selectedSeatIds[0], selectedSeatIds[1])
+      void message.success('Đã ghép 2 ghế thành Couple thành công.')
+      setSelectedSeatIds([])
+      setIsMassSelectMode(false)
+      await loadSeats(selectedRoom)
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Ghép ghế thất bại.'
+      void message.error(msg)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       <Space direction="vertical" size={24} style={{ width: '100%' }}>
@@ -285,9 +366,53 @@ function ManageSeat() {
             }
             extra={
               seats.length > 0 && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  Thêm Ghế
-                </Button>
+                <Space size="middle">
+                  <Switch
+                    checked={isMassSelectMode}
+                    onChange={(checked) => {
+                      setIsMassSelectMode(checked)
+                      setSelectedSeatIds([])
+                    }}
+                    checkedChildren="Tắt chọn nhiều"
+                    unCheckedChildren="Bật chọn nhiều"
+                  />
+                  {isMassSelectMode && selectedSeatIds.length > 0 && (
+                    <Space>
+                      {selectedSeatIds.length === 2 && (
+                        <Popconfirm
+                          title="Ghép 2 ghế thành Couple?"
+                          description="Hai ghế phải nằm liền kề nhau."
+                          onConfirm={handleMergeCouple}
+                          okText="Ghép"
+                          cancelText="Hủy"
+                        >
+                          <Button style={{ borderColor: '#ff85c0', color: '#ff85c0' }} loading={isGenerating}>
+                            Ghép thành Couple
+                          </Button>
+                        </Popconfirm>
+                      )}
+                      <Button onClick={openMassEditModal}>
+                        Sửa {selectedSeatIds.length} ghế
+                      </Button>
+                      <Popconfirm
+                        title={`Xóa ${selectedSeatIds.length} ghế?`}
+                        description="Hành động này không thể hoàn tác."
+                        onConfirm={handleMassDeleteSeat}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <Button danger loading={isGenerating}>
+                          Xóa
+                        </Button>
+                      </Popconfirm>
+                    </Space>
+                  )}
+                  {!isMassSelectMode && (
+                    <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+                      Thêm Ghế
+                    </Button>
+                  )}
+                </Space>
               )
             }
           >
@@ -361,7 +486,7 @@ function ManageSeat() {
                                   return (
                                     <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                       <div
-                                        onClick={() => openEditModal(seat)}
+                                        onClick={() => handleSeatClick(seat)}
                                         style={{
                                           width: isCouple ? '72px' : '32px',
                                           height: '32px',
@@ -375,9 +500,11 @@ function ManageSeat() {
                                           fontSize: '11px',
                                           cursor: 'pointer',
                                           transition: 'all 0.2s',
-                                          border: '1px solid rgba(0,0,0,0.1)',
-                                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                          border: selectedSeatIds.includes(seat._id) ? '2px solid #1890ff' : '1px solid rgba(0,0,0,0.1)',
+                                          boxShadow: selectedSeatIds.includes(seat._id) ? '0 0 8px rgba(24,144,255,0.6)' : '0 2px 4px rgba(0,0,0,0.05)',
                                           overflow: 'hidden',
+                                          transform: selectedSeatIds.includes(seat._id) ? 'scale(1.1)' : 'none',
+                                          zIndex: selectedSeatIds.includes(seat._id) ? 10 : 1
                                         }}
                                         title={`Ghế ${seat.code} - ${seat.type}`}
                                       >
@@ -441,7 +568,7 @@ function ManageSeat() {
 
       {/* Edit/Create Seat Modal */}
       <Modal
-        title={modalMode === 'edit' ? `Chỉnh sửa ghế: ${editingSeat?.code}` : 'Thêm ghế mới'}
+        title={modalMode === 'edit' ? `Chỉnh sửa ghế: ${editingSeat?.code}` : modalMode === 'mass_edit' ? `Sửa hàng loạt ${selectedSeatIds.length} ghế` : 'Thêm ghế mới'}
         open={isModalOpen}
         onCancel={closeEditModal}
         footer={null}
@@ -485,7 +612,7 @@ function ManageSeat() {
             </Row>
           )}
           <Form.Item label="Loại ghế" name="type">
-            <Select>
+            <Select placeholder="Giữ nguyên" allowClear>
               <Select.Option value="standard">Standard (Tiêu chuẩn)</Select.Option>
               <Select.Option value="vip">VIP</Select.Option>
               <Select.Option value="couple">Couple (Ghế đôi)</Select.Option>
@@ -494,11 +621,18 @@ function ManageSeat() {
           </Form.Item>
 
           <Form.Item label="Hệ số giá (Price Multiplier)" name="priceMultiplier" help="1 = Giá cơ bản, 1.5 = Đắt hơn 50%">
-            <InputNumber min={0} step={0.1} style={{ width: '100%' }} />
+            <InputNumber placeholder="Giữ nguyên" min={0} step={0.1} style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item label="Trạng thái" name="isActive" valuePropName="checked">
-            <Switch checkedChildren="Hoạt động" unCheckedChildren="Bảo trì" />
+          <Form.Item label="Trạng thái" name="isActive" valuePropName={modalMode === 'mass_edit' ? 'value' : 'checked'}>
+            {modalMode === 'mass_edit' ? (
+              <Select placeholder="Giữ nguyên" allowClear>
+                <Select.Option value={true}>Hoạt động</Select.Option>
+                <Select.Option value={false}>Bảo trì</Select.Option>
+              </Select>
+            ) : (
+              <Switch checkedChildren="Hoạt động" unCheckedChildren="Bảo trì" />
+            )}
           </Form.Item>
 
           <Row gutter={16} style={{ marginTop: 24 }}>
@@ -517,7 +651,7 @@ function ManageSeat() {
             </Col>
             <Col span={modalMode === 'edit' ? 12 : 24}>
               <Button type="primary" htmlType="submit" block icon={<SaveOutlined />}>
-                Lưu thay đổi
+                {modalMode === 'mass_edit' ? 'Lưu hàng loạt' : 'Lưu thay đổi'}
               </Button>
             </Col>
           </Row>
