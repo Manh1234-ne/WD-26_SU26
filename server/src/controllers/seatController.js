@@ -140,28 +140,59 @@ if (isBooked) {
   return fail(res, 400, "Ghế này đã có người đặt, không thể thay đổi thông tin");
 }
 
+const oldType = seat.type;
+const newType = req.body.type || seat.type;
+
 seat.row = req.body.row
 ? req.body.row.toUpperCase()
 : seat.row;
 
 seat.number = req.body.number || seat.number;
 
-seat.code = req.body.code
-? req.body.code.toUpperCase()
-: seat.code;
-
-seat.type = req.body.type || seat.type;
-
-seat.priceMultiplier =
-req.body.priceMultiplier !== undefined
-? req.body.priceMultiplier
-: seat.priceMultiplier;
-
-if (req.body.isActive !== undefined) {
-seat.isActive = req.body.isActive;
+// If we are splitting a couple seat
+if (oldType === 'couple' && newType !== 'couple') {
+  seat.code = `${seat.row}${seat.number}`;
+  seat.type = newType;
+  
+  seat.priceMultiplier =
+  req.body.priceMultiplier !== undefined
+  ? req.body.priceMultiplier
+  : seat.priceMultiplier;
+  
+  if (req.body.isActive !== undefined) {
+  seat.isActive = req.body.isActive;
+  }
+  
+  await seat.save();
+  
+  // Create the second seat
+  await Seat.create({
+    room: seat.room,
+    row: seat.row,
+    number: seat.number + 1,
+    code: `${seat.row}${seat.number + 1}`,
+    type: newType,
+    priceMultiplier: seat.priceMultiplier,
+    isActive: seat.isActive,
+  });
+} else {
+  seat.code = req.body.code
+  ? req.body.code.toUpperCase()
+  : seat.code;
+  
+  seat.type = newType;
+  
+  seat.priceMultiplier =
+  req.body.priceMultiplier !== undefined
+  ? req.body.priceMultiplier
+  : seat.priceMultiplier;
+  
+  if (req.body.isActive !== undefined) {
+  seat.isActive = req.body.isActive;
+  }
+  
+  await seat.save();
 }
-
-await seat.save();
 
 return ok(res, seat);
 });
@@ -175,27 +206,13 @@ if (!seat) {
 return fail(res, 404, "không tìm thấy ghế");
 }
 
-const roomId = seat.room;
-const row = seat.row;
-
 const isBooked = await BookingSeat.findOne({ seat: id, status: { $in: ["held", "booked"] } });
+
 if (isBooked) {
   return fail(res, 400, "Ghế này đã có người đặt, không thể xóa");
 }
 
 await Seat.findByIdAndDelete(id);
-
-// Sắp xếp lại số lượng ghế trên hàng theo số tự nhiên tăng dần
-const remainingSeats = await Seat.find({ room: roomId, row }).sort({ number: 1 });
-
-for (let i = 0; i < remainingSeats.length; i++) {
-  const correctNumber = i + 1;
-  if (remainingSeats[i].number !== correctNumber) {
-    remainingSeats[i].number = correctNumber;
-    remainingSeats[i].code = `${row}${correctNumber}`;
-    await remainingSeats[i].save();
-  }
-}
 
 return ok(res, seat);
 });
@@ -204,7 +221,6 @@ export const generateSeats = asyncHandler(async (req, res) => {
 const { roomId } = req.params;
 
 const room = await Room.findById(roomId);
-
 if (!room) {
 return fail(res, 404, "không tìm thấy phòng");
 }
@@ -236,8 +252,6 @@ for (let j = 1; j <= room.seatsPerRow; j++) {
     priceMultiplier: 1,
   });
 }
-
-
 }
 
 const createdSeats = await Seat.insertMany(seats);
@@ -263,6 +277,10 @@ export const mergeCoupleSeats = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy ghế");
   }
 
+  if (seat1.type === 'couple' || seat2.type === 'couple') {
+    return fail(res, 400, "Không thể ghép các ghế đã là ghế đôi (Couple)");
+  }
+
   if (seat1.room.toString() !== seat2.room.toString() || seat1.row !== seat2.row) {
     return fail(res, 400, "2 ghế phải cùng phòng và cùng hàng");
   }
@@ -282,23 +300,21 @@ export const mergeCoupleSeats = asyncHandler(async (req, res) => {
     return fail(res, 400, "2 ghế phải liền kề nhau");
   }
 
+  const room = await Room.findById(firstSeat.room);
+  if (room && room.aisles) {
+    const parsedAisles = room.aisles.split(',').map(Number);
+    if (parsedAisles.includes(firstSeat.number)) {
+      return fail(res, 400, "Không thể ghép 2 ghế nằm ở 2 bên lối đi");
+    }
+  }
+
   // Update first seat to couple
   firstSeat.type = "couple";
+  firstSeat.code = `${firstSeat.row}${firstSeat.number}-${secondSeat.number}`;
   await firstSeat.save();
 
   // Delete second seat
   await Seat.findByIdAndDelete(secondSeat._id);
-
-  // Shift numbering
-  const remainingSeats = await Seat.find({ room: firstSeat.room, row: firstSeat.row }).sort({ number: 1 });
-  for (let i = 0; i < remainingSeats.length; i++) {
-    const correctNumber = i + 1;
-    if (remainingSeats[i].number !== correctNumber) {
-      remainingSeats[i].number = correctNumber;
-      remainingSeats[i].code = `${firstSeat.row}${correctNumber}`;
-      await remainingSeats[i].save();
-    }
-  }
 
   return ok(res, firstSeat);
 });
