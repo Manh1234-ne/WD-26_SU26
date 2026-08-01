@@ -1,6 +1,8 @@
 import Showtime from "../models/Showtime.js";
 import Movie from "../models/Movie.js";
 import Room from "../models/Room.js";
+import BookingSeat from "../models/BookingSeat.js";
+import Booking from "../models/Booking.js";
 import { asyncHandler } from "../utils/asynHandler.js";
 
 const ok = (res, data, message) =>
@@ -136,8 +138,59 @@ export const deleteShowtime = asyncHandler(async (req, res) => {
   if (!showtimeExists) {
     return fail(res, 404, "Không tìm thấy suất chiếu");
   }
+
+  const now = new Date();
+  if (new Date(showtimeExists.startTime) <= now) {
+    return fail(res, 400, "Không thể xóa lịch chiếu đang hoặc đã diễn ra.");
+  }
+
+  const hasBooked = await Booking.exists({
+    showtime: id,
+    status: { $in: ["pending", "confirmed", "completed"] }
+  });
+
+  if (hasBooked) {
+    return fail(res, 400, "Không thể xóa lịch chiếu đã có vé đặt.");
+  }
+
   const showtime = await Showtime.findByIdAndDelete(id);
   return ok(res, showtime, "Xóa suất chiếu thành công");
+});
+
+export const massDeleteShowtimes = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return fail(res, 400, "Vui lòng chọn ít nhất 1 suất chiếu để xóa.");
+  }
+
+  const now = new Date();
+  
+  // Lấy thông tin các suất chiếu
+  const showtimes = await Showtime.find({ _id: { $in: ids } });
+  
+  if (showtimes.length !== ids.length) {
+    return fail(res, 404, "Một số suất chiếu không tồn tại.");
+  }
+
+  // Kiểm tra điều kiện từng suất chiếu
+  for (const st of showtimes) {
+    if (new Date(st.startTime) <= now) {
+      return fail(res, 400, `Không thể xóa suất chiếu lúc ${new Date(st.startTime).toLocaleString('vi-VN')} vì đang hoặc đã diễn ra.`);
+    }
+
+    const hasBooked = await Booking.exists({
+      showtime: st._id,
+      status: { $in: ["pending", "confirmed", "completed"] }
+    });
+
+    if (hasBooked) {
+      return fail(res, 400, `Không thể xóa suất chiếu lúc ${new Date(st.startTime).toLocaleString('vi-VN')} vì đã có vé đặt.`);
+    }
+  }
+
+  // Nếu tất cả hợp lệ -> Xóa
+  await Showtime.deleteMany({ _id: { $in: ids } });
+  return ok(res, null, `Đã xóa thành công ${ids.length} suất chiếu.`);
 });
 
 export const updateShowtime = asyncHandler(async (req, res) => {
@@ -147,7 +200,16 @@ export const updateShowtime = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy suất chiếu");
   }
 
-  const { movie, room, startTime, endTime } = req.body;
+  const hasBooked = await Booking.exists({
+    showtime: id,
+    status: { $in: ["pending", "confirmed", "completed"] }
+  });
+
+  if (hasBooked) {
+    return fail(res, 400, "Không thể chỉnh sửa lịch chiếu đã có vé đặt.");
+  }
+
+  const { movie, room, startTime, endTime, status } = req.body;
 
   if (movie) {
     const movieExists = await Movie.findById(movie);

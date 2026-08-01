@@ -20,7 +20,7 @@ export type Showtime = {
     language: string,
     subtitle: string,
     basePrice: number,
-    status: boolean,
+    status: string,
     createdAt: string,
     updatedAt: string,
 }

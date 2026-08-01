@@ -190,6 +190,10 @@ function ManageMovie() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
+
   const handleOpenDetails = (movie: Movie) => {
     setSelectedMovie(movie)
     setIsDetailsOpen(true)
@@ -200,10 +204,26 @@ function ManageMovie() {
     setIsDetailsOpen(false)
   }
 
-  const sortedMovies = useMemo(
-    () => [...movies].sort((a, b) => a.title.localeCompare(b.title)),
-    [movies],
-  )
+  const filteredMovies = useMemo(() => {
+    return movies.filter(m => {
+      // Filter by status
+      if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+      
+      // Filter by date range (if selected)
+      if (dateRange && dateRange[0] && dateRange[1]) {
+         const release = dayjs(m.releaseDate).startOf('day')
+         const end = dayjs(m.endDate).endOf('day')
+         const filterStart = dateRange[0].startOf('day')
+         const filterEnd = dateRange[1].endOf('day')
+         
+         // Check if movie's date range overlaps with selected filter range
+         if (end.isBefore(filterStart) || release.isAfter(filterEnd)) {
+            return false;
+         }
+      }
+      return true;
+    }).sort((a, b) => a.title.localeCompare(b.title));
+  }, [movies, statusFilter, dateRange])
 
   const loadMovies = async () => {
     setIsLoading(true)
@@ -744,17 +764,31 @@ function ManageMovie() {
             </Space>
           }
           extra={
-            <Button
-              type="text"
-              icon={<ReloadOutlined spin={isLoading} />}
-              onClick={loadMovies}
-            >
-              Tải lại
-            </Button>
+            <Space size="middle" wrap>
+              <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 160 }}>
+                <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                <Select.Option value="coming_soon">Sắp chiếu</Select.Option>
+                <Select.Option value="now_showing">Đang chiếu</Select.Option>
+                <Select.Option value="ended">Đã kết thúc</Select.Option>
+              </Select>
+              <DatePicker.RangePicker 
+                onChange={(dates) => setDateRange(dates as any)}
+                format="DD/MM/YYYY"
+                placeholder={['Từ ngày', 'Đến ngày']}
+                allowClear
+              />
+              <Button
+                type="text"
+                icon={<ReloadOutlined spin={isLoading} />}
+                onClick={loadMovies}
+              >
+                Tải lại
+              </Button>
+            </Space>
           }
         >
           <Table
-            dataSource={sortedMovies}
+            dataSource={filteredMovies}
             columns={columns}
             rowKey="_id"
             loading={isLoading}
