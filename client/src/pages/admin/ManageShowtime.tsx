@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 
 import { getMovies } from '../../features/movie/movie.service'
 import type { Movie } from '../../features/movie/movie.types'
 
-import { createShowtime, deleteShowtime, getAllShowtimes, updateShowtime } from '../../features/showtime/showtime.service'
+import { createShowtime, deleteShowtime, getAllShowtimes, updateShowtime, massDeleteShowtimes } from '../../features/showtime/showtime.service'
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { getRooms } from '../../features/room/room.service'
 import type { Room } from '../../features/room/room.types'
@@ -39,6 +39,7 @@ import {
     Popconfirm,
     Modal,
     Tooltip,
+    DatePicker,
 } from 'antd'
 import {
     CalendarOutlined,
@@ -85,6 +86,36 @@ function ManageShowtime() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isMassCreateOpen, setIsMassCreateOpen] = useState(false)
+    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+
+    // Filters
+    const [statusFilter, setStatusFilter] = useState<string>('all')
+    const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
+
+    const filteredShowtimes = React.useMemo(() => {
+        return showtimes.filter(s => {
+            // filter by date
+            if (dateRange && dateRange[0] && dateRange[1]) {
+                const startTime = dayjs(s.startTime);
+                if (startTime.isBefore(dateRange[0].startOf('day')) || startTime.isAfter(dateRange[1].endOf('day'))) {
+                    return false;
+                }
+            }
+            // filter by status
+            if (statusFilter !== 'all') {
+                const now = dayjs();
+                const start = dayjs(s.startTime);
+                const end = dayjs(s.endTime);
+                let computedStatus = '';
+                if (now.isBefore(start)) computedStatus = 'upcoming';
+                else if (now.isAfter(end)) computedStatus = 'ended';
+                else computedStatus = 'showing';
+
+                if (computedStatus !== statusFilter) return false;
+            }
+            return true;
+        })
+    }, [showtimes, dateRange, statusFilter])
 
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
@@ -220,6 +251,20 @@ function ManageShowtime() {
         }
     }
 
+    const handleMassDelete = async () => {
+        try {
+            setIsLoading(true)
+            await massDeleteShowtimes(selectedRowKeys as string[])
+            void message.success('Xóa hàng loạt suất chiếu thành công!')
+            setSelectedRowKeys([])
+            await loadShowtimes()
+        } catch (err: any) {
+            void message.error(err.response?.data?.message || 'Không thể xóa các suất chiếu đã chọn')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     const onSubmit = async (data: ShowtimePayload) => {
         const start = new Date(data.startTime)
         const end = new Date(data.endTime)
@@ -296,8 +341,8 @@ function ManageShowtime() {
             await deleteShowtime(showtime._id)
             void message.success('Đã xóa lịch chiếu thành công')
             loadShowtimes()
-        } catch {
-            void message.error('Xóa lịch chiếu thất bại')
+        } catch (error: any) {
+            void message.error(error.response?.data?.message || 'Xóa lịch chiếu thất bại')
         }
     }
 
@@ -851,17 +896,49 @@ function ManageShowtime() {
                         </Space>
                     }
                     extra={
-                        <Button
-                            type="text"
-                            icon={<ReloadOutlined spin={isLoading} />}
-                            onClick={() => void loadShowtimes()}
-                        >
-                            Tải lại
-                        </Button>
+                        <Space size="middle" wrap>
+                            {selectedRowKeys.length > 0 && (
+                                <Popconfirm
+                                    title="Xóa hàng loạt suất chiếu"
+                                    description={`Bạn có chắc muốn xóa ${selectedRowKeys.length} suất chiếu này?`}
+                                    onConfirm={handleMassDelete}
+                                    okText="Xóa"
+                                    cancelText="Hủy"
+                                    okButtonProps={{ danger: true }}
+                                >
+                                    <Button danger loading={isLoading}>
+                                        Xóa {selectedRowKeys.length} lịch
+                                    </Button>
+                                </Popconfirm>
+                            )}
+                            <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 140 }}>
+                                <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                                <Select.Option value="upcoming">Sắp chiếu</Select.Option>
+                                <Select.Option value="showing">Đang chiếu</Select.Option>
+                                <Select.Option value="ended">Đã kết thúc</Select.Option>
+                            </Select>
+                            <DatePicker.RangePicker
+                                onChange={(dates) => setDateRange(dates as any)}
+                                format="DD/MM/YYYY"
+                                placeholder={['Từ ngày', 'Đến ngày']}
+                                allowClear
+                            />
+                            <Button
+                                type="text"
+                                icon={<ReloadOutlined spin={isLoading} />}
+                                onClick={() => void loadShowtimes()}
+                            >
+                                Tải lại
+                            </Button>
+                        </Space>
                     }
                 >
                     <Table
-                        dataSource={showtimes}
+                        rowSelection={{
+                            selectedRowKeys,
+                            onChange: (newSelectedRowKeys) => setSelectedRowKeys(newSelectedRowKeys),
+                        }}
+                        dataSource={filteredShowtimes}
                         columns={columns}
                         rowKey="_id"
                         loading={isLoading}
@@ -1002,7 +1079,7 @@ function ManageShowtime() {
                 })()}
             </Modal>
 
-            <MassCreateShowtimeModal 
+            <MassCreateShowtimeModal
                 isOpen={isMassCreateOpen}
                 onClose={() => setIsMassCreateOpen(false)}
                 movies={movies}
