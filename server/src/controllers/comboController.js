@@ -20,7 +20,7 @@ export const getAllCombos = asyncHandler(async (req, res) => {
   const comboIds = combos.map((c) => c._id);
   const items = await ComboItem.find({ combo: { $in: comboIds } }).populate(
     "inventoryItem",
-    "name unit"
+    "name unit stockQuantity isActive"
   );
 
   const itemsMap = {};
@@ -47,7 +47,7 @@ export const getComboById = asyncHandler(async (req, res) => {
 
   const ingredients = await ComboItem.find({ combo: combo._id }).populate(
     "inventoryItem",
-    "name unit stockQuantity"
+    "name unit stockQuantity isActive"
   );
 
   return ok(res, { ...combo.toObject(), ingredients });
@@ -84,7 +84,7 @@ export const createCombo = asyncHandler(async (req, res) => {
 
   const savedIngredients = await ComboItem.find({ combo: combo._id }).populate(
     "inventoryItem",
-    "name unit"
+    "name unit stockQuantity isActive"
   );
 
   return created(res, { ...combo.toObject(), ingredients: savedIngredients });
@@ -122,7 +122,7 @@ export const updateCombo = asyncHandler(async (req, res) => {
 
   const ingredients = await ComboItem.find({ combo: combo._id }).populate(
     "inventoryItem",
-    "name unit"
+    "name unit stockQuantity isActive"
   );
 
   return ok(res, { ...combo.toObject(), ingredients });
