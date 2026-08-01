@@ -15,6 +15,8 @@ import ManageSeat from "./pages/admin/ManageSeat";
 import ManageBooking from "./pages/admin/ManageBooking";
 import ManageUser from "./pages/admin/ManageUser";
 import ManageVoucher from "./pages/admin/ManageVoucher";
+import ManageCombo from "./pages/admin/ManageCombo";
+import ManageInventory from "./pages/admin/ManageInventory";
 
 import Home from "./pages/client/Home";
 import MovieDetail from "./pages/client/MovieDetail";
@@ -78,6 +80,8 @@ function App() {
               <Route path="users" element={<ManageUser />} />
               <Route path="showtimes" element={<ManageShowtime />} />
               <Route path="vouchers" element={<ManageVoucher />} />
+              <Route path="combos" element={<ManageCombo />} />
+              <Route path="inventory" element={<ManageInventory />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
