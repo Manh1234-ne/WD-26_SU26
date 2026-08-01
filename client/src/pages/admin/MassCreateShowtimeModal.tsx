@@ -28,7 +28,7 @@ import type { Movie } from '../../features/movie/movie.types'
 import type { Room } from '../../features/room/room.types'
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { createShowtime } from '../../features/showtime/showtime.service'
-import { CalendarOutlined, CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons'
 
 dayjs.extend(isSameOrAfter)
 dayjs.extend(isSameOrBefore)
@@ -95,6 +95,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
     const selectedRoomId = watch('roomId')
     const selectedMovie = movies.find((m) => m._id === selectedMovieId)
     const selectedRoom = rooms.find((r) => r._id === selectedRoomId)
+    const movieDuration = (selectedMovie as Movie & { duration?: number })?.duration
 
     // Handle available formats
     let availableFormats: string[] = []
@@ -230,7 +231,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                     language: data.language,
                     subtitle: data.subtitle,
                     basePrice: data.basePrice,
-                    status: true
+                    status: 'open'
                 })
                 successCount++
             } catch (error) {
@@ -358,6 +359,26 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                                 />
                             </Form.Item>
                         </Col>
+                        {movieDuration && (
+                            <Col span={24}>
+                                <div style={{
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    padding: '12px 16px',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    color: '#1d4ed8',
+                                    marginBottom: '16px'
+                                }}>
+                                    <ClockCircleOutlined style={{ fontSize: '18px', color: '#2563eb' }} />
+                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                                        Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> + <strong style={{ color: '#059669', fontSize: '14px' }}>20 phút Quãng Nghỉ</strong>
+                                    </span>
+                                </div>
+                            </Col>
+                        )}
                         <Col span={8}>
                             <Form.Item label="Định dạng" required>
                                 <Controller

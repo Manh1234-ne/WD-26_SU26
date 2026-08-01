@@ -200,7 +200,16 @@ export const updateShowtime = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy suất chiếu");
   }
 
-  const { movie, room, startTime, endTime } = req.body;
+  const hasBooked = await Booking.exists({
+    showtime: id,
+    status: { $in: ["pending", "confirmed", "completed"] }
+  });
+
+  if (hasBooked) {
+    return fail(res, 400, "Không thể chỉnh sửa lịch chiếu đã có vé đặt.");
+  }
+
+  const { movie, room, startTime, endTime, status } = req.body;
 
   if (movie) {
     const movieExists = await Movie.findById(movie);

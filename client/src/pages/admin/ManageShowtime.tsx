@@ -93,7 +93,7 @@ function ManageShowtime() {
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
 
     const filteredShowtimes = React.useMemo(() => {
-        return showtimes.filter(s => {
+        const filtered = showtimes.filter(s => {
             // filter by date
             if (dateRange && dateRange[0] && dateRange[1]) {
                 const startTime = dayjs(s.startTime);
@@ -115,6 +115,28 @@ function ManageShowtime() {
             }
             return true;
         })
+
+        return filtered.sort((a, b) => {
+            const now = dayjs();
+            const getGroup = (s: Showtime) => {
+                const start = dayjs(s.startTime);
+                const end = dayjs(s.endTime);
+                if (now.isBefore(start)) return { weight: 2, order: 1 }; // Upcoming, Ascending
+                if (now.isAfter(end)) return { weight: 3, order: -1 }; // Ended, Descending
+                return { weight: 1, order: -1 }; // Playing, Descending
+            };
+
+            const groupA = getGroup(a);
+            const groupB = getGroup(b);
+
+            if (groupA.weight !== groupB.weight) {
+                return groupA.weight - groupB.weight;
+            }
+
+            const timeA = new Date(a.startTime).getTime();
+            const timeB = new Date(b.startTime).getTime();
+            return (timeA - timeB) * groupA.order;
+        });
     }, [showtimes, dateRange, statusFilter])
 
     // States for viewing seats
@@ -295,7 +317,7 @@ function ManageShowtime() {
                 language: data.language,
                 subtitle: data.subtitle,
                 basePrice: data.basePrice,
-                status: data.status,
+                status: data.status ? "open" : "closed",
             }
             if (editingId) {
                 await updateShowtime(editingId, payload)
@@ -332,7 +354,7 @@ function ManageShowtime() {
         setValue('language', showtime.language)
         setValue('subtitle', showtime.subtitle)
         setValue('basePrice', showtime.basePrice)
-        setValue('status', showtime.status)
+        setValue('status', showtime.status !== 'closed' && showtime.status !== 'cancelled')
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
@@ -417,7 +439,7 @@ function ManageShowtime() {
             key: 'status',
             width: 130,
             render: (_, record: Showtime) => {
-                if (!record.status) {
+                if (record.status === 'closed' || record.status === 'cancelled' || record.status === false as any) {
                     return <Tag color="default">Ngừng chiếu</Tag>
                 }
                 const now = new Date()
