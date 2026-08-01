@@ -22,6 +22,7 @@ import {
   Badge,
   Empty,
   Spin,
+  Upload,
 } from "antd";
 import {
   PlusOutlined,
@@ -143,8 +144,20 @@ function ManageCombo() {
     );
   };
 
-  // ─── Submit form ──────────────────────────────────────────────────
+  const extractImageUrl = (imageField: any): string => {
+    if (!imageField) return "";
+
+    if (typeof imageField === "string") return imageField.trim();
+
+    const list = Array.isArray(imageField)
+      ? imageField
+      : imageField?.fileList ?? [];
+    const done = list.find((f: any) => f.status === "done");
+    return done?.response?.url ?? done?.url ?? "";
+  };
+
   const handleSubmit = async (values: ComboFormFields) => {
+
     const hasEmpty = ingredients.some((r) => !r.inventoryItem);
     if (hasEmpty) {
       void message.warning("Vui lòng chọn nguyên liệu cho tất cả các dòng!");
@@ -154,7 +167,7 @@ function ManageCombo() {
     const payload: ComboPayload = {
       name: values.name.trim(),
       description: values.description?.trim() || "",
-      image: values.image?.trim() || "",
+      image: extractImageUrl(values.image),
       price: Number(values.price),
       isActive: values.isActive,
       ingredients: ingredients
@@ -180,6 +193,32 @@ function ManageCombo() {
     } finally {
       setSaving(false);
     }
+  };
+  const handleImageUploadChange = (info: any) => {
+    if (info.file.status === "done") {
+      const url = info.file.response?.url;
+      if (url) {
+        form.setFieldValue('image', url);
+        void message.success("Upload ảnh thành công!");
+      } else {
+        void message.error("Upload thành công nhưng không nhận được URL!");
+      }
+    } else if (info.file.status === "error") {
+      const errMsg = info.file.response?.message || "Upload ảnh thất bại!";
+      void message.error(errMsg);
+    }
+  };
+
+  const beforeImageUpload = (file: any) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+    if (!isJpgOrPng) {
+      void message.error('Chỉ chấp nhận file JPG, PNG hoặc WEBP!');
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      void message.error('Ảnh phải nhỏ hơn 2MB!');
+    }
+    return isJpgOrPng && isLt2M;
   };
 
   const handleEdit = (combo: Combo) => {
@@ -456,14 +495,13 @@ function ManageCombo() {
                     min={0}
                     step={5000}
                     formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                    parser={(v) => Number(v?.replace(/,/g, "") ?? 0)}
+                    parser={(v) => Number(v?.replace(/,/g, "") ?? 0) as 0}
                     style={{ width: "100%" }}
                     addonAfter="VND"
                   />
                 </Form.Item>
               </Col>
 
-              {/* Trạng thái */}
               <Col xs={24} sm={12} md={8}>
                 <Form.Item name="isActive" label="Trạng thái bán" valuePropName="checked">
                   <Switch
@@ -474,56 +512,71 @@ function ManageCombo() {
                 </Form.Item>
               </Col>
 
-              {/* URL hình ảnh */}
-              <Col xs={24} md={16}>
-                <Form.Item name="image" label="URL hình ảnh">
-                  <Input
-                    placeholder="https://example.com/combo.jpg"
-                    prefix={<PictureOutlined style={{ color: "#94a3b8" }} />}
-                  />
+              <Col xs={24}>
+                <Form.Item label="Hình ảnh combo">
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                    <Form.Item name="image" noStyle>
+                      <Upload
+                        name="image"
+                        listType="picture-card"
+                        maxCount={1}
+                        action="http://localhost:5000/api/upload/combo"
+                        headers={{ Authorization: `Bearer ${localStorage.getItem("cinema_token")}` }}
+                        onChange={handleImageUploadChange}
+                        beforeUpload={beforeImageUpload}
+                        showUploadList={{ showPreviewIcon: false }}
+                        style={{ flex: "0 0 40%" }}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                          <PictureOutlined style={{ fontSize: 20, color: "#94a3b8" }} />
+                          <span style={{ fontSize: 12, color: "#64748b" }}>Chọn ảnh</span>
+                        </div>
+                      </Upload>
+                    </Form.Item>
+                    <Form.Item noStyle shouldUpdate style={{ flex: "1 1 60%", minWidth: 0 }}>
+                      {({ getFieldValue }) => {
+                        const imageField = getFieldValue("image");
+                        const url = extractImageUrl(imageField);
+                        return url ? (
+                          <div style={{
+                            flex: "1 1 60%",
+                            height: "100%",
+                            borderRadius: 8,
+                            border: "1px solid #e2e8f0",
+                            overflow: "hidden",
+                          }}>
+                            <img
+                              src={url}
+                              alt="preview"
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{
+                            flex: "1 1 60%",
+                            height: 160,
+                            background: "#f8fafc",
+                            borderRadius: 8,
+                            border: "1px dashed #cbd5e1",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#94a3b8",
+                            fontSize: 12,
+                            gap: 6,
+                          }}>
+                            <PictureOutlined style={{ fontSize: 28 }} />
+                            <span>Chưa có ảnh</span>
+                          </div>
+                        );
+                      }}
+                    </Form.Item>
+                  </div>
                 </Form.Item>
               </Col>
 
-              {/* Preview hình */}
-              <Col xs={24} md={8}>
-                <Form.Item label="Xem trước ảnh">
-                  <Form.Item noStyle shouldUpdate={(prev, curr) => prev.image !== curr.image}>
-                    {({ getFieldValue }) => {
-                      const url = getFieldValue("image");
-                      return url ? (
-                        <img
-                          src={url}
-                          alt="preview"
-                          style={{
-                            width: "100%",
-                            maxHeight: 80,
-                            objectFit: "cover",
-                            borderRadius: 8,
-                            border: "1px solid #e2e8f0",
-                          }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div style={{
-                          height: 60,
-                          background: "#f8fafc",
-                          borderRadius: 8,
-                          border: "1px dashed #cbd5e1",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#94a3b8",
-                          fontSize: 12,
-                        }}>
-                          <PictureOutlined style={{ marginRight: 6 }} /> Chưa có ảnh
-                        </div>
-                      );
-                    }}
-                  </Form.Item>
-                </Form.Item>
-              </Col>
 
               {/* Mô tả */}
               <Col xs={24}>
@@ -539,7 +592,7 @@ function ManageCombo() {
             </Row>
 
             {/* ── Nguyên liệu ─────────────────────────────────────── */}
-            <Divider orientation="left" style={{ color: "#475569", fontWeight: 700, borderColor: "#e2e8f0" }}>
+            <Divider orientation={"left" as any} style={{ color: "#475569", fontWeight: 700, borderColor: "#e2e8f0" }}>
               <Space>
                 <CoffeeOutlined style={{ color: "#e11d48" }} />
                 Nguyên liệu của combo
