@@ -275,7 +275,7 @@ function ManageVoucher() {
             )
           }
         >
-          <Form form={antdForm} layout="vertical" initialValues={emptyFormValues} onFinish={handleSubmit} requiredMark="optional">
+          <Form form={antdForm} layout="vertical" initialValues={emptyFormValues} onFinish={handleSubmit}>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
                 <Form.Item name="code" label="Mã voucher" rules={[{ required: true, message: 'Vui lòng nhập mã voucher' }]}> 
@@ -307,19 +307,19 @@ function ManageVoucher() {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="maxDiscountAmount" label="Giảm tối đa (VND)"> 
+                <Form.Item name="maxDiscountAmount" label="Giảm tối đa (VND)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm tối đa' }]}> 
                   <InputNumber min={0} style={{ width: '100%' }} addonAfter="VND" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="minOrderAmount" label="Đơn tối thiểu (VND)"> 
+                <Form.Item name="minOrderAmount" label="Đơn tối thiểu (VND)" rules={[{ required: true, message: 'Vui lòng nhập giá trị đơn tối thiểu' }]}> 
                   <InputNumber min={0} style={{ width: '100%' }} addonAfter="VND" />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="usageLimit" label="Giới hạn lượt dùng"> 
+                <Form.Item name="usageLimit" label="Giới hạn lượt dùng" rules={[{ required: true, message: 'Vui lòng nhập giới hạn lượt dùng' }]}> 
                   <InputNumber min={0} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
@@ -360,7 +360,7 @@ function ManageVoucher() {
             </Row>
             <Row gutter={16}>
               <Col xs={24} md={16}>
-                <Form.Item name="description" label="Mô tả"> 
+                <Form.Item name="description" label="Mô tả" rules={[{ required: true, message: 'Vui lòng nhập mô tả voucher' }]}> 
                   <TextArea rows={4} placeholder="Mô tả voucher" />
                 </Form.Item>
               </Col>
