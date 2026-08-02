@@ -157,7 +157,7 @@ if (oldType === 'couple' && newType !== 'couple') {
   seat.priceMultiplier =
   req.body.priceMultiplier !== undefined
   ? req.body.priceMultiplier
-  : seat.priceMultiplier;
+  : 1;
   
   if (req.body.isActive !== undefined) {
   seat.isActive = req.body.isActive;
@@ -310,6 +310,7 @@ export const mergeCoupleSeats = asyncHandler(async (req, res) => {
 
   // Update first seat to couple
   firstSeat.type = "couple";
+  firstSeat.priceMultiplier = 2;
   firstSeat.code = `${firstSeat.row}${firstSeat.number}-${secondSeat.number}`;
   await firstSeat.save();
 

@@ -3,7 +3,56 @@ import Movie from "../models/Movie.js";
 import Room from "../models/Room.js";
 import BookingSeat from "../models/BookingSeat.js";
 import Booking from "../models/Booking.js";
+import PricingRule from "../models/PricingRule.js";
 import { asyncHandler } from "../utils/asynHandler.js";
+
+const calculateDynamicPrice = async (basePrice, startTime) => {
+  const pricingRules = await PricingRule.find({ isActive: true });
+  let totalSurchargePercentage = 0;
+
+  const showtimeDate = new Date(startTime);
+  const showtimeDay = showtimeDate.getDay();
+  const showtimeHour = showtimeDate.getHours();
+  const showtimeMinute = showtimeDate.getMinutes();
+
+  pricingRules.forEach((rule) => {
+    if (rule.ruleType === "weekend") {
+      if (showtimeDay === 0 || showtimeDay === 6) {
+        totalSurchargePercentage += rule.surchargePercentage;
+      }
+    } else if (rule.ruleType === "holiday") {
+      if (rule.endDate) {
+        const startOfDay = new Date(rule.date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(rule.endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (showtimeDate >= startOfDay && showtimeDate <= endOfDay) {
+          totalSurchargePercentage += rule.surchargePercentage;
+        }
+      } else if (
+        rule.date &&
+        rule.date.getDate() === showtimeDate.getDate() &&
+        rule.date.getMonth() === showtimeDate.getMonth() &&
+        rule.date.getFullYear() === showtimeDate.getFullYear()
+      ) {
+        totalSurchargePercentage += rule.surchargePercentage;
+      }
+    } else if (rule.ruleType === "peak_hour") {
+      if (rule.startTime && rule.endTime) {
+        const [startH, startM] = rule.startTime.split(":").map(Number);
+        const [endH, endM] = rule.endTime.split(":").map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+        const showtimeMinutes = showtimeHour * 60 + showtimeMinute;
+        if (showtimeMinutes >= startMinutes && showtimeMinutes <= endMinutes) {
+          totalSurchargePercentage += rule.surchargePercentage;
+        }
+      }
+    }
+  });
+
+  return basePrice * (1 + totalSurchargePercentage / 100);
+};
 
 const ok = (res, data, message) =>
   res.status(200).json({
@@ -117,6 +166,8 @@ export const createShowtime = asyncHandler(async (req, res) => {
     return fail(res, 400, "Phòng chiếu đã có lịch chiếu khác trong khoảng thời gian này");
   }
 
+  const finalPrice = await calculateDynamicPrice(basePrice, start);
+
   const showtime = await Showtime.create({
     movie,
     room,
@@ -125,7 +176,7 @@ export const createShowtime = asyncHandler(async (req, res) => {
     format,
     language,
     subtitle,
-    basePrice,
+    basePrice: finalPrice,
     status: "open",
   });
 
@@ -246,9 +297,14 @@ export const updateShowtime = asyncHandler(async (req, res) => {
     return fail(res, 400, "Phòng chiếu đã có lịch chiếu khác trong khoảng thời gian này");
   }
 
+  const reqBody = { ...req.body };
+  if (reqBody.basePrice && newStart) {
+    reqBody.basePrice = await calculateDynamicPrice(reqBody.basePrice, newStart);
+  }
+
   const showtime = await Showtime.findByIdAndUpdate(
     id,
-    { ...req.body },
+    reqBody,
     { new: true }
   );
 

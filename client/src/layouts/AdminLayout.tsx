@@ -14,6 +14,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   GiftOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
@@ -37,6 +38,7 @@ function AdminLayout() {
     { key: "/admin/bookings", icon: <VideoCameraOutlined />, label: "Quản lý đặt vé" },
     { key: "/admin/users", icon: <UserOutlined />, label: "Quản lý người dùng" },
     { key: "/admin/vouchers", icon: <GiftOutlined />, label: "Quản lý voucher" },
+    { key: "/admin/pricing-rules", icon: <DollarOutlined />, label: "Quản lý giá vé" },
   ];
 
   return (
