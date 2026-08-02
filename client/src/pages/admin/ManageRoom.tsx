@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createRoom,
   deleteRoom,
@@ -113,6 +113,21 @@ function ManageRoom() {
   useEffect(() => {
     void loadData()
   }, [])
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+
+  const filteredRooms = useMemo(() => {
+    return rooms.filter(r => {
+      if (statusFilter !== 'all') {
+        const isActiveStr = r.isActive === false ? 'inactive' : 'active';
+        if (isActiveStr !== statusFilter) return false;
+      }
+      if (typeFilter !== 'all' && r.roomType !== typeFilter) return false;
+      return true;
+    });
+  }, [rooms, statusFilter, typeFilter])
 
   const handleSubmit = async (values: RoomFormFields) => {
     setIsSaving(true)
@@ -323,22 +338,22 @@ function ManageRoom() {
                 <Col xs={24} sm={12}>
                   <Form.Item
                     label={<span style={{ fontWeight: 700, color: '#334155' }}>Tên phòng chiếu</span>}
-                  name="name"
-                  rules={[{ required: true, message: 'Vui lòng nhập tên phòng!' }]}
-                >
-                  <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: P01, P02, IMAX 1" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Loại phòng</span>} name="roomType">
-                  <Select size="large" style={{ borderRadius: '8px' }}>
-                    <Select.Option value="2D">Tiêu chuẩn</Select.Option>
-                    <Select.Option value="VIP">VIP</Select.Option>
-                    <Select.Option value="IMAX">IMAX</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
+                    name="name"
+                    rules={[{ required: true, message: 'Vui lòng nhập tên phòng!' }]}
+                  >
+                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: P01, P02, IMAX 1" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Loại phòng</span>} name="roomType">
+                    <Select size="large" style={{ borderRadius: '8px' }}>
+                      <Select.Option value="2D">Tiêu chuẩn</Select.Option>
+                      <Select.Option value="VIP">VIP</Select.Option>
+                      <Select.Option value="IMAX">IMAX</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
@@ -349,33 +364,33 @@ function ManageRoom() {
                 <Col xs={24} sm={8}>
                   <Form.Item
                     label={<span style={{ fontWeight: 700, color: '#334155' }}>Số hàng ghế (ngang)</span>}
-                  name="totalRows"
-                  rules={[{ required: true, message: 'Nhập số hàng ghế!' }]}
-                  help="Tối đa 15 hàng (từ A đến O)"
-                >
-                  <InputNumber size="large" min={1} max={15} style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Form.Item
-                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Số ghế mỗi hàng (dọc)</span>}
-                  name="seatsPerRow"
-                  rules={[{ required: true, message: 'Nhập số ghế mỗi hàng!' }]}
-                  help="Tối đa 20 ghế mỗi hàng"
-                >
-                  <InputNumber size="large" min={1} max={20} style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Form.Item
-                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Tổng sức chứa</span>}
-                  name="capacity"
-                  help="Tự tính toán (tối đa 300 ghế)"
-                >
-                  <InputNumber size="large" style={{ width: '100%' }} readOnly disabled />
-                </Form.Item>
-              </Col>
-            </Row>
+                    name="totalRows"
+                    rules={[{ required: true, message: 'Nhập số hàng ghế!' }]}
+                    help="Tối đa 15 hàng (từ A đến O)"
+                  >
+                    <InputNumber size="large" min={1} max={15} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Form.Item
+                    label={<span style={{ fontWeight: 700, color: '#334155' }}>Số ghế mỗi hàng (dọc)</span>}
+                    name="seatsPerRow"
+                    rules={[{ required: true, message: 'Nhập số ghế mỗi hàng!' }]}
+                    help="Tối đa 20 ghế mỗi hàng"
+                  >
+                    <InputNumber size="large" min={1} max={20} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Form.Item
+                    label={<span style={{ fontWeight: 700, color: '#334155' }}>Tổng sức chứa</span>}
+                    name="capacity"
+                    help="Tự tính toán (tối đa 300 ghế)"
+                  >
+                    <InputNumber size="large" style={{ width: '100%' }} readOnly disabled />
+                  </Form.Item>
+                </Col>
+              </Row>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
@@ -386,22 +401,22 @@ function ManageRoom() {
                 <Col xs={24} sm={12}>
                   <Form.Item
                     label={<span style={{ fontWeight: 700, color: '#334155' }}>Vị trí cột làm lối đi dọc (aisleColumns)</span>}
-                  name="aisleColumns"
-                  help="Nhập số cột muốn để trống làm lối đi dọc, cách nhau bằng dấu phẩy. Ví dụ: 5, 15"
-                >
-                  <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: 5, 15" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  label={<span style={{ fontWeight: 700, color: '#334155' }}>Vị trí hàng làm lối đi ngang (aisleRows)</span>}
-                  name="aisleRows"
-                  help="Nhập chữ cái hàng muốn để lối đi ngang phía sau, cách nhau bằng dấu phẩy. Ví dụ: E, H"
-                >
-                  <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: E, H" />
-                </Form.Item>
-              </Col>
-            </Row>
+                    name="aisleColumns"
+                    help="Nhập số cột muốn để trống làm lối đi dọc, cách nhau bằng dấu phẩy. Ví dụ: 5, 15"
+                  >
+                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: 5, 15" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label={<span style={{ fontWeight: 700, color: '#334155' }}>Vị trí hàng làm lối đi ngang (aisleRows)</span>}
+                    name="aisleRows"
+                    help="Nhập chữ cái hàng muốn để lối đi ngang phía sau, cách nhau bằng dấu phẩy. Ví dụ: E, H"
+                  >
+                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: E, H" />
+                  </Form.Item>
+                </Col>
+              </Row>
 
             </div>
 
@@ -474,17 +489,30 @@ function ManageRoom() {
             </Space>
           }
           extra={
-            <Button
-              type="text"
-              icon={<ReloadOutlined spin={isLoading} />}
-              onClick={loadData}
-            >
-              Tải lại
-            </Button>
+            <Space size="middle" wrap>
+              <Select value={typeFilter} onChange={setTypeFilter} style={{ width: 140 }}>
+                <Select.Option value="all">Tất cả loại phòng</Select.Option>
+                <Select.Option value="2D">Tiêu chuẩn (2D)</Select.Option>
+                <Select.Option value="VIP">VIP</Select.Option>
+                <Select.Option value="IMAX">IMAX</Select.Option>
+              </Select>
+              <Select value={statusFilter} onChange={setStatusFilter} style={{ width: 140 }}>
+                <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                <Select.Option value="active">Hoạt động</Select.Option>
+                <Select.Option value="inactive">Ngừng hoạt động</Select.Option>
+              </Select>
+              <Button
+                type="text"
+                icon={<ReloadOutlined spin={isLoading} />}
+                onClick={loadData}
+              >
+                Tải lại
+              </Button>
+            </Space>
           }
         >
           <Table
-            dataSource={rooms}
+            dataSource={filteredRooms}
             columns={columns}
             rowKey="_id"
             loading={isLoading}

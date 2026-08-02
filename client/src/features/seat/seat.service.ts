@@ -47,3 +47,8 @@ export async function generateSeats(roomId: string) {
   const response = await api.post<ApiResponse<Seat[]>>(`/seats/generate/${roomId}`)
   return response.data.data
 }
+
+export async function mergeCoupleSeats(seatId1: string, seatId2: string) {
+  const response = await api.post<ApiResponse<Seat>>('/seats/merge-couple', { seatId1, seatId2 })
+  return response.data.data
+}

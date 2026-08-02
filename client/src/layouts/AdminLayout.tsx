@@ -14,8 +14,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   GiftOutlined,
-  CoffeeOutlined,
-  InboxOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
@@ -25,7 +24,7 @@ function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
@@ -39,15 +38,14 @@ function AdminLayout() {
     { key: "/admin/bookings", icon: <VideoCameraOutlined />, label: "Quản lý đặt vé" },
     { key: "/admin/users", icon: <UserOutlined />, label: "Quản lý người dùng" },
     { key: "/admin/vouchers", icon: <GiftOutlined />, label: "Quản lý voucher" },
-    { key: "/admin/combos", icon: <CoffeeOutlined />, label: "Quản lý combo" },
-    { key: "/admin/inventory", icon: <InboxOutlined />, label: "Quản lý tồn kho" },
+    { key: "/admin/pricing-rules", icon: <DollarOutlined />, label: "Quản lý tăng giá vé" },
   ];
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
+      <Sider
+        trigger={null}
+        collapsible
         collapsed={collapsed}
         width={260}
         theme="dark"
@@ -60,25 +58,25 @@ function AdminLayout() {
           bottom: 0,
         }}
       >
-        <div style={{ 
-          height: 64, 
-          display: "flex", 
-          alignItems: "center", 
+        <div style={{
+          height: 64,
+          display: "flex",
+          alignItems: "center",
           justifyContent: "center",
           gap: 12,
           padding: 16,
           background: "rgba(255, 255, 255, 0.04)",
           borderBottom: "1px solid rgba(255, 255, 255, 0.08)"
         }}>
-          <div style={{ 
-            width: 32, 
-            height: 32, 
-            background: "#e11d48", 
-            borderRadius: 8, 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            color: "white", 
+          <div style={{
+            width: 32,
+            height: 32,
+            background: "#e11d48",
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
             fontWeight: "bold",
             fontSize: 18
           }}>L</div>
@@ -96,11 +94,11 @@ function AdminLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ 
-          padding: "0 24px", 
-          background: colorBgContainer, 
-          display: "flex", 
-          alignItems: "center", 
+        <Header style={{
+          padding: "0 24px",
+          background: colorBgContainer,
+          display: "flex",
+          alignItems: "center",
           justifyContent: "space-between",
           boxShadow: "0 1px 4px rgba(0, 0, 0, 0.05)",
           position: "sticky",
@@ -116,21 +114,23 @@ function AdminLayout() {
             />
             {!collapsed && <Title level={4} style={{ margin: 0 }}>Bảng điều khiển Admin</Title>}
           </Space>
-          
+
           <Space size="middle">
-            <Button 
-              type="primary" 
-              icon={<HomeOutlined />} 
+            <Button
+              type="primary"
+              icon={<HomeOutlined />}
               onClick={() => navigate("/")}
               ghost
             >
               Về trang chủ
             </Button>
-            <Dropdown menu={{ items: [
+            <Dropdown menu={{
+              items: [
                 { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ' },
                 { type: 'divider' },
                 { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
-              ] }} placement="bottomRight">
+              ]
+            }} placement="bottomRight">
               <Space style={{ cursor: "pointer", padding: "0 12px" }}>
                 <Avatar style={{ backgroundColor: "#e11d48" }} icon={<UserOutlined />} />
                 <Text strong>Admin</Text>

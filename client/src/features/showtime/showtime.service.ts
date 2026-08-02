@@ -30,7 +30,10 @@ export const updateShowtime = async (id: string, payload: Partial<Omit<Showtime,
     return response.data.data
 }
 
-export const deleteShowtime = async (id: string) => {
-    const response = await api.delete<ApiResponse<Showtime>>(`/showtimes/${id}`)
-    return response.data.data
+export const deleteShowtime = async (id: string): Promise<void> => {
+    await api.delete(`/showtimes/${id}`)
+}
+
+export const massDeleteShowtimes = async (ids: string[]): Promise<void> => {
+    await api.post('/showtimes/mass-delete', { ids })
 }

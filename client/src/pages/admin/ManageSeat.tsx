@@ -5,6 +5,7 @@ import {
   updateSeat,
   deleteSeat,
   createSeat,
+  mergeCoupleSeats,
 } from '../../features/seat/seat.service'
 import { getRooms } from '../../features/room/room.service'
 import type { Seat, SeatPayload } from '../../features/seat/seat.types'
@@ -52,8 +53,12 @@ function ManageSeat() {
   // Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSeat, setEditingSeat] = useState<Seat | null>(null)
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('edit')
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'mass_edit'>('edit')
   const [form] = Form.useForm()
+
+  // Mass Select State
+  const [isMassSelectMode, setIsMassSelectMode] = useState(false)
+  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([])
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -163,6 +168,29 @@ function ManageSeat() {
     setIsModalOpen(true)
   }
 
+  const openMassEditModal = () => {
+    setModalMode('mass_edit')
+    form.resetFields()
+    form.setFieldsValue({
+      type: undefined,
+      priceMultiplier: undefined,
+      isActive: undefined
+    })
+    setIsModalOpen(true)
+  }
+
+  const handleSeatClick = (seat: Seat) => {
+    if (isMassSelectMode) {
+      if (selectedSeatIds.includes(seat._id)) {
+        setSelectedSeatIds(selectedSeatIds.filter(id => id !== seat._id))
+      } else {
+        setSelectedSeatIds([...selectedSeatIds, seat._id])
+      }
+    } else {
+      openEditModal(seat)
+    }
+  }
+
   const closeEditModal = () => {
     setIsModalOpen(false)
     setEditingSeat(null)
@@ -172,43 +200,80 @@ function ManageSeat() {
   const handleSaveSeat = async (values: any) => {
     if (!selectedRoom) return
     try {
-      if (modalMode === 'edit') {
+      if (modalMode === 'mass_edit') {
+        const createPromises = selectedSeatIds.map(id => {
+          const payload: any = {};
+          if (values.type !== undefined) payload.type = values.type;
+          if (values.priceMultiplier !== undefined && values.priceMultiplier !== null) payload.priceMultiplier = values.priceMultiplier;
+          if (values.isActive !== undefined) payload.isActive = values.isActive;
+          return updateSeat(id, payload);
+        });
+        await Promise.all(createPromises)
+        void message.success(`Cập nhật thành công ${selectedSeatIds.length} ghế.`)
+        setSelectedSeatIds([])
+        setIsMassSelectMode(false)
+      } else if (modalMode === 'edit') {
         if (!editingSeat) return
         await updateSeat(editingSeat._id, values)
         void message.success(`Cập nhật ghế ${editingSeat.code} thành công.`)
       } else {
         const rowUpper = values.row.toUpperCase()
 
-        // Find current max number in this row to continue the sequence
         const rowSeats = seats.filter(s => s.row === rowUpper)
-        let maxNumber = 0
+        const takenNumbers = new Set<number>()
         rowSeats.forEach(s => {
-          if (s.number > maxNumber) maxNumber = s.number
+          takenNumbers.add(s.number)
+          if (s.type === 'couple') {
+            takenNumbers.add(s.number + 1)
+          }
         })
 
-        if (maxNumber + Number(values.quantity) > 20) {
-          void message.error(`Hàng ${rowUpper} không thể vượt quá 20 ghế (đã có đến ghế số ${maxNumber}).`)
+        let maxNumber = 0
+        takenNumbers.forEach(num => {
+          if (num > maxNumber) maxNumber = num
+        })
+
+        const availableGaps: number[] = []
+        for (let i = 1; i <= maxNumber; i++) {
+          if (!takenNumbers.has(i)) availableGaps.push(i)
+        }
+
+        const qty = Number(values.quantity) || 0
+        const appendCount = Math.max(0, qty - availableGaps.length)
+        const newMaxNumber = maxNumber + appendCount
+
+        if (newMaxNumber > 20) {
+          void message.error(`Hàng ${rowUpper} không thể thêm đủ ${qty} ghế vì vượt quá giới hạn 20 ghế (hiện trống ${availableGaps.length} chỗ, và có thể thêm tối đa ${20 - maxNumber} ghế vào cuối hàng).`)
           return
         }
 
         const createPromises = []
-        for (let i = 1; i <= values.quantity; i++) {
-          const newNumber = maxNumber + i
+        let gapIndex = 0
+        let nextAppendNumber = maxNumber + 1
+
+        for (let i = 0; i < qty; i++) {
+          let newNumber: number;
+          if (gapIndex < availableGaps.length) {
+            newNumber = availableGaps[gapIndex++]
+          } else {
+            newNumber = nextAppendNumber++
+          }
+
           const code = `${rowUpper}${newNumber}`
           const payload: SeatPayload = {
             room: selectedRoom,
             row: rowUpper,
             number: newNumber,
             code,
-            type: values.type,
-            priceMultiplier: values.priceMultiplier,
-            isActive: values.isActive,
+            type: values.type || 'standard',
+            priceMultiplier: values.priceMultiplier || 1,
+            isActive: values.isActive ?? true,
           }
           createPromises.push(createSeat(payload))
         }
 
         await Promise.all(createPromises)
-        void message.success(`Đã thêm ${values.quantity} ghế cho hàng ${rowUpper} thành công.`)
+        void message.success(`Đã thêm ${qty} ghế cho hàng ${rowUpper} thành công.`)
       }
       closeEditModal()
       await loadSeats(selectedRoom)
@@ -228,6 +293,84 @@ function ManageSeat() {
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Xóa ghế thất bại.'
       void message.error(msg)
+    }
+  }
+
+  const handleMassDeleteSeat = async () => {
+    if (selectedSeatIds.length === 0 || !selectedRoom) return
+    setIsGenerating(true)
+    try {
+      const results = await Promise.allSettled(selectedSeatIds.map(id => deleteSeat(id)))
+
+      const fulfilled = results.filter(r => r.status === 'fulfilled')
+      const rejected = results.filter(r => r.status === 'rejected')
+
+      if (fulfilled.length > 0) {
+        void message.success(`Đã xóa thành công ${fulfilled.length} ghế.`)
+      }
+      if (rejected.length > 0) {
+        void message.error(`Có ${rejected.length} ghế không thể xóa (có thể đã có người đặt).`)
+      }
+
+      setSelectedSeatIds([])
+      setIsMassSelectMode(false)
+      await loadSeats(selectedRoom)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleMergeCouple = async () => {
+    if (selectedSeatIds.length === 0 || selectedSeatIds.length % 2 !== 0 || !selectedRoom) return
+    setIsGenerating(true)
+    try {
+      const selectedSeats = seats.filter(s => selectedSeatIds.includes(s._id))
+      
+      const hasCouple = selectedSeats.some(s => s.type === 'couple')
+      if (hasCouple) {
+        void message.error('Không thể ghép các ghế đã là ghế đôi (Couple). Vui lòng chỉ chọn ghế đơn.')
+        setIsGenerating(false)
+        return
+      }
+
+      // Sort seats by row and number
+      selectedSeats.sort((a, b) => {
+        if (a.row === b.row) return a.number - b.number
+        return a.row.localeCompare(b.row)
+      })
+
+      // Check for aisle crossing
+      let crossesAisle = false;
+      const parsedAisles = currentRoomInfo?.aisleColumns || [];
+      for (let i = 0; i < selectedSeats.length; i += 2) {
+        const firstSeat = selectedSeats[i];
+        if (parsedAisles.includes(firstSeat.number)) {
+          crossesAisle = true;
+          break;
+        }
+      }
+
+      if (crossesAisle) {
+        void message.error('Không thể ghép 2 ghế nằm ở 2 bên lối đi.')
+        setIsGenerating(false)
+        return
+      }
+
+      const promises = []
+      for (let i = 0; i < selectedSeats.length; i += 2) {
+        promises.push(mergeCoupleSeats(selectedSeats[i]._id, selectedSeats[i + 1]._id))
+      }
+
+      await Promise.all(promises)
+      void message.success(`Đã ghép ${selectedSeats.length / 2} cặp ghế thành Couple thành công.`)
+      setSelectedSeatIds([])
+      setIsMassSelectMode(false)
+      await loadSeats(selectedRoom)
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Ghép ghế thất bại.'
+      void message.error(msg)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -285,9 +428,53 @@ function ManageSeat() {
             }
             extra={
               seats.length > 0 && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  Thêm Ghế
-                </Button>
+                <Space size="middle">
+                  <Switch
+                    checked={isMassSelectMode}
+                    onChange={(checked) => {
+                      setIsMassSelectMode(checked)
+                      setSelectedSeatIds([])
+                    }}
+                    checkedChildren="Tắt chọn nhiều"
+                    unCheckedChildren="Bật chọn nhiều"
+                  />
+                  {isMassSelectMode && selectedSeatIds.length > 0 && (
+                    <Space>
+                      {selectedSeatIds.length > 0 && selectedSeatIds.length % 2 === 0 && (
+                        <Popconfirm
+                          title={`Ghép ${selectedSeatIds.length / 2} cặp ghế thành Couple?`}
+                          description="Các ghế trong mỗi cặp phải nằm liền kề nhau."
+                          onConfirm={handleMergeCouple}
+                          okText="Ghép"
+                          cancelText="Hủy"
+                        >
+                          <Button style={{ borderColor: '#ff85c0', color: '#ff85c0' }} loading={isGenerating}>
+                            Ghép thành Couple
+                          </Button>
+                        </Popconfirm>
+                      )}
+                      <Button onClick={openMassEditModal}>
+                        Sửa {selectedSeatIds.length} ghế
+                      </Button>
+                      <Popconfirm
+                        title={`Xóa ${selectedSeatIds.length} ghế?`}
+                        description="Hành động này không thể hoàn tác."
+                        onConfirm={handleMassDeleteSeat}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <Button danger loading={isGenerating}>
+                          Xóa
+                        </Button>
+                      </Popconfirm>
+                    </Space>
+                  )}
+                  {!isMassSelectMode && (
+                    <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+                      Thêm Ghế
+                    </Button>
+                  )}
+                </Space>
               )
             }
           >
@@ -348,61 +535,94 @@ function ManageSeat() {
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                               {(() => {
+                                const maxSeatNum = Math.max(...rowSeats.map(s => s.number), 0);
+                                const elements = [];
                                 let currentCol = 1;
-                                return rowSeats.map((seat) => {
-                                  const isCouple = seat.type === 'couple'
-                                  const colsOccupied = isCouple ? 2 : 1;
+                                for (let num = 1; num <= maxSeatNum; num++) {
+                                  const seat = rowSeats.find(s => s.number === num);
+                                  if (seat) {
+                                    const isCouple = seat.type === 'couple';
+                                    const colsOccupied = isCouple ? 2 : 1;
+                                    const seatPhysicalCols = Array.from({ length: colsOccupied }, (_, i) => currentCol + i);
+                                    const isAisle = parsedAisles.some(a => seatPhysicalCols.includes(a));
 
-                                  const seatPhysicalCols = Array.from({ length: colsOccupied }, (_, i) => currentCol + i);
-                                  const isAisle = parsedAisles.some(a => seatPhysicalCols.includes(a));
-
-                                  currentCol += colsOccupied;
-
-                                  return (
-                                    <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                      <div
-                                        onClick={() => openEditModal(seat)}
-                                        style={{
-                                          width: isCouple ? '72px' : '32px',
-                                          height: '32px',
-                                          backgroundColor: getSeatColor(seat),
-                                          borderRadius: '6px',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          color: seat.isActive ? '#000' : '#8c8c8c',
-                                          fontWeight: 600,
-                                          fontSize: '11px',
-                                          cursor: 'pointer',
-                                          transition: 'all 0.2s',
-                                          border: '1px solid rgba(0,0,0,0.1)',
-                                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                          overflow: 'hidden',
-                                        }}
-                                        title={`Ghế ${seat.code} - ${seat.type}`}
-                                      >
-                                        {seat.number}
-                                      </div>
-                                      {isAisle && (
+                                    elements.push(
+                                      <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                         <div
+                                          onClick={() => handleSeatClick(seat)}
                                           style={{
-                                            width: '24px',
+                                            width: isCouple ? '72px' : '32px',
                                             height: '32px',
+                                            backgroundColor: getSeatColor(seat),
+                                            borderRadius: '6px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            fontSize: '9px',
-                                            color: '#cbd5e1',
-                                            fontWeight: 700,
-                                            userSelect: 'none'
+                                            color: seat.isActive ? '#000' : '#8c8c8c',
+                                            fontWeight: 600,
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            border: selectedSeatIds.includes(seat._id) ? '2px solid #1890ff' : '1px solid rgba(0,0,0,0.1)',
+                                            boxShadow: selectedSeatIds.includes(seat._id) ? '0 0 8px rgba(24,144,255,0.6)' : '0 2px 4px rgba(0,0,0,0.05)',
+                                            overflow: 'hidden',
+                                            transform: selectedSeatIds.includes(seat._id) ? 'scale(1.1)' : 'none',
+                                            zIndex: selectedSeatIds.includes(seat._id) ? 10 : 1
                                           }}
+                                          title={`Ghế ${seat.code} - ${seat.type}`}
                                         >
-                                          |
+                                          {isCouple ? `${seat.number}   -  ${seat.number + 1}` : seat.number}
                                         </div>
-                                      )}
-                                    </div>
-                                  )
-                                })
+                                        {isAisle && (
+                                          <div
+                                            style={{
+                                              width: '24px',
+                                              height: '32px',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              fontSize: '9px',
+                                              color: '#cbd5e1',
+                                              fontWeight: 700,
+                                              userSelect: 'none'
+                                            }}
+                                          >
+                                            |
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                    currentCol += colsOccupied;
+                                    if (isCouple) num++; // couple takes two seat numbers
+                                  } else {
+                                    // Missing seat gap
+                                    const isAisle = parsedAisles.includes(currentCol);
+                                    elements.push(
+                                      <div key={`gap-${num}`} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <div style={{ width: '32px', height: '32px' }} />
+                                        {isAisle && (
+                                          <div
+                                            style={{
+                                              width: '24px',
+                                              height: '32px',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              fontSize: '9px',
+                                              color: '#cbd5e1',
+                                              fontWeight: 700,
+                                              userSelect: 'none'
+                                            }}
+                                          >
+                                            |
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                    currentCol += 1;
+                                  }
+                                }
+                                return elements;
                               })()}
                             </div>
                             <div style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', color: '#595959' }}>
@@ -441,7 +661,7 @@ function ManageSeat() {
 
       {/* Edit/Create Seat Modal */}
       <Modal
-        title={modalMode === 'edit' ? `Chỉnh sửa ghế: ${editingSeat?.code}` : 'Thêm ghế mới'}
+        title={modalMode === 'edit' ? `Chỉnh sửa ghế: ${editingSeat?.code}` : modalMode === 'mass_edit' ? `Sửa hàng loạt ${selectedSeatIds.length} ghế` : 'Thêm ghế mới'}
         open={isModalOpen}
         onCancel={closeEditModal}
         footer={null}
@@ -485,20 +705,27 @@ function ManageSeat() {
             </Row>
           )}
           <Form.Item label="Loại ghế" name="type">
-            <Select>
+            <Select placeholder="Giữ nguyên" allowClear>
               <Select.Option value="standard">Standard (Tiêu chuẩn)</Select.Option>
               <Select.Option value="vip">VIP</Select.Option>
-              <Select.Option value="couple">Couple (Ghế đôi)</Select.Option>
+              {modalMode !== 'create' && <Select.Option value="couple">Couple (Ghế đôi)</Select.Option>}
               <Select.Option value="disabled">Disabled (Dành cho người khuyết tật)</Select.Option>
             </Select>
           </Form.Item>
 
           <Form.Item label="Hệ số giá (Price Multiplier)" name="priceMultiplier" help="1 = Giá cơ bản, 1.5 = Đắt hơn 50%">
-            <InputNumber min={0} step={0.1} style={{ width: '100%' }} />
+            <InputNumber placeholder="Giữ nguyên" min={0} step={0.1} style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item label="Trạng thái" name="isActive" valuePropName="checked">
-            <Switch checkedChildren="Hoạt động" unCheckedChildren="Bảo trì" />
+          <Form.Item label="Trạng thái" name="isActive" valuePropName={modalMode === 'mass_edit' ? 'value' : 'checked'}>
+            {modalMode === 'mass_edit' ? (
+              <Select placeholder="Giữ nguyên" allowClear>
+                <Select.Option value={true}>Hoạt động</Select.Option>
+                <Select.Option value={false}>Bảo trì</Select.Option>
+              </Select>
+            ) : (
+              <Switch checkedChildren="Hoạt động" unCheckedChildren="Bảo trì" />
+            )}
           </Form.Item>
 
           <Row gutter={16} style={{ marginTop: 24 }}>
@@ -517,7 +744,7 @@ function ManageSeat() {
             </Col>
             <Col span={modalMode === 'edit' ? 12 : 24}>
               <Button type="primary" htmlType="submit" block icon={<SaveOutlined />}>
-                Lưu thay đổi
+                {modalMode === 'mass_edit' ? 'Lưu hàng loạt' : 'Lưu thay đổi'}
               </Button>
             </Col>
           </Row>

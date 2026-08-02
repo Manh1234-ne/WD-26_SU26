@@ -28,7 +28,7 @@ import type { Movie } from '../../features/movie/movie.types'
 import type { Room } from '../../features/room/room.types'
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { createShowtime } from '../../features/showtime/showtime.service'
-import { CalendarOutlined, CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons'
 
 dayjs.extend(isSameOrAfter)
 dayjs.extend(isSameOrBefore)
@@ -82,7 +82,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             format: '2D',
             language: 'Tiếng Việt',
             subtitle: '',
-            basePrice: 50000
+            basePrice: 90000
         }
     })
 
@@ -95,6 +95,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
     const selectedRoomId = watch('roomId')
     const selectedMovie = movies.find((m) => m._id === selectedMovieId)
     const selectedRoom = rooms.find((r) => r._id === selectedRoomId)
+    const movieDuration = (selectedMovie as Movie & { duration?: number })?.duration
 
     // Handle available formats
     let availableFormats: string[] = []
@@ -158,7 +159,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             for (const timeSlot of data.timeSlots) {
                 const hour = timeSlot.hour()
                 const minute = timeSlot.minute()
-                
+
                 const startObj = currentDay.hour(hour).minute(minute).second(0).toDate()
                 // endTime = startTime + duration + 20 mins
                 const endObj = new Date(startObj.getTime() + (Number(duration) + 20) * 60 * 1000)
@@ -168,10 +169,10 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                     const exRoomId = typeof existing.room === 'object' ? (existing.room as any)._id : existing.room;
                     if (exRoomId !== data.roomId) return false;
                     if ((existing as any).status === 'cancelled') return false;
-                    
+
                     const exStart = new Date(existing.startTime)
                     const exEnd = new Date(existing.endTime)
-                    
+
                     // overlap condition: start < exEnd AND end > exStart
                     return startObj < exEnd && endObj > exStart
                 })
@@ -209,7 +210,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
     const handleConfirmCreate = async () => {
         const data = getValues()
         const validItems = previewList.filter(item => !item.isOverlap)
-        
+
         if (validItems.length === 0) {
             message.warning('Không có suất chiếu nào hợp lệ để tạo')
             return
@@ -230,7 +231,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                     language: data.language,
                     subtitle: data.subtitle,
                     basePrice: data.basePrice,
-                    status: true
+                    status: 'open'
                 })
                 successCount++
             } catch (error) {
@@ -246,7 +247,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
         if (failCount > 0) {
             message.error(`Có ${failCount} suất chiếu tạo thất bại`)
         }
-        
+
         if (successCount > 0) {
             reset()
             setShowPreview(false)
@@ -293,10 +294,10 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             title: 'Hành động',
             key: 'action',
             render: (_: any, record: PreviewItem) => (
-                <Button 
-                    type="text" 
-                    danger 
-                    icon={<DeleteOutlined />} 
+                <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
                     onClick={() => handleRemovePreviewItem(record.id)}
                     title="Xóa suất chiếu này"
                 />
@@ -358,6 +359,26 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                                 />
                             </Form.Item>
                         </Col>
+                        {movieDuration && (
+                            <Col span={24}>
+                                <div style={{
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    padding: '12px 16px',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    color: '#1d4ed8',
+                                    marginBottom: '16px'
+                                }}>
+                                    <ClockCircleOutlined style={{ fontSize: '18px', color: '#2563eb' }} />
+                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                                        Thời lượng phim: <strong style={{ color: '#1e40af', fontSize: '14px' }}>{movieDuration} phút</strong> + <strong style={{ color: '#059669', fontSize: '14px' }}>20 phút Quãng Nghỉ</strong>
+                                    </span>
+                                </div>
+                            </Col>
+                        )}
                         <Col span={8}>
                             <Form.Item label="Định dạng" required>
                                 <Controller
@@ -410,11 +431,11 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                             </Form.Item>
                         </Col>
                     </Row>
-                    
+
                     <div style={{ margin: '24px 0 16px', borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
                         <Text strong style={{ fontSize: 16 }}>Thiết lập thời gian</Text>
                     </div>
-                    
+
                     <Row gutter={[16, 16]}>
                         <Col span={12}>
                             <Form.Item label="Khoảng ngày chiếu" required>
@@ -423,9 +444,9 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                                     control={control}
                                     rules={{ required: 'Bắt buộc' }}
                                     render={({ field }) => (
-                                        <RangePicker 
-                                            {...field} 
-                                            style={{ width: '100%' }} 
+                                        <RangePicker
+                                            {...field}
+                                            style={{ width: '100%' }}
                                             format="DD/MM/YYYY"
                                         />
                                     )}
@@ -465,9 +486,9 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                                         render={({ field }) => (
                                             <Space wrap>
                                                 {field.value.map((time, index) => (
-                                                    <Tag 
-                                                        key={index} 
-                                                        closable 
+                                                    <Tag
+                                                        key={index}
+                                                        closable
                                                         onClose={() => {
                                                             const newTimes = [...field.value]
                                                             newTimes.splice(index, 1)
@@ -485,7 +506,7 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                             </Form.Item>
                         </Col>
                     </Row>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
                         <Space>
                             <Button onClick={onClose}>Hủy</Button>
@@ -501,15 +522,15 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                 <div>
                     <div style={{ marginBottom: 16 }}>
                         <Text strong style={{ fontSize: 16 }}>Danh sách suất chiếu dự kiến</Text>
-                        <br/>
+                        <br />
                         <Text type="secondary">
-                            Tổng cộng: {previewList.length} suất chiếu 
+                            Tổng cộng: {previewList.length} suất chiếu
                             ({previewList.filter(i => !i.isOverlap).length} hợp lệ, {previewList.filter(i => i.isOverlap).length} trùng lịch)
                         </Text>
                     </div>
-                    <Table 
-                        dataSource={previewList} 
-                        columns={columns} 
+                    <Table
+                        dataSource={previewList}
+                        columns={columns}
                         rowKey="id"
                         pagination={{ pageSize: 5 }}
                         size="small"
@@ -517,9 +538,9 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
                         <Space>
                             <Button onClick={() => setShowPreview(false)}>Quay lại chỉnh sửa</Button>
-                            <Button 
-                                type="primary" 
-                                onClick={handleConfirmCreate} 
+                            <Button
+                                type="primary"
+                                onClick={handleConfirmCreate}
                                 loading={isCreating}
                                 disabled={previewList.filter(i => !i.isOverlap).length === 0}
                             >
