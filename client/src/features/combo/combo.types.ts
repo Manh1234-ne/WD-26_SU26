@@ -3,6 +3,7 @@ export type InventoryItem = {
   name: string;
   unit: string;
   stockQuantity?: number;
+  isActive?: boolean;
 };
 
 export type ComboIngredient = {
