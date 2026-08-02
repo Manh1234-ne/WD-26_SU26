@@ -39,6 +39,8 @@ export type Booking = {
     discountAmount: number,
     finalAmount: number,
     status: string,
+    isPrinted?: boolean,
+    printCount?: number,
     createdAt: string,
     updatedAt: string,
 }

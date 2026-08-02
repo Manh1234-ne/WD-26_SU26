@@ -25,3 +25,8 @@ export const cancelBooking = async (id: string) => {
     const response = await api.patch<ApiResponse<Booking>>(`/bookings/${id}/cancel`);
     return response.data
 }
+
+export const printBooking = async (id: string) => {
+    const response = await api.patch<ApiResponse<Booking>>(`/bookings/${id}/print`);
+    return response.data
+}

@@ -336,3 +336,24 @@ export const applyVoucherToBooking = asyncHandler(async (req, res) => {
     finalAmount: updatedBooking.finalAmount
   });
 });
+
+export const printBooking = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  booking.printCount = (booking.printCount || 0) + 1;
+  booking.isPrinted = true;
+
+  await booking.save();
+
+  return ok(res, booking);
+});
