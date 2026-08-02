@@ -62,6 +62,12 @@ const voucherSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: true,
+      validate: {
+        validator: function (value) {
+          return !this.startDate || value >= this.startDate;
+        },
+        message: "Ngày kết thúc không được trước ngày bắt đầu",
+      },
     },
     isActive: {
       type: Boolean,

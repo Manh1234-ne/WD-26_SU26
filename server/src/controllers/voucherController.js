@@ -70,6 +70,14 @@ export const createVoucher = asyncHandler(
       );
     }
 
+    if (new Date(endDate) < new Date(startDate)) {
+      return fail(
+        res,
+        400,
+        "Ngày kết thúc không được trước ngày bắt đầu"
+      );
+    }
+
     const existingVoucher =
       await Voucher.findOne({
         code: code.toUpperCase(),
@@ -123,6 +131,17 @@ export const updateVoucher = asyncHandler(
         res,
         400,
         "Giá trị giảm theo phần trăm không được vượt quá 100%"
+      );
+    }
+
+    const finalStartDate = req.body.startDate !== undefined ? new Date(req.body.startDate) : new Date(voucher.startDate);
+    const finalEndDate = req.body.endDate !== undefined ? new Date(req.body.endDate) : new Date(voucher.endDate);
+
+    if (finalEndDate < finalStartDate) {
+      return fail(
+        res,
+        400,
+        "Ngày kết thúc không được trước ngày bắt đầu"
       );
     }
 

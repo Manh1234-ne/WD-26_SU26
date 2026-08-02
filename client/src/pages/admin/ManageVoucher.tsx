@@ -335,8 +335,30 @@ function ManageVoucher() {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true, message: 'Vui lòng chọn ngày kết thúc' }]}> 
-                  <DatePicker style={{ width: '100%' }} />
+                <Form.Item
+                  name="endDate"
+                  label="Ngày kết thúc"
+                  dependencies={['startDate']}
+                  rules={[
+                    { required: true, message: 'Vui lòng chọn ngày kết thúc' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        const startDate = getFieldValue('startDate');
+                        if (value && startDate && value.isBefore(startDate, 'day')) {
+                          return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
+                > 
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    disabledDate={(current) => {
+                      const startDate = antdForm.getFieldValue('startDate');
+                      return startDate ? current && current.isBefore(startDate, 'day') : false;
+                    }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
