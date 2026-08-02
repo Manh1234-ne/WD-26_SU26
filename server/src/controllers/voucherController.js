@@ -62,6 +62,21 @@ export const createVoucher = asyncHandler(
       endDate,
     } = req.body;
 
+    if (
+      !code ||
+      !name ||
+      !description ||
+      !discountType ||
+      discountValue === undefined ||
+      maxDiscountAmount === undefined ||
+      minOrderAmount === undefined ||
+      usageLimit === undefined ||
+      !startDate ||
+      !endDate
+    ) {
+      return fail(res, 400, "Vui lòng nhập đầy đủ tất cả các trường thông tin");
+    }
+
     if (discountType === "percent" && discountValue > 100) {
       return fail(
         res,
@@ -146,6 +161,13 @@ export const updateVoucher = asyncHandler(
     }
 
     Object.assign(voucher, req.body);
+
+    const requiredFields = ["code", "name", "description", "discountType", "discountValue", "maxDiscountAmount", "minOrderAmount", "usageLimit", "startDate", "endDate"];
+    for (const field of requiredFields) {
+      if (voucher[field] === null || voucher[field] === undefined || voucher[field] === "") {
+        return fail(res, 400, "Vui lòng nhập đầy đủ tất cả các trường thông tin");
+      }
+    }
 
     await voucher.save();
 

@@ -16,6 +16,7 @@ const voucherSchema = new mongoose.Schema(
     },
     description: {
       type: String,
+      required: true,
       trim: true,
     },
     discountType: {
@@ -39,15 +40,18 @@ const voucherSchema = new mongoose.Schema(
     },
     maxDiscountAmount: {
       type: Number,
+      required: true,
       min: 0,
     },
     minOrderAmount: {
       type: Number,
+      required: true,
       default: 0,
       min: 0,
     },
     usageLimit: {
       type: Number,
+      required: true,
       min: 0,
     },
     usedCount: {
