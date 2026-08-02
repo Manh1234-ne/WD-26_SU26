@@ -32,6 +32,8 @@ import BookingHistory from "./pages/client/BookingHistory";
 import { AuthGuard } from "./routes/AuthGuard";
 import { AdminRoute } from "./routes/AdminRoute";
 import Profile from "./pages/client/Profile";
+import ManageCombo from "./pages/admin/ManageCombo";
+import ManageInventory from "./pages/admin/ManageInventory";
 
 function App() {
   return (
@@ -79,6 +81,8 @@ function App() {
               <Route path="users" element={<ManageUser />} />
               <Route path="showtimes" element={<ManageShowtime />} />
               <Route path="vouchers" element={<ManageVoucher />} />
+              <Route path="combos" element={<ManageCombo />} />
+              <Route path="inventory" element={<ManageInventory />} />
               <Route path="pricing-rules" element={<ManagePricing />} />
             </Route>
 

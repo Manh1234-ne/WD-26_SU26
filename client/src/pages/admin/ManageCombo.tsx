@@ -224,20 +224,8 @@ function ManageCombo() {
     );
   };
 
-  const extractImageUrl = (imageField: any): string => {
-    if (!imageField) return "";
-
-    if (typeof imageField === "string") return imageField.trim();
-
-    const list = Array.isArray(imageField)
-      ? imageField
-      : imageField?.fileList ?? [];
-    const done = list.find((f: any) => f.status === "done");
-    return done?.response?.url ?? done?.url ?? "";
-  };
-
+  // ─── Submit form ──────────────────────────────────────────────────
   const handleSubmit = async (values: ComboFormFields) => {
-
     const hasEmpty = ingredients.some((r) => !r.inventoryItem);
     if (hasEmpty) {
       void message.warning("Vui lòng chọn nguyên liệu cho tất cả các dòng!");
@@ -256,7 +244,7 @@ function ManageCombo() {
     const payload: ComboPayload = {
       name: values.name.trim(),
       description: values.description?.trim() || "",
-      image: extractImageUrl(values.image),
+      image: values.image?.trim() || "",
       price: Number(values.price),
       isActive: values.isActive,
       ingredients: ingredients
@@ -282,32 +270,6 @@ function ManageCombo() {
     } finally {
       setSaving(false);
     }
-  };
-  const handleImageUploadChange = (info: any) => {
-    if (info.file.status === "done") {
-      const url = info.file.response?.url;
-      if (url) {
-        form.setFieldValue('image', url);
-        void message.success("Upload ảnh thành công!");
-      } else {
-        void message.error("Upload thành công nhưng không nhận được URL!");
-      }
-    } else if (info.file.status === "error") {
-      const errMsg = info.file.response?.message || "Upload ảnh thất bại!";
-      void message.error(errMsg);
-    }
-  };
-
-  const beforeImageUpload = (file: any) => {
-    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
-    if (!isJpgOrPng) {
-      void message.error('Chỉ chấp nhận file JPG, PNG hoặc WEBP!');
-    }
-    const isLt2M = file.size / 1024 / 1024 < 2;
-    if (!isLt2M) {
-      void message.error('Ảnh phải nhỏ hơn 2MB!');
-    }
-    return isJpgOrPng && isLt2M;
   };
 
   const handleEdit = (combo: Combo) => {
@@ -598,13 +560,14 @@ function ManageCombo() {
                     min={0}
                     step={5000}
                     formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                    parser={(v) => Number(v?.replace(/,/g, "") ?? 0) as 0}
+                    parser={(v) => Number(v?.replace(/,/g, "") ?? 0)}
                     style={{ width: "100%" }}
                     addonAfter="VND"
                   />
                 </Form.Item>
               </Col>
 
+              {/* Trạng thái */}
               <Col xs={24} sm={12} md={8}>
                 <Form.Item name="isActive" label="Trạng thái bán" valuePropName="checked">
                   <Switch
@@ -664,358 +627,348 @@ function ManageCombo() {
                             objectFit: "cover",
                             borderRadius: 8,
                             border: "1px solid #e2e8f0",
-                            overflow: "hidden",
-                          }}>
-                          <img
-                            src={url}
-                            alt="preview"
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                        </div>
+                          }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
                       ) : (
                         <div style={{
-                          flex: "1 1 60%",
-                          height: 160,
+                          height: 60,
                           background: "#f8fafc",
                           borderRadius: 8,
                           border: "1px dashed #cbd5e1",
                           display: "flex",
-                          flexDirection: "column",
                           alignItems: "center",
                           justifyContent: "center",
                           color: "#94a3b8",
                           fontSize: 12,
-                          gap: 6,
                         }}>
-                          <PictureOutlined style={{ fontSize: 28 }} />
-                          <span>Chưa có ảnh</span>
+                          <PictureOutlined style={{ marginRight: 6 }} /> Chưa có ảnh
                         </div>
                       );
                     }}
                   </Form.Item>
-                </div>
-              </Form.Item>
-            </Col>
+                </Form.Item>
+              </Col>
 
+              {/* Mô tả */}
+              <Col xs={24}>
+                <Form.Item name="description" label="Mô tả combo">
+                  <TextArea
+                    rows={3}
+                    placeholder="Mô tả chi tiết về combo (thành phần, khuyến mãi,...)"
+                    showCount
+                    maxLength={300}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-            {/* Mô tả */}
-            <Col xs={24}>
-              <Form.Item name="description" label="Mô tả combo">
-                <TextArea
-                  rows={3}
-                  placeholder="Mô tả chi tiết về combo (thành phần, khuyến mãi,...)"
-                  showCount
-                  maxLength={300}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+            {/* ── Nguyên liệu ─────────────────────────────────────── */}
+            <Divider orientation="left" style={{ color: "#475569", fontWeight: 700, borderColor: "#e2e8f0" }}>
+              <Space>
+                <CoffeeOutlined style={{ color: "#e11d48" }} />
+                Nguyên liệu của combo
+              </Space>
+            </Divider>
 
-          {/* ── Nguyên liệu ─────────────────────────────────────── */}
-          <Divider orientation={"left" as any} style={{ color: "#475569", fontWeight: 700, borderColor: "#e2e8f0" }}>
-            <Space>
-              <CoffeeOutlined style={{ color: "#e11d48" }} />
-              Nguyên liệu của combo
-            </Space>
-          </Divider>
+            {/* Warning if combo has stopped ingredients */}
+            {hasInactiveIngredientsInForm && (
+              <Alert
+                type="error"
+                showIcon
+                icon={<ExclamationCircleOutlined />}
+                message="Cảnh báo nguyên liệu đã ngừng bán"
+                description="Combo này đang chứa nguyên liệu đã bị Ngừng bán ở Quản Lý Tồn Kho. Vui lòng bấm biểu tượng Xóa (thùng rác) hoặc chọn thay thế nguyên liệu khác trước khi lưu combo!"
+                style={{ marginBottom: 16, borderRadius: 8 }}
+              />
+            )}
 
-          {/* Warning if combo has stopped ingredients */}
-          {hasInactiveIngredientsInForm && (
-            <Alert
-              type="error"
-              showIcon
-              icon={<ExclamationCircleOutlined />}
-              message="Cảnh báo nguyên liệu đã ngừng bán"
-              description="Combo này đang chứa nguyên liệu đã bị Ngừng bán ở Quản Lý Tồn Kho. Vui lòng bấm biểu tượng Xóa (thùng rác) hoặc chọn thay thế nguyên liệu khác trước khi lưu combo!"
-              style={{ marginBottom: 16, borderRadius: 8 }}
-            />
-          )}
-
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <Spin tip="Đang tải danh sách nguyên liệu..." />
-            </div>
-          ) : (
-            <div>
-              {/* Multi-select chọn nhanh nhiều nguyên liệu */}
-              <div style={{ background: "#f1f5f9", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                <Text strong style={{ fontSize: 13, color: "#334155", display: "block", marginBottom: 8 }}>
-                  <PlusOutlined style={{ color: "#e11d48", marginRight: 6 }} />
-                  Chọn nhanh nhiều nguyên liệu vào combo cùng lúc:
-                </Text>
-                <Select
-                  mode="multiple"
-                  placeholder="Bấm vào đây để chọn nhanh nhiều nguyên liệu (bắp, nước, snack...)..."
-                  value={ingredients
-                    .map((r) => r.inventoryItem)
-                    .filter((id) => isIngredientActive(id, inventoryList))}
-                  onChange={handleMultiSelectChange}
-                  options={activeInventoryList.map((inv) => ({
-                    value: inv._id,
-                    label: `${inv.name} (${inv.unit})`,
-                  }))}
-                  style={{ width: "100%" }}
-                  allowClear
-                />
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <Spin tip="Đang tải danh sách nguyên liệu..." />
               </div>
+            ) : (
+              <div>
+                {/* Multi-select chọn nhanh nhiều nguyên liệu */}
+                <div style={{ background: "#f1f5f9", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                  <Text strong style={{ fontSize: 13, color: "#334155", display: "block", marginBottom: 8 }}>
+                    <PlusOutlined style={{ color: "#e11d48", marginRight: 6 }} />
+                    Chọn nhanh nhiều nguyên liệu vào combo cùng lúc:
+                  </Text>
+                  <Select
+                    mode="multiple"
+                    placeholder="Bấm vào đây để chọn nhanh nhiều nguyên liệu (bắp, nước, snack...)..."
+                    value={ingredients
+                      .map((r) => r.inventoryItem)
+                      .filter((id) => isIngredientActive(id, inventoryList))}
+                    onChange={handleMultiSelectChange}
+                    options={activeInventoryList.map((inv) => ({
+                      value: inv._id,
+                      label: `${inv.name} (${inv.unit})`,
+                    }))}
+                    style={{ width: "100%" }}
+                    allowClear
+                  />
+                </div>
 
-              {ingredients.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    <Text type="secondary">Chưa có nguyên liệu nào. Hãy chọn ở ô trên hoặc nhấn "Thêm dòng nguyên liệu".</Text>
-                  }
-                  style={{ marginBottom: 16 }}
-                />
-              ) : (
-                ingredients.map((row) => {
-                  const isInactive = row.inventoryItem && !isIngredientActive(row.inventoryItem, inventoryList);
-                  return (
-                    <div key={row.key} className={`ingredient-row ${isInactive ? "inactive" : ""}`}>
-                      <Row gutter={12} align="middle">
-                        <Col xs={24} sm={12} md={13}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Nguyên liệu</Text>
-                              {isInactive && (
-                                <Tag color="error" style={{ borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
-                                  ⚠️ NGỪNG BÁN (Hãy xóa/thay thế)
-                                </Tag>
-                              )}
+                {ingredients.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={
+                      <Text type="secondary">Chưa có nguyên liệu nào. Hãy chọn ở ô trên hoặc nhấn "Thêm dòng nguyên liệu".</Text>
+                    }
+                    style={{ marginBottom: 16 }}
+                  />
+                ) : (
+                  ingredients.map((row) => {
+                    const isInactive = row.inventoryItem && !isIngredientActive(row.inventoryItem, inventoryList);
+                    return (
+                      <div key={row.key} className={`ingredient-row ${isInactive ? "inactive" : ""}`}>
+                        <Row gutter={12} align="middle">
+                          <Col xs={24} sm={12} md={13}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Nguyên liệu</Text>
+                                {isInactive && (
+                                  <Tag color="error" style={{ borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                                    ⚠️ NGỪNG BÁN (Hãy xóa/thay thế)
+                                  </Tag>
+                                )}
+                              </div>
+                              <Select
+                                value={row.inventoryItem || undefined}
+                                onChange={(val) => updateIngredient(row.key, "inventoryItem", val)}
+                                placeholder="Chọn nguyên liệu..."
+                                showSearch
+                                filterOption={(input, opt) =>
+                                  String(opt?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                                }
+                                options={availableForRow(row.key).map((inv) => {
+                                  const stopped = inv.isActive === false;
+                                  return {
+                                    value: inv._id,
+                                    label: `${inv.name} (${inv.unit})${stopped ? " - ⚠️ [ĐÃ NGỪNG BÁN]" : ""}`,
+                                    disabled: stopped && inv._id !== row.inventoryItem,
+                                  };
+                                })}
+                                style={{ width: "100%" }}
+                                status={!row.inventoryItem || isInactive ? "error" : undefined}
+                              />
                             </div>
-                            <Select
-                              value={row.inventoryItem || undefined}
-                              onChange={(val) => updateIngredient(row.key, "inventoryItem", val)}
-                              placeholder="Chọn nguyên liệu..."
-                              showSearch
-                              filterOption={(input, opt) =>
-                                String(opt?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                              }
-                              options={availableForRow(row.key).map((inv) => {
-                                const stopped = inv.isActive === false;
-                                return {
-                                  value: inv._id,
-                                  label: `${inv.name} (${inv.unit})${stopped ? " - ⚠️ [ĐÃ NGỪNG BÁN]" : ""}`,
-                                  disabled: stopped && inv._id !== row.inventoryItem,
-                                };
-                              })}
-                              style={{ width: "100%" }}
-                              status={!row.inventoryItem || isInactive ? "error" : undefined}
-                            />
-                          </div>
-                        </Col>
-                        <Col xs={18} sm={8} md={8}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
-                              Số lượng
-                              {row.inventoryItem && (
-                                <span style={{ color: "#94a3b8", fontWeight: 400, marginLeft: 4 }}>
-                                  ({getInventoryUnit(row.inventoryItem, inventoryList)})
-                                </span>
-                              )}
-                            </Text>
-                            <InputNumber
-                              min={1}
-                              max={99}
-                              value={row.quantity}
-                              onChange={(v) => updateIngredient(row.key, "quantity", v ?? 1)}
-                              style={{ width: "100%" }}
-                            />
-                          </div>
-                        </Col>
-                        <Col xs={6} sm={4} md={3} style={{ display: "flex", alignItems: "flex-end", paddingBottom: 0 }}>
-                          <Tooltip title={isInactive ? "Xóa nguyên liệu đã ngừng bán này" : "Xóa dòng"}>
-                            <Button
-                              type="text"
-                              danger
-                              icon={<MinusCircleOutlined style={{ fontSize: 18 }} />}
-                              onClick={() => removeIngredient(row.key)}
-                              style={{ marginTop: 22 }}
-                            />
-                          </Tooltip>
-                        </Col>
-                      </Row>
-                    </div>
-                  );
-                })
-              )}
+                          </Col>
+                          <Col xs={18} sm={8} md={8}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <Text style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+                                Số lượng
+                                {row.inventoryItem && (
+                                  <span style={{ color: "#94a3b8", fontWeight: 400, marginLeft: 4 }}>
+                                    ({getInventoryUnit(row.inventoryItem, inventoryList)})
+                                  </span>
+                                )}
+                              </Text>
+                              <InputNumber
+                                min={1}
+                                max={99}
+                                value={row.quantity}
+                                onChange={(v) => updateIngredient(row.key, "quantity", v ?? 1)}
+                                style={{ width: "100%" }}
+                              />
+                            </div>
+                          </Col>
+                          <Col xs={6} sm={4} md={3} style={{ display: "flex", alignItems: "flex-end", paddingBottom: 0 }}>
+                            <Tooltip title={isInactive ? "Xóa nguyên liệu đã ngừng bán này" : "Xóa dòng"}>
+                              <Button
+                                type="text"
+                                danger
+                                icon={<MinusCircleOutlined style={{ fontSize: 18 }} />}
+                                onClick={() => removeIngredient(row.key)}
+                                style={{ marginTop: 22 }}
+                              />
+                            </Tooltip>
+                          </Col>
+                        </Row>
+                      </div>
+                    );
+                  })
+                )}
 
+                <Button
+                  type="dashed"
+                  icon={<PlusOutlined />}
+                  onClick={addIngredient}
+                  disabled={ingredients.length >= inventoryList.length}
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    borderColor: "#e11d48",
+                    color: "#e11d48",
+                    fontWeight: 600,
+                    marginTop: ingredients.length ? 4 : 0,
+                  }}
+                >
+                  Thêm dòng nguyên liệu
+                </Button>
+              </div>
+            )}
+
+            <Divider style={{ borderColor: "#f1f5f9" }} />
+
+            <Space>
               <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                onClick={addIngredient}
-                disabled={ingredients.length >= inventoryList.length}
-                style={{
-                  width: "100%",
-                  borderRadius: 8,
-                  borderColor: "#e11d48",
-                  color: "#e11d48",
-                  fontWeight: 600,
-                  marginTop: ingredients.length ? 4 : 0,
-                }}
+                type="primary"
+                htmlType="submit"
+                icon={<SaveOutlined />}
+                loading={saving}
+                size="large"
+                style={{ borderRadius: 8, paddingInline: 28 }}
               >
-                Thêm dòng nguyên liệu
+                {editingId ? "Cập nhật combo" : "Thêm combo mới"}
               </Button>
-            </div>
-          )}
+              <Button
+                size="large"
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  form.resetFields();
+                  setIngredients([]);
+                }}
+                style={{ borderRadius: 8 }}
+              >
+                Làm mới form
+              </Button>
+            </Space>
+          </Form>
+        </Card>
 
-          <Divider style={{ borderColor: "#f1f5f9" }} />
+        {/* ── Bảng danh sách combo ──────────────────────────────── */}
+        <Card
+          bordered={false}
+          style={{ borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.06)", overflow: "hidden" }}
+          styles={{ body: { padding: 0 } }}
+          title={
+            <Space>
+              <ShoppingOutlined style={{ color: "#e11d48" }} />
+              <Title level={4} style={{ margin: 0 }}>Danh sách combo</Title>
+              <Tag color="red" style={{ borderRadius: 12, fontWeight: 700 }}>{combos.length} combo</Tag>
+            </Space>
+          }
+        >
+          <Table
+            rowKey="_id"
+            columns={columns}
+            dataSource={combos}
+            loading={loading}
+            pagination={{ pageSize: 8, showTotal: (t) => `Tổng ${t} combo` }}
+            scroll={{ x: true }}
+            rowClassName={(record) => !record.isActive ? "ant-table-row-disabled" : ""}
+          />
+        </Card>
+      </Space>
 
-          <Space>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<SaveOutlined />}
-              loading={saving}
-              size="large"
-              style={{ borderRadius: 8, paddingInline: 28 }}
-            >
-              {editingId ? "Cập nhật combo" : "Thêm combo mới"}
-            </Button>
-            <Button
-              size="large"
-              icon={<ReloadOutlined />}
-              onClick={() => {
-                form.resetFields();
-                setIngredients([]);
-              }}
-              style={{ borderRadius: 8 }}
-            >
-              Làm mới form
-            </Button>
-          </Space>
-        </Form>
-      </Card>
-
-      {/* ── Bảng danh sách combo ──────────────────────────────── */}
-      <Card
-        bordered={false}
-        style={{ borderRadius: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.06)", overflow: "hidden" }}
-        styles={{ body: { padding: 0 } }}
+      {/* ── Modal chi tiết combo ──────────────────────────────────── */}
+      <Modal
+        open={detailOpen}
+        onCancel={() => setDetailOpen(false)}
+        footer={null}
+        width={520}
         title={
           <Space>
             <ShoppingOutlined style={{ color: "#e11d48" }} />
-            <Title level={4} style={{ margin: 0 }}>Danh sách combo</Title>
-            <Tag color="red" style={{ borderRadius: 12, fontWeight: 700 }}>{combos.length} combo</Tag>
+            <span style={{ fontWeight: 800 }}>Chi tiết combo</span>
           </Space>
         }
       >
-        <Table
-          rowKey="_id"
-          columns={columns}
-          dataSource={combos}
-          loading={loading}
-          pagination={{ pageSize: 8, showTotal: (t) => `Tổng ${t} combo` }}
-          scroll={{ x: true }}
-          rowClassName={(record) => !record.isActive ? "ant-table-row-disabled" : ""}
-        />
-      </Card>
-    </Space>
+        {selectedCombo && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {selectedCombo.image && (
+              <img
+                src={selectedCombo.image}
+                alt={selectedCombo.name}
+                style={{
+                  width: "100%",
+                  maxHeight: 200,
+                  objectFit: "cover",
+                  borderRadius: 12,
+                  border: "1px solid #f1f5f9",
+                }}
+              />
+            )}
 
-      {/* ── Modal chi tiết combo ──────────────────────────────────── */ }
-  <Modal
-    open={detailOpen}
-    onCancel={() => setDetailOpen(false)}
-    footer={null}
-    width={520}
-    title={
-      <Space>
-        <ShoppingOutlined style={{ color: "#e11d48" }} />
-        <span style={{ fontWeight: 800 }}>Chi tiết combo</span>
-      </Space>
-    }
-  >
-    {selectedCombo && (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {selectedCombo.image && (
-          <img
-            src={selectedCombo.image}
-            alt={selectedCombo.name}
-            style={{
-              width: "100%",
-              maxHeight: 200,
-              objectFit: "cover",
-              borderRadius: 12,
-              border: "1px solid #f1f5f9",
-            }}
-          />
-        )}
-
-        <div style={{ background: "#f8fafc", borderRadius: 12, padding: "16px 20px" }}>
-          <Title level={4} style={{ margin: "0 0 4px 0", color: "#1e293b" }}>{selectedCombo.name}</Title>
-          {selectedCombo.description && (
-            <Text type="secondary" style={{ fontSize: 13 }}>{selectedCombo.description}</Text>
-          )}
-        </div>
-
-        <Row gutter={16}>
-          <Col span={12}>
-            <div style={{ background: "#fff0f3", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
-              <Text style={{ fontSize: 11, color: "#94a3b8", display: "block", fontWeight: 700, textTransform: "uppercase" }}>Giá bán</Text>
-              <Text style={{ fontSize: 20, fontWeight: 900, color: "#e11d48" }}>{formatCurrency(selectedCombo.price)}</Text>
+            <div style={{ background: "#f8fafc", borderRadius: 12, padding: "16px 20px" }}>
+              <Title level={4} style={{ margin: "0 0 4px 0", color: "#1e293b" }}>{selectedCombo.name}</Title>
+              {selectedCombo.description && (
+                <Text type="secondary" style={{ fontSize: 13 }}>{selectedCombo.description}</Text>
+              )}
             </div>
-          </Col>
-          <Col span={12}>
-            <div style={{ background: selectedCombo.isActive ? "#f0fdf4" : "#f8fafc", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
-              <Text style={{ fontSize: 11, color: "#94a3b8", display: "block", fontWeight: 700, textTransform: "uppercase" }}>Trạng thái</Text>
-              <Tag
-                color={selectedCombo.isActive ? "success" : "default"}
-                style={{ fontWeight: 700, fontSize: 13, marginTop: 4, borderRadius: 8 }}
-              >
-                {selectedCombo.isActive ? "Đang bán" : "Ngừng bán"}
-              </Tag>
-            </div>
-          </Col>
-        </Row>
 
-        <div>
-          <Text strong style={{ fontSize: 13, color: "#475569", display: "block", marginBottom: 8 }}>
-            <CoffeeOutlined style={{ color: "#e11d48", marginRight: 6 }} />
-            Nguyên liệu ({(selectedCombo.ingredients || []).length} loại)
-          </Text>
-          {(selectedCombo.ingredients || []).length === 0 ? (
-            <Text type="secondary" style={{ fontSize: 12 }}>Chưa thiết lập nguyên liệu</Text>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {(selectedCombo.ingredients || []).map((ing, i) => {
-                const active = isIngredientActive(ing.inventoryItem, inventoryList);
-                const name = getInventoryName(ing.inventoryItem, inventoryList);
-                const unit = getInventoryUnit(ing.inventoryItem, inventoryList);
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      background: active ? "#f8fafc" : "#fef2f2",
-                      borderRadius: 8,
-                      padding: "8px 14px",
-                      border: active ? "1px solid #e2e8f0" : "1px solid #fca5a5",
-                    }}
+            <Row gutter={16}>
+              <Col span={12}>
+                <div style={{ background: "#fff0f3", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
+                  <Text style={{ fontSize: 11, color: "#94a3b8", display: "block", fontWeight: 700, textTransform: "uppercase" }}>Giá bán</Text>
+                  <Text style={{ fontSize: 20, fontWeight: 900, color: "#e11d48" }}>{formatCurrency(selectedCombo.price)}</Text>
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ background: selectedCombo.isActive ? "#f0fdf4" : "#f8fafc", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
+                  <Text style={{ fontSize: 11, color: "#94a3b8", display: "block", fontWeight: 700, textTransform: "uppercase" }}>Trạng thái</Text>
+                  <Tag
+                    color={selectedCombo.isActive ? "success" : "default"}
+                    style={{ fontWeight: 700, fontSize: 13, marginTop: 4, borderRadius: 8 }}
                   >
-                    <Text style={{ fontWeight: 600, color: active ? "#334155" : "#991b1b" }}>
-                      {!active && <WarningOutlined style={{ color: "#ef4444", marginRight: 6 }} />}
-                      {name} {!active && "(Đã ngừng bán)"}
-                    </Text>
-                    <Tag color={active ? "blue" : "error"} style={{ fontWeight: 700, borderRadius: 6 }}>
-                      ×{ing.quantity} {unit}
-                    </Tag>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    {selectedCombo.isActive ? "Đang bán" : "Ngừng bán"}
+                  </Tag>
+                </div>
+              </Col>
+            </Row>
 
-        <Button block onClick={() => { setDetailOpen(false); handleEdit(selectedCombo); }} icon={<EditOutlined />}>
-          Chỉnh sửa combo này
-        </Button>
-      </div>
-    )}
-  </Modal>
-    </div >
+            <div>
+              <Text strong style={{ fontSize: 13, color: "#475569", display: "block", marginBottom: 8 }}>
+                <CoffeeOutlined style={{ color: "#e11d48", marginRight: 6 }} />
+                Nguyên liệu ({(selectedCombo.ingredients || []).length} loại)
+              </Text>
+              {(selectedCombo.ingredients || []).length === 0 ? (
+                <Text type="secondary" style={{ fontSize: 12 }}>Chưa thiết lập nguyên liệu</Text>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {(selectedCombo.ingredients || []).map((ing, i) => {
+                    const active = isIngredientActive(ing.inventoryItem, inventoryList);
+                    const name = getInventoryName(ing.inventoryItem, inventoryList);
+                    const unit = getInventoryUnit(ing.inventoryItem, inventoryList);
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          background: active ? "#f8fafc" : "#fef2f2",
+                          borderRadius: 8,
+                          padding: "8px 14px",
+                          border: active ? "1px solid #e2e8f0" : "1px solid #fca5a5",
+                        }}
+                      >
+                        <Text style={{ fontWeight: 600, color: active ? "#334155" : "#991b1b" }}>
+                          {!active && <WarningOutlined style={{ color: "#ef4444", marginRight: 6 }} />}
+                          {name} {!active && "(Đã ngừng bán)"}
+                        </Text>
+                        <Tag color={active ? "blue" : "error"} style={{ fontWeight: 700, borderRadius: 6 }}>
+                          ×{ing.quantity} {unit}
+                        </Tag>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <Button block onClick={() => { setDetailOpen(false); handleEdit(selectedCombo); }} icon={<EditOutlined />}>
+              Chỉnh sửa combo này
+            </Button>
+          </div>
+        )}
+      </Modal>
+    </div>
   );
 }
 
