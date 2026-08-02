@@ -53,6 +53,7 @@ import {
   cancelBooking,
   completeBooking,
   getBookingById,
+  incrementPrintCount,
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
 import QRCode from "qrcode";
@@ -289,7 +290,7 @@ function ManageBooking() {
     }
   };
 
-  const handlePrintTickets = () => {
+  const executePrint = async (bookingId: string) => {
     if (!selectedBookingDetails) return;
     const { booking, seats } = selectedBookingDetails;
 
@@ -375,6 +376,12 @@ function ManageBooking() {
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+          }
+          .info-grid-row {
+            display: flex;
+            justify-content: space-between;
             gap: 12px;
             margin-top: 15px;
           }
@@ -528,6 +535,56 @@ function ManageBooking() {
 
     printWindow.document.write(ticketHTML);
     printWindow.document.close();
+
+    // Increment print count in database
+    try {
+      const res = await incrementPrintCount(bookingId);
+      if (res?.success) {
+        setSelectedBookingDetails((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            booking: {
+              ...prev.booking,
+              printCount: (prev.booking.printCount || 0) + 1,
+            },
+          };
+        });
+        setSelectedBooking((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            printCount: (prev.printCount || 0) + 1,
+          };
+        });
+        void fetchAllBookings();
+        void message.success("Đã ghi nhận in vé thành công!");
+      }
+    } catch (err) {
+      console.error("Lỗi khi cập nhật số lần in vé:", err);
+      void message.error("Không thể cập nhật số lần in vé trên máy chủ.");
+    }
+  };
+
+  const handlePrintConfirm = () => {
+    if (!selectedBookingDetails) return;
+    const { booking } = selectedBookingDetails;
+    const printCount = booking.printCount || 0;
+
+    if (printCount > 0) {
+      Modal.confirm({
+        title: "Xác nhận in lại vé?",
+        content: `Vé này đã được in ${printCount} lần trước đó. Bạn có chắc chắn muốn in lại không?`,
+        okText: "Đồng ý in lại",
+        cancelText: "Hủy bỏ",
+        okButtonProps: { type: "primary" },
+        onOk: () => {
+          void executePrint(booking._id);
+        },
+      });
+    } else {
+      void executePrint(booking._id);
+    }
   };
 
   const fetchAllBookings = async () => {
@@ -891,56 +948,63 @@ function ManageBooking() {
       width: 150,
       align: "center",
       render: (_, record) => (
-        <Space size="middle">
-          <Tooltip title="Xem chi tiết vé">
-            <Button
-              shape="circle"
-              icon={<EyeOutlined style={{ color: "#3b82f6" }} />}
-              onClick={() => void handleOpenDetails(record)}
-            />
-          </Tooltip>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <Space size="middle">
+            <Tooltip title="Xem chi tiết vé">
+              <Button
+                shape="circle"
+                icon={<EyeOutlined style={{ color: "#3b82f6" }} />}
+                onClick={() => void handleOpenDetails(record)}
+              />
+            </Tooltip>
 
-          {record.status === "confirmed" && (
-            <Popconfirm
-              title="Xác nhận soát vé hoàn tất?"
-              description="Hành động này xác nhận khách hàng vào phòng chiếu."
-              onConfirm={() => void handleComplete(record)}
-              okText="Đồng ý"
-              cancelText="Hủy"
-            >
-              <Tooltip title="Hoàn tất soát vé">
-                <Button
-                  shape="circle"
-                  type="primary"
-                  ghost
-                  icon={<CheckCircleOutlined style={{ color: "#10b981" }} />}
-                  loading={actionLoading}
-                />
-              </Tooltip>
-            </Popconfirm>
-          )}
+            {record.status === "confirmed" && (
+              <Popconfirm
+                title="Xác nhận soát vé hoàn tất?"
+                description="Hành động này xác nhận khách hàng vào phòng chiếu."
+                onConfirm={() => void handleComplete(record)}
+                okText="Đồng ý"
+                cancelText="Hủy"
+              >
+                <Tooltip title="Hoàn tất soát vé">
+                  <Button
+                    shape="circle"
+                    type="primary"
+                    ghost
+                    icon={<CheckCircleOutlined style={{ color: "#10b981" }} />}
+                    loading={actionLoading}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
 
-          {(record.status === "pending" || record.status === "confirmed") && (
-            <Popconfirm
-              title="Xác nhận hủy đặt vé?"
-              description="Hành động này sẽ giải phóng toàn bộ ghế đã đặt."
-              onConfirm={() => void handleCancel(record)}
-              okText="Hủy vé"
-              cancelText="Hủy bỏ"
-              okButtonProps={{ danger: true }}
-            >
-              <Tooltip title="Hủy đơn vé">
-                <Button
-                  shape="circle"
-                  danger
-                  ghost
-                  icon={<CloseCircleOutlined />}
-                  loading={actionLoading}
-                />
-              </Tooltip>
-            </Popconfirm>
-          )}
-        </Space>
+            {(record.status === "pending" || record.status === "confirmed") && (
+              <Popconfirm
+                title="Xác nhận hủy đặt vé?"
+                description="Hành động này sẽ giải phóng toàn bộ ghế đã đặt."
+                onConfirm={() => void handleCancel(record)}
+                okText="Hủy vé"
+                cancelText="Hủy bỏ"
+                okButtonProps={{ danger: true }}
+              >
+                <Tooltip title="Hủy đơn vé">
+                  <Button
+                    shape="circle"
+                    danger
+                    ghost
+                    icon={<CloseCircleOutlined />}
+                    loading={actionLoading}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+          </Space>
+          {record.printCount && record.printCount > 0 ? (
+            <Tag color="cyan" style={{ fontSize: 10, margin: 0, borderRadius: 4, fontWeight: 600 }}>
+              Đã in vé {record.printCount} lần
+            </Tag>
+          ) : null}
+        </div>
       ),
     },
   ];
@@ -1437,6 +1501,17 @@ function ManageBooking() {
                       )}
                     </Space>
                   </Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái in vé">
+                    {selectedBookingDetails.booking.printCount && selectedBookingDetails.booking.printCount > 0 ? (
+                      <Tag color="cyan" style={{ fontWeight: 700, borderRadius: "4px" }}>
+                        Đã in vé {selectedBookingDetails.booking.printCount} lần
+                      </Tag>
+                    ) : (
+                      <Tag color="default" style={{ fontWeight: 700, borderRadius: "4px" }}>
+                        Chưa in vé
+                      </Tag>
+                    )}
+                  </Descriptions.Item>
                 </Descriptions>
 
                 <Divider style={{ margin: "20px 0" }} />
@@ -1634,7 +1709,7 @@ function ManageBooking() {
                       type="primary"
                       style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
                       icon={<PrinterOutlined />}
-                      onClick={handlePrintTickets}
+                      onClick={handlePrintConfirm}
                     >
                       In vé
                     </Button>

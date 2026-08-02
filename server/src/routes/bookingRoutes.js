@@ -9,7 +9,8 @@ import {
   cancelBookingBeacon,
   completeBooking,
   applyVoucherToBooking,
-  updateBookingSeats
+  updateBookingSeats,
+  incrementPrintCount
 } from "../controllers/bookingController.js";
 
 const routerBooking = express.Router();
@@ -35,6 +36,11 @@ routerBooking.patch(
 routerBooking.patch(
   "/:id/apply-voucher",
   applyVoucherToBooking
+);
+
+routerBooking.patch(
+  "/:id/print",
+  incrementPrintCount
 );
 
 

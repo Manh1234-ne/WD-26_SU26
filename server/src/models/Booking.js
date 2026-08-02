@@ -48,6 +48,11 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "cancelled", "expired", "completed"],
       default: "pending",
     },
+    printCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     expiresAt: {
       type: Date,
     },
