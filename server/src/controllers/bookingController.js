@@ -414,3 +414,22 @@ export const updateBookingSeats = asyncHandler(async (req, res) => {
 
   return ok(res, updatedBooking);
 });
+
+export const incrementPrintCount = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  booking.printCount = (booking.printCount || 0) + 1;
+  await booking.save();
+
+  return ok(res, booking);
+});

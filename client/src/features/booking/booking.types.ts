@@ -42,6 +42,7 @@ export type Booking = {
     discountAmount: number,
     finalAmount: number,
     status: string,
+    printCount?: number,
     expiresAt?: string | null,
     cancelledAt?: string | null,
     createdAt: string,
