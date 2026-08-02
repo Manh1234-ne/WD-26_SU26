@@ -8,7 +8,7 @@ import { asyncHandler } from "../utils/asynHandler.js";
 
 const calculateDynamicPrice = async (basePrice, startTime) => {
   const pricingRules = await PricingRule.find({ isActive: true });
-  let totalSurchargePercentage = 0;
+  let maxSurchargePercentage = 0;
 
   const showtimeDate = new Date(startTime);
   const showtimeDay = showtimeDate.getDay();
@@ -16,9 +16,10 @@ const calculateDynamicPrice = async (basePrice, startTime) => {
   const showtimeMinute = showtimeDate.getMinutes();
 
   pricingRules.forEach((rule) => {
+    let applied = false;
     if (rule.ruleType === "weekend") {
       if (showtimeDay === 0 || showtimeDay === 6) {
-        totalSurchargePercentage += rule.surchargePercentage;
+        applied = true;
       }
     } else if (rule.ruleType === "holiday") {
       if (rule.endDate) {
@@ -27,7 +28,7 @@ const calculateDynamicPrice = async (basePrice, startTime) => {
         const endOfDay = new Date(rule.endDate);
         endOfDay.setHours(23, 59, 59, 999);
         if (showtimeDate >= startOfDay && showtimeDate <= endOfDay) {
-          totalSurchargePercentage += rule.surchargePercentage;
+          applied = true;
         }
       } else if (
         rule.date &&
@@ -35,7 +36,7 @@ const calculateDynamicPrice = async (basePrice, startTime) => {
         rule.date.getMonth() === showtimeDate.getMonth() &&
         rule.date.getFullYear() === showtimeDate.getFullYear()
       ) {
-        totalSurchargePercentage += rule.surchargePercentage;
+        applied = true;
       }
     } else if (rule.ruleType === "peak_hour") {
       if (rule.startTime && rule.endTime) {
@@ -45,13 +46,17 @@ const calculateDynamicPrice = async (basePrice, startTime) => {
         const endMinutes = endH * 60 + endM;
         const showtimeMinutes = showtimeHour * 60 + showtimeMinute;
         if (showtimeMinutes >= startMinutes && showtimeMinutes <= endMinutes) {
-          totalSurchargePercentage += rule.surchargePercentage;
+          applied = true;
         }
       }
     }
+    
+    if (applied) {
+      maxSurchargePercentage = Math.max(maxSurchargePercentage, rule.surchargePercentage);
+    }
   });
 
-  return basePrice * (1 + totalSurchargePercentage / 100);
+  return basePrice * (1 + maxSurchargePercentage / 100);
 };
 
 const ok = (res, data, message) =>

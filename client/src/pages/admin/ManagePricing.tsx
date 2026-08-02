@@ -71,6 +71,85 @@ export default function ManagePricing() {
 
     const handleSubmit = async (values: any) => {
         try {
+            // Kiểm tra trùng tên
+            const isNameDuplicate = rules.some(r => 
+                r.name.trim().toLowerCase() === values.name.trim().toLowerCase() && 
+                r._id !== editingRule?._id
+            );
+            if (isNameDuplicate) {
+                void message.error('Tên quy tắc đã tồn tại, vui lòng chọn tên khác');
+                return;
+            }
+
+            // Kiểm tra trùng thời gian/điều kiện
+            if (values.ruleType === 'weekend') {
+                const hasWeekend = rules.some(r => r.ruleType === 'weekend' && r._id !== editingRule?._id);
+                if (hasWeekend) {
+                    void message.error('Đã có quy tắc cho ngày cuối tuần');
+                    return;
+                }
+            } else if (values.ruleType === 'peak_hour') {
+                if (!values.timeRange || values.timeRange.length !== 2) {
+                    void message.error('Vui lòng chọn khung giờ');
+                    return;
+                }
+                const newStartStr = values.timeRange[0].format('HH:mm');
+                const newEndStr = values.timeRange[1].format('HH:mm');
+                const [nSH, nSM] = newStartStr.split(':').map(Number);
+                const [nEH, nEM] = newEndStr.split(':').map(Number);
+                const nStartM = nSH * 60 + nSM;
+                const nEndM = nEH * 60 + nEM;
+
+                const isOverlap = rules.some(r => {
+                    if (r.ruleType === 'peak_hour' && r._id !== editingRule?._id && r.startTime && r.endTime) {
+                        const [oSH, oSM] = r.startTime.split(':').map(Number);
+                        const [oEH, oEM] = r.endTime.split(':').map(Number);
+                        const oStartM = oSH * 60 + oSM;
+                        const oEndM = oEH * 60 + oEM;
+                        return nStartM < oEndM && nEndM > oStartM;
+                    }
+                    return false;
+                });
+                if (isOverlap) {
+                    void message.error('Khung giờ này bị trùng lặp với quy tắc giờ cao điểm khác');
+                    return;
+                }
+            } else if (values.ruleType === 'holiday') {
+                let newStartD: dayjs.Dayjs;
+                let newEndD: dayjs.Dayjs;
+                
+                if (values.holidayType === 'single') {
+                    if (!values.date) {
+                        void message.error('Vui lòng chọn ngày lễ');
+                        return;
+                    }
+                    newStartD = values.date.startOf('day');
+                    newEndD = values.date.endOf('day');
+                } else if (values.holidayType === 'range') {
+                    if (!values.dateRange || values.dateRange.length !== 2) {
+                        void message.error('Vui lòng chọn khoảng ngày lễ');
+                        return;
+                    }
+                    newStartD = values.dateRange[0].startOf('day');
+                    newEndD = values.dateRange[1].endOf('day');
+                } else {
+                    return;
+                }
+
+                const isOverlap = rules.some(r => {
+                    if (r.ruleType === 'holiday' && r._id !== editingRule?._id && r.date) {
+                        const oStartD = dayjs(r.date).startOf('day');
+                        const oEndD = r.endDate ? dayjs(r.endDate).endOf('day') : dayjs(r.date).endOf('day');
+                        return !newEndD.isBefore(oStartD) && !newStartD.isAfter(oEndD);
+                    }
+                    return false;
+                });
+                if (isOverlap) {
+                    void message.error('Thời gian ngày lễ này bị trùng lặp với quy tắc khác');
+                    return;
+                }
+            }
+
             const payload: CreatePricingRulePayload = {
                 name: values.name,
                 ruleType: values.ruleType,
@@ -79,27 +158,15 @@ export default function ManagePricing() {
             }
 
             if (values.ruleType === 'peak_hour') {
-                if (!values.timeRange || values.timeRange.length !== 2) {
-                    void message.error('Vui lòng chọn khung giờ')
-                    return
-                }
                 payload.startTime = values.timeRange[0].format('HH:mm')
                 payload.endTime = values.timeRange[1].format('HH:mm')
             }
 
             if (values.ruleType === 'holiday') {
                 if (values.holidayType === 'single') {
-                    if (!values.date) {
-                        void message.error('Vui lòng chọn ngày lễ')
-                        return
-                    }
                     payload.date = values.date.toISOString()
                     payload.endDate = undefined
                 } else if (values.holidayType === 'range') {
-                    if (!values.dateRange || values.dateRange.length !== 2) {
-                        void message.error('Vui lòng chọn khoảng ngày lễ')
-                        return
-                    }
                     payload.date = values.dateRange[0].toISOString()
                     payload.endDate = values.dateRange[1].toISOString()
                 }
@@ -189,8 +256,8 @@ export default function ManagePricing() {
             title: 'Trạng Thái',
             key: 'isActive',
             render: (_: any, record: PricingRule) => (
-                <Switch 
-                    checked={record.isActive} 
+                <Switch
+                    checked={record.isActive}
                     onChange={(checked) => handleToggleStatus(checked, record)}
                     checkedChildren="Bật"
                     unCheckedChildren="Tắt"
@@ -202,9 +269,9 @@ export default function ManagePricing() {
             key: 'action',
             render: (_: any, record: PricingRule) => (
                 <Space>
-                    <Button 
-                        type="text" 
-                        icon={<EditOutlined />} 
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
                         onClick={() => handleOpenModal(record)}
                     />
                     <Popconfirm
@@ -230,13 +297,13 @@ export default function ManagePricing() {
                     <Space>
                         <DollarOutlined style={{ fontSize: '24px', color: '#059669' }} />
                         <Title level={4} style={{ margin: 0, color: '#0f172a' }}>
-                            Quản Lý Giá Vé (Phụ Thu)
+                            Quản Lý Tăng Giá (Phụ Thu)
                         </Title>
                     </Space>
                 }
                 extra={
-                    <Button 
-                        type="primary" 
+                    <Button
+                        type="primary"
                         icon={<PlusOutlined />}
                         style={{ background: '#059669', borderColor: '#059669' }}
                         onClick={() => handleOpenModal()}
@@ -246,7 +313,7 @@ export default function ManagePricing() {
                 }
             >
                 <div style={{ marginBottom: 16, padding: '12px 16px', background: '#ecfdf5', borderRadius: 8, color: '#065f46' }}>
-                    <strong>Lưu ý:</strong> Các quy tắc giá (phụ thu % vé) chỉ áp dụng lên giá của suất chiếu. Nếu một suất chiếu rơi vào nhiều quy tắc (ví dụ vừa cuối tuần vừa giờ cao điểm), hệ thống sẽ tính tổng phần trăm của tất cả quy tắc để nhân lên.
+                    <strong>Lưu ý:</strong> Các quy tắc giá (phụ thu % vé) chỉ áp dụng lên giá của suất chiếu. Nếu một suất chiếu rơi vào nhiều quy tắc (ví dụ vừa cuối tuần vừa giờ cao điểm), hệ thống sẽ chỉ lấy <strong>1 mức cao nhất</strong> để áp dụng.
                 </div>
                 <Table
                     columns={columns}
@@ -342,11 +409,11 @@ export default function ManagePricing() {
                         name="surchargePercentage"
                         rules={[{ required: true, message: 'Vui lòng nhập %' }]}
                     >
-                        <InputNumber 
-                            min={0} 
-                            max={200} 
-                            style={{ width: '100%' }} 
-                            addonAfter="%" 
+                        <InputNumber
+                            min={0}
+                            max={200}
+                            style={{ width: '100%' }}
+                            addonAfter="%"
                             placeholder="Ví dụ: 20"
                         />
                     </Form.Item>
