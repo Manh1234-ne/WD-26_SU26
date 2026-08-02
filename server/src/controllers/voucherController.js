@@ -62,6 +62,14 @@ export const createVoucher = asyncHandler(
       endDate,
     } = req.body;
 
+    if (discountType === "percent" && discountValue > 100) {
+      return fail(
+        res,
+        400,
+        "Giá trị giảm theo phần trăm không được vượt quá 100%"
+      );
+    }
+
     const existingVoucher =
       await Voucher.findOne({
         code: code.toUpperCase(),
@@ -104,6 +112,17 @@ export const updateVoucher = asyncHandler(
         res,
         404,
         "Không tìm thấy voucher"
+      );
+    }
+
+    const finalDiscountType = req.body.discountType !== undefined ? req.body.discountType : voucher.discountType;
+    const finalDiscountValue = req.body.discountValue !== undefined ? req.body.discountValue : voucher.discountValue;
+
+    if (finalDiscountType === "percent" && finalDiscountValue > 100) {
+      return fail(
+        res,
+        400,
+        "Giá trị giảm theo phần trăm không được vượt quá 100%"
       );
     }
 

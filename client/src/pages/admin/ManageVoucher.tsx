@@ -294,8 +294,22 @@ function ManageVoucher() {
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="discountValue" label="Giá trị giảm thêm (%)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }]}> 
-                  <InputNumber min={0} style={{ width: '100%' }} addonAfter="%" />
+                <Form.Item
+                  name="discountValue"
+                  label="Giá trị giảm thêm (%)"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập giá trị giảm' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (getFieldValue('discountType') === 'percent' && value > 100) {
+                          return Promise.reject(new Error('Giá trị giảm phần trăm không được vượt quá 100%'));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
+                > 
+                  <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>

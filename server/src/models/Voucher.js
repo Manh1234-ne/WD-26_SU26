@@ -27,6 +27,15 @@ const voucherSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+      validate: {
+        validator: function (value) {
+          if (this.discountType === "percent" && value > 100) {
+            return false;
+          }
+          return true;
+        },
+        message: "Giá trị giảm theo phần trăm không được vượt quá 100%",
+      },
     },
     maxDiscountAmount: {
       type: Number,
