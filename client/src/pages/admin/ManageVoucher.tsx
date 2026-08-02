@@ -106,6 +106,7 @@ function ManageVoucher() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [antdForm] = Form.useForm<VoucherFormFields>()
+  const startDateValue = Form.useWatch('startDate', antdForm)
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -328,8 +329,32 @@ function ManageVoucher() {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true, message: 'Vui lòng chọn ngày kết thúc' }]}> 
-                  <DatePicker style={{ width: '100%' }} />
+                <Form.Item
+                  name="endDate"
+                  label="Ngày kết thúc"
+                  dependencies={['startDate']}
+                  rules={[
+                    { required: true, message: 'Vui lòng chọn ngày kết thúc' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        const startDate = getFieldValue('startDate');
+                        if (!value || !startDate) {
+                          return Promise.resolve();
+                        }
+                        if (value.isBefore(startDate, 'day')) {
+                          return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
+                > 
+                  <DatePicker 
+                    style={{ width: '100%' }} 
+                    disabledDate={(current) => {
+                      return startDateValue ? current && current.isBefore(startDateValue, 'day') : false;
+                    }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
