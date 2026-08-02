@@ -62,6 +62,29 @@ export const createVoucher = asyncHandler(
       endDate,
     } = req.body;
 
+    if (
+      !code ||
+      !name ||
+      !description ||
+      !discountType ||
+      discountValue === undefined ||
+      discountValue === null ||
+      maxDiscountAmount === undefined ||
+      maxDiscountAmount === null ||
+      minOrderAmount === undefined ||
+      minOrderAmount === null ||
+      usageLimit === undefined ||
+      usageLimit === null ||
+      !startDate ||
+      !endDate
+    ) {
+      return fail(
+        res,
+        400,
+        "Vui lòng điền đầy đủ tất cả thông tin"
+      );
+    }
+
     const existingVoucher =
       await Voucher.findOne({
         code: code.toUpperCase(),
@@ -72,6 +95,22 @@ export const createVoucher = asyncHandler(
         res,
         400,
         "Mã voucher đã tồn tại"
+      );
+    }
+
+    if (discountType === "percent" && discountValue > 100) {
+      return fail(
+        res,
+        400,
+        "Giá trị giảm theo phần trăm không được vượt quá 100%"
+      );
+    }
+
+    if (new Date(endDate) < new Date(startDate)) {
+      return fail(
+        res,
+        400,
+        "Ngày kết thúc không được trước ngày bắt đầu"
       );
     }
 
@@ -104,6 +143,60 @@ export const updateVoucher = asyncHandler(
         res,
         404,
         "Không tìm thấy voucher"
+      );
+    }
+
+    const {
+      code,
+      name,
+      description,
+      discountType,
+      discountValue,
+      maxDiscountAmount,
+      minOrderAmount,
+      usageLimit,
+      startDate,
+      endDate
+    } = req.body;
+
+    if (
+      (code !== undefined && !code) ||
+      (name !== undefined && !name) ||
+      (description !== undefined && !description) ||
+      (discountType !== undefined && !discountType) ||
+      (discountValue !== undefined && (discountValue === null || discountValue === "")) ||
+      (maxDiscountAmount !== undefined && (maxDiscountAmount === null || maxDiscountAmount === "")) ||
+      (minOrderAmount !== undefined && (minOrderAmount === null || minOrderAmount === "")) ||
+      (usageLimit !== undefined && (usageLimit === null || usageLimit === "")) ||
+      (startDate !== undefined && !startDate) ||
+      (endDate !== undefined && !endDate)
+    ) {
+      return fail(
+        res,
+        400,
+        "Vui lòng điền đầy đủ tất cả thông tin"
+      );
+    }
+
+    const newDiscountType = req.body.discountType !== undefined ? req.body.discountType : voucher.discountType;
+    const newDiscountValue = req.body.discountValue !== undefined ? req.body.discountValue : voucher.discountValue;
+
+    if (newDiscountType === "percent" && newDiscountValue > 100) {
+      return fail(
+        res,
+        400,
+        "Giá trị giảm theo phần trăm không được vượt quá 100%"
+      );
+    }
+
+    const newStartDate = req.body.startDate !== undefined ? new Date(req.body.startDate) : new Date(voucher.startDate);
+    const newEndDate = req.body.endDate !== undefined ? new Date(req.body.endDate) : new Date(voucher.endDate);
+
+    if (newEndDate < newStartDate) {
+      return fail(
+        res,
+        400,
+        "Ngày kết thúc không được trước ngày bắt đầu"
       );
     }
 

@@ -106,6 +106,7 @@ function ManageVoucher() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [antdForm] = Form.useForm<VoucherFormFields>()
+  const startDateValue = Form.useWatch('startDate', antdForm)
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -274,7 +275,7 @@ function ManageVoucher() {
             )
           }
         >
-          <Form form={antdForm} layout="vertical" initialValues={emptyFormValues} onFinish={handleSubmit} requiredMark="optional">
+          <Form form={antdForm} layout="vertical" initialValues={emptyFormValues} onFinish={handleSubmit}>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
                 <Form.Item name="code" label="Mã voucher" rules={[{ required: true, message: 'Vui lòng nhập mã voucher' }]}> 
@@ -294,24 +295,31 @@ function ManageVoucher() {
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="discountValue" label="Giá trị giảm thêm (%)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }]}> 
-                  <InputNumber min={0} style={{ width: '100%' }} addonAfter="%" />
+                <Form.Item
+                  name="discountValue"
+                  label="Giá trị giảm thêm (%)"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập giá trị giảm' },
+                    { type: 'number', max: 100, message: 'Giá trị giảm không được vượt quá 100%' }
+                  ]}
+                > 
+                  <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="maxDiscountAmount" label="Giảm tối đa (VND)"> 
+                <Form.Item name="maxDiscountAmount" label="Giảm tối đa (VND)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm tối đa' }]}> 
                   <InputNumber min={0} style={{ width: '100%' }} addonAfter="VND" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="minOrderAmount" label="Đơn tối thiểu (VND)"> 
+                <Form.Item name="minOrderAmount" label="Đơn tối thiểu (VND)" rules={[{ required: true, message: 'Vui lòng nhập giá trị đơn tối thiểu' }]}> 
                   <InputNumber min={0} style={{ width: '100%' }} addonAfter="VND" />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="usageLimit" label="Giới hạn lượt dùng"> 
+                <Form.Item name="usageLimit" label="Giới hạn lượt dùng" rules={[{ required: true, message: 'Vui lòng nhập giới hạn lượt dùng' }]}> 
                   <InputNumber min={0} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
@@ -321,14 +329,38 @@ function ManageVoucher() {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true, message: 'Vui lòng chọn ngày kết thúc' }]}> 
-                  <DatePicker style={{ width: '100%' }} />
+                <Form.Item
+                  name="endDate"
+                  label="Ngày kết thúc"
+                  dependencies={['startDate']}
+                  rules={[
+                    { required: true, message: 'Vui lòng chọn ngày kết thúc' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        const startDate = getFieldValue('startDate');
+                        if (!value || !startDate) {
+                          return Promise.resolve();
+                        }
+                        if (value.isBefore(startDate, 'day')) {
+                          return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
+                > 
+                  <DatePicker 
+                    style={{ width: '100%' }} 
+                    disabledDate={(current) => {
+                      return startDateValue ? current && current.isBefore(startDateValue, 'day') : false;
+                    }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={16}>
               <Col xs={24} md={16}>
-                <Form.Item name="description" label="Mô tả"> 
+                <Form.Item name="description" label="Mô tả" rules={[{ required: true, message: 'Vui lòng nhập mô tả voucher' }]}> 
                   <TextArea rows={4} placeholder="Mô tả voucher" />
                 </Form.Item>
               </Col>

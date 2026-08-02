@@ -16,6 +16,7 @@ const voucherSchema = new mongoose.Schema(
     },
     description: {
       type: String,
+      required: true,
       trim: true,
     },
     discountType: {
@@ -26,19 +27,31 @@ const voucherSchema = new mongoose.Schema(
     discountValue: {
       type: Number,
       required: true,
-      min: 0,
+      min: [0, "Giá trị giảm không được nhỏ hơn 0"],
+      validate: {
+        validator: function(value) {
+          if (this.discountType === "percent" && value > 100) {
+            return false;
+          }
+          return true;
+        },
+        message: "Giá trị giảm theo phần trăm không được vượt quá 100%"
+      }
     },
     maxDiscountAmount: {
       type: Number,
+      required: true,
       min: 0,
     },
     minOrderAmount: {
       type: Number,
+      required: true,
       default: 0,
       min: 0,
     },
     usageLimit: {
       type: Number,
+      required: true,
       min: 0,
     },
     usedCount: {
@@ -53,6 +66,13 @@ const voucherSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: true,
+      validate: {
+        validator: function(value) {
+          if (!this.startDate) return true;
+          return value >= this.startDate;
+        },
+        message: "Ngày kết thúc không được trước ngày bắt đầu"
+      }
     },
     isActive: {
       type: Boolean,
