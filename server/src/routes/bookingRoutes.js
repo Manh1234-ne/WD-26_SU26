@@ -10,6 +10,7 @@ import {
   completeBooking,
   applyVoucherToBooking,
   updateBookingSeats,
+  updateBookingCombos,
   incrementPrintCount
 } from "../controllers/bookingController.js";
 
@@ -23,6 +24,7 @@ routerBooking.get("/user/:userId", getBookingsByUser);
 routerBooking.get("/:id", getBookingById);
 
 routerBooking.patch("/:id/seats", updateBookingSeats);
+routerBooking.patch("/:id/combos", updateBookingCombos);
 routerBooking.patch("/:id/cancel", cancelBooking);
 
 routerBooking.post("/:id/cancel-beacon", cancelBookingBeacon);

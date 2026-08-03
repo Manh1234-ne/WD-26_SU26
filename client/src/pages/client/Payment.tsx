@@ -1,7 +1,7 @@
 import { useNavigate, useParams, Link } from "react-router-dom"
 import { App as antdApp } from "antd"
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllCombos } from "../../features/combo/combo.service";
 import { getBookingById } from "../../features/booking/booking.service";
 import { useBookingUnloadGuard } from "../../features/booking/useBookingUnloadGuard";
@@ -42,6 +42,8 @@ function Payment() {
         queryFn: () => getAllCombos(),
         enabled: true,
     });
+
+    const queryClient = useQueryClient();
 
     const bookingData = responseData?.data as any
     const booking = bookingData?.booking
@@ -218,6 +220,35 @@ function Payment() {
 
         setIsProcessing(true);
         try {
+            // persist selected combos to server to reserve stock and recalc totals
+            try {
+                const combosPayload = Object.entries(selectedCombos)
+                    .map(([combo, quantity]) => ({ combo, quantity }))
+                    .filter((c) => c.quantity > 0);
+
+                const res = await api.patch(`/bookings/${bookingId}/combos`, { combos: combosPayload });
+                if (!res.data?.success) {
+                    message.error(res.data?.message || "Không thể lưu combo");
+                    setIsProcessing(false);
+                    return;
+                }
+
+                const data = res.data.data;
+                if (data?.booking) {
+                    setFinalAmount(data.booking.finalAmount ?? finalAmount);
+                    setDiscountAmount(data.booking.discountAmount ?? 0);
+                    setAppliedVoucher(data.booking.voucher ?? null);
+                }
+
+                // refresh booking cache
+                queryClient.invalidateQueries({ queryKey: ["booking", bookingId] });
+            } catch (err: any) {
+                const msg = err?.response?.data?.message || err?.message || "Lỗi khi lưu combo";
+                message.error(msg);
+                setIsProcessing(false);
+                return;
+            }
+
             if (paymentMethod === "vnpay") {
                 const res = await createVnPayUrl(bookingId)
                 if (res.success && res.data.paymentUrl) {
