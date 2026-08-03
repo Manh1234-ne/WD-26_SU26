@@ -341,12 +341,12 @@ function ManageRoom() {
                     name="name"
                     rules={[{ required: true, message: 'Vui lòng nhập tên phòng!' }]}
                   >
-                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: P01, P02, IMAX 1" />
+                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: P01, P02, IMAX 1" disabled={!!editingId} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
                   <Form.Item label={<span style={{ fontWeight: 700, color: '#334155' }}>Loại phòng</span>} name="roomType">
-                    <Select size="large" style={{ borderRadius: '8px' }}>
+                    <Select size="large" style={{ borderRadius: '8px' }} disabled={!!editingId}>
                       <Select.Option value="2D">Tiêu chuẩn</Select.Option>
                       <Select.Option value="VIP">VIP</Select.Option>
                       <Select.Option value="IMAX">IMAX</Select.Option>
@@ -368,7 +368,7 @@ function ManageRoom() {
                     rules={[{ required: true, message: 'Nhập số hàng ghế!' }]}
                     help="Tối đa 15 hàng (từ A đến O)"
                   >
-                    <InputNumber size="large" min={1} max={15} style={{ width: '100%' }} />
+                    <InputNumber size="large" min={1} max={15} style={{ width: '100%' }} disabled={!!editingId} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={8}>
@@ -378,7 +378,7 @@ function ManageRoom() {
                     rules={[{ required: true, message: 'Nhập số ghế mỗi hàng!' }]}
                     help="Tối đa 20 ghế mỗi hàng"
                   >
-                    <InputNumber size="large" min={1} max={20} style={{ width: '100%' }} />
+                    <InputNumber size="large" min={1} max={20} style={{ width: '100%' }} disabled={!!editingId} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={8}>
@@ -404,7 +404,7 @@ function ManageRoom() {
                     name="aisleColumns"
                     help="Nhập số cột muốn để trống làm lối đi dọc, cách nhau bằng dấu phẩy. Ví dụ: 5, 15"
                   >
-                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: 5, 15" />
+                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: 5, 15" disabled={!!editingId} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
@@ -413,7 +413,7 @@ function ManageRoom() {
                     name="aisleRows"
                     help="Nhập chữ cái hàng muốn để lối đi ngang phía sau, cách nhau bằng dấu phẩy. Ví dụ: E, H"
                   >
-                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: E, H" />
+                    <Input size="large" style={{ borderRadius: '8px' }} placeholder="Ví dụ: E, H" disabled={!!editingId} />
                   </Form.Item>
                 </Col>
               </Row>
