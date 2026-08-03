@@ -245,7 +245,7 @@ function ManageShowtime() {
             setIsLoading(true)
             try {
                 const [moviesData, roomsData, showtimesData] = await Promise.all([
-                    getMovies(),
+                    getMovies({ isActive: 'true', limit: '1000' }),
                     getRooms(),
                     getAllShowtimes({ includePast: true }),
                 ])
@@ -579,7 +579,7 @@ function ManageShowtime() {
                                                     size="large"
                                                     optionFilterProp="label"
                                                     style={{ width: '100%' }}
-                                                    options={movies.map((m) => ({ label: m.title, value: m._id }))}
+                                                    options={movies.filter(m => dayjs(m.endDate).endOf('day').valueOf() >= dayjs().startOf('day').valueOf()).map((m) => ({ label: m.title, value: m._id }))}
                                                 />
                                             )}
                                         />
@@ -604,7 +604,7 @@ function ManageShowtime() {
                                                     loading={isLoading}
                                                     size="large"
                                                     style={{ width: '100%' }}
-                                                    options={rooms.map((r) => {
+                                                    options={rooms.filter(r => r.isActive !== false).map((r) => {
                                                         let typeName: string = r.roomType;
                                                         if (r.roomType === '2D') typeName = 'Tiêu chuẩn';
                                                         if (r.roomType === 'VIP') typeName = 'VIP';
