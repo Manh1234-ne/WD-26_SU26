@@ -22,7 +22,8 @@ import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
 
-
+dayjs.extend(isSameOrAfter)
+dayjs.extend(isSameOrBefore)
 
 import type { Movie } from '../../features/movie/movie.types'
 import type { Room } from '../../features/room/room.types'
@@ -144,67 +145,73 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
         }
 
         setIsGenerating(true)
-        const duration = (selectedMovie as Movie & { duration?: number })?.duration
-        if (!duration) {
-            message.error('Phim chưa có thời lượng')
-            setIsGenerating(false)
-            return
-        }
-
-        const [startDay, endDay] = data.dateRange
-        const newPreviewList: PreviewItem[] = []
-        let currentDay = startDay.startOf('day')
-
-        while (currentDay.isSameOrBefore(endDay.startOf('day'))) {
-            for (const timeSlot of data.timeSlots) {
-                const hour = timeSlot.hour()
-                const minute = timeSlot.minute()
-
-                const startObj = currentDay.hour(hour).minute(minute).second(0).toDate()
-                // endTime = startTime + duration + 20 mins
-                const endObj = new Date(startObj.getTime() + (Number(duration) + 20) * 60 * 1000)
-
-                // Check overlap with existing showtimes
-                const isOverlap = existingShowtimes.some(existing => {
-                    const exRoomId = typeof existing.room === 'object' ? (existing.room as any)._id : existing.room;
-                    if (exRoomId !== data.roomId) return false;
-                    if ((existing as any).status === 'cancelled') return false;
-
-                    const exStart = new Date(existing.startTime)
-                    const exEnd = new Date(existing.endTime)
-
-                    // overlap condition: start < exEnd AND end > exStart
-                    return startObj < exEnd && endObj > exStart
-                })
-
-                newPreviewList.push({
-                    id: `${currentDay.format('YYYY-MM-DD')}-${hour}-${minute}`,
-                    date: currentDay.format('DD/MM/YYYY'),
-                    startTime: dayjs(startObj).format('HH:mm'),
-                    endTime: dayjs(endObj).format('HH:mm'),
-                    startObj,
-                    endObj,
-                    isOverlap
-                })
+        try {
+            const duration = (selectedMovie as Movie & { duration?: number })?.duration
+            if (!duration) {
+                message.error('Phim chưa có thời lượng')
+                setIsGenerating(false)
+                return
             }
-            currentDay = currentDay.add(1, 'day')
-        }
 
-        // Check internal overlaps within the new list
-        for (let i = 0; i < newPreviewList.length; i++) {
-            for (let j = i + 1; j < newPreviewList.length; j++) {
-                const item1 = newPreviewList[i]
-                const item2 = newPreviewList[j]
-                if (item1.startObj < item2.endObj && item1.endObj > item2.startObj) {
-                    item1.isOverlap = true
-                    item2.isOverlap = true
+            const [startDay, endDay] = data.dateRange
+            const newPreviewList: PreviewItem[] = []
+            let currentDay = startDay.startOf('day')
+
+            while (currentDay.valueOf() <= endDay.startOf('day').valueOf()) {
+                for (const timeSlot of data.timeSlots) {
+                    const hour = timeSlot.hour()
+                    const minute = timeSlot.minute()
+
+                    const startObj = currentDay.hour(hour).minute(minute).second(0).toDate()
+                    // endTime = startTime + duration + 20 mins
+                    const endObj = new Date(startObj.getTime() + (Number(duration) + 20) * 60 * 1000)
+
+                    // Check overlap with existing showtimes
+                    const isOverlap = existingShowtimes.some(existing => {
+                        const exRoomId = existing.room && typeof existing.room === 'object' ? (existing.room as any)._id : existing.room;
+                        if (!exRoomId || exRoomId !== data.roomId) return false;
+                        if ((existing as any).status === 'cancelled') return false;
+
+                        const exStart = new Date(existing.startTime)
+                        const exEnd = new Date(existing.endTime)
+
+                        // overlap condition: start < exEnd AND end > exStart
+                        return startObj < exEnd && endObj > exStart
+                    })
+
+                    newPreviewList.push({
+                        id: `${currentDay.format('YYYY-MM-DD')}-${hour}-${minute}`,
+                        date: currentDay.format('DD/MM/YYYY'),
+                        startTime: dayjs(startObj).format('HH:mm'),
+                        endTime: dayjs(endObj).format('HH:mm'),
+                        startObj,
+                        endObj,
+                        isOverlap
+                    })
+                }
+                currentDay = currentDay.add(1, 'day')
+            }
+
+            // Check internal overlaps within the new list
+            for (let i = 0; i < newPreviewList.length; i++) {
+                for (let j = i + 1; j < newPreviewList.length; j++) {
+                    const item1 = newPreviewList[i]
+                    const item2 = newPreviewList[j]
+                    if (item1.startObj < item2.endObj && item1.endObj > item2.startObj) {
+                        item1.isOverlap = true
+                        item2.isOverlap = true
+                    }
                 }
             }
-        }
 
-        setPreviewList(newPreviewList)
-        setShowPreview(true)
-        setIsGenerating(false)
+            setPreviewList(newPreviewList)
+            setShowPreview(true)
+        } catch (error: any) {
+            console.error("Preview generation error:", error)
+            message.error(`Lỗi: ${error.message || String(error)}`)
+        } finally {
+            setIsGenerating(false)
+        }
     }
 
     const handleConfirmCreate = async () => {
