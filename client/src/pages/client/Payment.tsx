@@ -2,6 +2,7 @@ import { useNavigate, useParams, Link } from "react-router-dom"
 import { App as antdApp } from "antd"
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getAllCombos } from "../../features/combo/combo.service";
 import { getBookingById } from "../../features/booking/booking.service";
 import { useBookingUnloadGuard } from "../../features/booking/useBookingUnloadGuard";
 import Swal from "sweetalert2";
@@ -25,6 +26,7 @@ function Payment() {
     const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
     const [discountAmount, setDiscountAmount] = useState(0);
     const [finalAmount, setFinalAmount] = useState(0);
+    const [selectedCombos, setSelectedCombos] = useState<Record<string, number>>({});
     const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
     const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
 
@@ -33,6 +35,12 @@ function Payment() {
         queryKey: ["booking", bookingId],
         queryFn: () => getBookingById(bookingId!),
         enabled: !!bookingId
+    });
+
+    const { data: combosData } = useQuery({
+        queryKey: ["combos"],
+        queryFn: () => getAllCombos(),
+        enabled: true,
     });
 
     const bookingData = responseData?.data as any
@@ -58,8 +66,47 @@ function Payment() {
                 setAppliedVoucher(booking.voucher)
                 setVoucherCode(booking.voucher.code || "")
             }
+            // initialize selected combos from sessionStorage or booking data
+            try {
+                const key = `booking_combos_${booking._id || bookingId}`;
+                const raw = sessionStorage.getItem(key);
+                if (raw) {
+                    setSelectedCombos(JSON.parse(raw));
+                } else if (Array.isArray(booking.combos) && booking.combos.length > 0) {
+                    const map: Record<string, number> = {};
+                    booking.combos.forEach((c: any) => {
+                        const comboId = c.combo?._id || c.combo;
+                        if (comboId) map[comboId] = c.quantity || 0;
+                    });
+                    setSelectedCombos(map);
+                }
+            } catch (err) {
+                // ignore
+            }
         }
     }, [booking])
+
+    const selectedCombosTotal = (() => {
+        if (!combosData || !selectedCombos) return 0;
+        return combosData.reduce((sum: number, combo: any) => {
+            const qty = selectedCombos[combo._id] || 0;
+            return sum + (combo.price || 0) * qty;
+        }, 0);
+    })();
+
+    const selectedComboItems = (combosData || []).filter((c: any) => (selectedCombos[c._id] || 0) > 0);
+
+    const displayedTotal = (booking?.totalSeatPrice || 0) + selectedCombosTotal - (discountAmount || 0);
+
+    // Persist selection to sessionStorage (used implicitly on changes)
+    useEffect(() => {
+        try {
+            const key = `booking_combos_${booking?._id || bookingId}`;
+            sessionStorage.setItem(key, JSON.stringify(selectedCombos || {}));
+        } catch (err) {
+            // ignore
+        }
+    }, [selectedCombos, booking?._id, bookingId]);
 
     useEffect(() => {
         const loadVouchers = async () => {
@@ -263,7 +310,7 @@ function Payment() {
                         </div>
                     </div>
 
-                    <div
+                    {/* <div
                         className={`payment-method-item momo ${paymentMethod === "momo" ? "selected" : ""}`}
                         onClick={() => setPaymentMethod("momo")}
                     >
@@ -279,8 +326,86 @@ function Payment() {
                             <div className="payment-method-name">Ví điện tử MoMo (Mock)</div>
                             <div className="payment-method-desc">Thanh toán nhanh gọn qua ứng dụng ví điện tử MoMo</div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
+                {/* Combo selector: client-only UI between payment and voucher */}
+                <div style={{ marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid #e6e7eb', background: '#ffffff' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 10 }}>Chọn combo</div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {(combosData || []).map((combo: any) => {
+                            const qty = selectedCombos[combo._id] || 0;
+                            const isActive = combo.isActive !== false;
+                            const ingredients = combo.ingredients || [];
+                            const isIngredientActive = ingredients.every((ing: any) => ing.inventoryItem && ing.inventoryItem.isActive !== false);
+                            const hasStockForQty = (wantedQty: number) => {
+                                return ingredients.every((ing: any) => {
+                                    const inv = ing.inventoryItem;
+                                    if (!inv || typeof inv.stockQuantity !== 'number') return false;
+                                    const required = (ing.quantity || 0) * wantedQty;
+                                    return inv.stockQuantity >= required;
+                                })
+                            }
+                            const availableForOne = isActive && isIngredientActive && hasStockForQty(1);
+                            return (
+                                <div key={combo._id} style={{ border: '1px solid #eef2ff', padding: 10, borderRadius: 8, width: 220, background: '#fff' }}>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        {combo.image ? (
+                                            <img src={combo.image} alt={combo.name} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }} />
+                                        ) : (
+                                            <div style={{ width: 56, height: 56, background: '#f1f5f9', borderRadius: 6 }} />
+                                        )}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 700 }}>{combo.name}</div>
+                                            <div style={{ color: '#64748b', fontSize: 12 }}>{combo.description}</div>
+                                            <div style={{ marginTop: 6, fontWeight: 800 }}>{(combo.price || 0).toLocaleString('vi-VN')} đ</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <button type="button" onClick={() => {
+                                                const newMap = { ...selectedCombos };
+                                                newMap[combo._id] = Math.max(0, qty - 1);
+                                                setSelectedCombos(newMap);
+                                            }} style={{ width: 28, height: 28, borderRadius: 6 }} disabled={qty <= 0}>-</button>
+                                            <div style={{ minWidth: 26, textAlign: 'center' }}>{qty}</div>
+                                            <button type="button" onClick={() => {
+                                                const wanted = (qty || 0) + 1;
+                                                if (!availableForOne || !hasStockForQty(wanted)) {
+                                                    message.error("Combo không đủ tồn kho hoặc đã ngừng bán");
+                                                    return;
+                                                }
+                                                const newMap = { ...selectedCombos };
+                                                newMap[combo._id] = wanted;
+                                                setSelectedCombos(newMap);
+                                            }} style={{ width: 28, height: 28, borderRadius: 6 }} disabled={!availableForOne}>+</button>
+                                        </div>
+                                        <div>
+                                            <button type="button" onClick={() => {
+                                                const wanted = (qty || 0) + 1;
+                                                if (!availableForOne || !hasStockForQty(wanted)) {
+                                                    message.error("Combo không đủ tồn kho hoặc đã ngừng bán");
+                                                    return;
+                                                }
+                                                const newMap = { ...selectedCombos };
+                                                newMap[combo._id] = wanted;
+                                                setSelectedCombos(newMap);
+                                            }} className="primary-button" style={{ padding: '6px 10px', fontSize: 12 }} disabled={!availableForOne}>Thêm</button>
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: 8 }}>
+                                        {!isActive && <span style={{ color: '#ef4444', fontWeight: 700 }}>Ngừng bán</span>}
+                                        {isActive && !isIngredientActive && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Thiếu nguyên liệu</span>}
+                                        {isActive && isIngredientActive && !availableForOne && <span style={{ color: '#ef4444', fontWeight: 700 }}>Hết hàng</span>}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    {/* <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <button type="button" onClick={applyCombosLocally} className="primary-button" style={{ padding: '8px 12px' }}>Cập nhật combo</button>
+                    </div> */}
+                </div>
+
                 <div style={{ marginTop: "20px", border: "1px dashed #f59e0b", borderRadius: "10px", padding: "14px", background: "#fff7ed" }}>
                     <div style={{ fontWeight: 700, marginBottom: "8px", color: "#92400e" }}>Bạn có mã giảm giá?</div>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -403,16 +528,34 @@ function Payment() {
                 <div className="summary-info-list">
                     <div className="summary-info-item">
                         <span className="label">Giá vé gốc</span>
-                        <span className="val">{booking.totalSeatPrice.toLocaleString("vi-VN")} đ</span>
+                        <span className="val">{(booking.totalSeatPrice || 0).toLocaleString("vi-VN")} đ</span>
                     </div>
+                    {selectedComboItems.length > 0 && (
+                        <div style={{ marginTop: 8, width: '100%' }}>
+                            <div style={{ fontWeight: 700, marginBottom: 6 }}>Combo đã chọn</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {selectedComboItems.map((c: any) => {
+                                    const qty = selectedCombos[c._id] || 0;
+                                    const sub = (c.price || 0) * qty;
+                                    return (
+                                        <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ color: '#0f172a' }}>{c.name} x{qty}</div>
+                                            <div style={{ fontWeight: 700 }}>{sub.toLocaleString('vi-VN')} đ</div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
                     <div className="summary-info-item">
                         <span className="label">Khuyến mãi giảm</span>
-                        <span className="val">-{discountAmount.toLocaleString("vi-VN")} đ</span>
+                        <span className="val">-{(discountAmount || 0).toLocaleString("vi-VN")} đ</span>
                     </div>
+                    {/* Combo total now shown per-item above; removed aggregated line */}
                 </div>
                 <div className="summary-total-price">
                     <span className="label">Tổng tiền thanh toán</span>
-                    <span className="val">{finalAmount.toLocaleString("vi-VN")} đ</span>
+                    <span className="val">{displayedTotal.toLocaleString("vi-VN")} đ</span>
                 </div>
                 <button
                     className="ghost-button"
