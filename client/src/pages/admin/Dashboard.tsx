@@ -627,6 +627,15 @@ function Dashboard() {
     });
   }, [rooms, filteredBookings]);
 
+  const mostUsedRoom = useMemo(() => {
+    if (roomOccupancyData.length === 0) {
+      return null;
+    }
+
+    const sorted = [...roomOccupancyData].sort((a, b) => b.occupancy - a.occupancy);
+    return sorted[0];
+  }, [roomOccupancyData]);
+
   const topCustomersData: CustomerRow[] = useMemo(() => {
     const userMap = new Map<
       string,
@@ -1042,6 +1051,69 @@ function Dashboard() {
               </Card>
             </Col>
           ))}
+        </Row>
+
+        <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+          <Col xs={24} lg={8}>
+            <Card
+              className="cinema-card"
+              title={
+                <span>
+                  <FireOutlined className="card-title-icon" /> Phòng chiếu nhiều nhất
+                </span>
+              }
+              bodyStyle={{ padding: "20px" }}
+            >
+              {mostUsedRoom ? (
+                <div className="most-used-room-card">
+                  <div className="most-used-room-badge">Hot</div>
+                  <div className="most-used-room-main">
+                    <h3>{mostUsedRoom.roomName}</h3>
+                    <p>{mostUsedRoom.cinema || "Rạp Lumora"}</p>
+                  </div>
+                  <div className="most-used-room-stats">
+                    <div>
+                      <span>Loại phòng</span>
+                      <strong>{mostUsedRoom.type}</strong>
+                    </div>
+                    <div>
+                      <span>Tỷ lệ sử dụng</span>
+                      <strong>{mostUsedRoom.occupancy}%</strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Text type="secondary">Chưa có dữ liệu phòng chiếu</Text>
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={16}>
+            <Card
+              className="cinema-card"
+              title={
+                <span>
+                  <BarChartOutlined className="card-title-icon" /> Tỷ lệ sử dụng phòng
+                </span>
+              }
+              bodyStyle={{ padding: "20px" }}
+            >
+              <div className="room-list">
+                {roomOccupancyData.map((room) => (
+                  <div className="room-item" key={room.id}>
+                    <div className="room-header">
+                      <span className="room-name">{room.roomName}</span>
+                      <span className="room-percentage">{room.occupancy}%</span>
+                    </div>
+                    <Progress percent={room.occupancy} strokeColor="#b91c1c" showInfo={false} />
+                    <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
+                      {room.type} · {room.seats} ghế · {room.cinema || "Rạp Lumora"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </Col>
         </Row>
         <div style={{ marginBottom: 24 }}>
           <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
