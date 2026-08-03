@@ -39,6 +39,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
+import 'dayjs/locale/vi';
 import isBetween from "dayjs/plugin/isBetween";
 import {
   ResponsiveContainer,
@@ -61,6 +62,7 @@ import * as XLSX from "xlsx";
 import "./Dashboard.css";
 
 dayjs.extend(isBetween);
+dayjs.locale('vi');
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -169,6 +171,12 @@ const formatVND = (value: number) => {
 
 const formatNumber = (value: number) => {
   return new Intl.NumberFormat("vi-VN").format(value || 0);
+};
+
+const getOccupancyColor = (occupancy: number) => {
+  if (occupancy >= 85) return "#b91c1c"; // red
+  if (occupancy >= 70) return "#f59e0b"; // yellow
+  return "#10b981"; // green
 };
 
 function Dashboard() {
@@ -636,6 +644,20 @@ function Dashboard() {
     return sorted[0];
   }, [roomOccupancyData]);
 
+  const peakShowtimeDays = useMemo(() => {
+    if (!showtimes || showtimes.length === 0) return [];
+    const counts = new Map<string, number>();
+    showtimes.forEach((st) => {
+      const d = st.startTime ? dayjs(st.startTime).format("DD/MM/YYYY") : "Unknown";
+      counts.set(d, (counts.get(d) || 0) + 1);
+    });
+    const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    return entries.slice(0, 3).map(([rawDate, cnt]) => {
+      const formatted = rawDate === 'Unknown' ? 'Unknown' : dayjs(rawDate, 'DD/MM/YYYY').format('dddd - DD/MM');
+      return { date: rawDate, dateFormatted: formatted, count: cnt };
+    });
+  }, [showtimes]);
+
   const topCustomersData: CustomerRow[] = useMemo(() => {
     const userMap = new Map<
       string,
@@ -1077,8 +1099,8 @@ function Dashboard() {
                       <strong>{mostUsedRoom.type}</strong>
                     </div>
                     <div>
-                      <span>Tỷ lệ sử dụng</span>
-                      <strong>{mostUsedRoom.occupancy}%</strong>
+                      <span>Tỷ lệ lấp đầy</span>
+                      <strong style={{ color: getOccupancyColor(mostUsedRoom.occupancy) }}>{mostUsedRoom.occupancy}%</strong>
                     </div>
                   </div>
                 </div>
@@ -1093,25 +1115,29 @@ function Dashboard() {
               className="cinema-card"
               title={
                 <span>
-                  <BarChartOutlined className="card-title-icon" /> Tỷ lệ sử dụng phòng
+                  <CalendarOutlined className="card-title-icon" /> Ngày có nhiều suất chiếu nhất
                 </span>
               }
               bodyStyle={{ padding: "20px" }}
             >
-              <div className="room-list">
-                {roomOccupancyData.map((room) => (
-                  <div className="room-item" key={room.id}>
-                    <div className="room-header">
-                      <span className="room-name">{room.roomName}</span>
-                      <span className="room-percentage">{room.occupancy}%</span>
+              {peakShowtimeDays && peakShowtimeDays.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {peakShowtimeDays.map((d, idx) => (
+                    <div key={`${d.date}-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{d.dateFormatted || d.date}</div>
+                        <div style={{ color: "#64748b", marginTop: 6 }}>{d.count} suất chiếu</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#b91c1c" }}>{d.count}</div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>Suất</div>
+                      </div>
                     </div>
-                    <Progress percent={room.occupancy} strokeColor="#b91c1c" showInfo={false} />
-                    <div style={{ marginTop: 6, color: "#64748b", fontSize: 12 }}>
-                      {room.type} · {room.seats} ghế · {room.cinema || "Rạp Lumora"}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <Text type="secondary">Chưa có dữ liệu suất chiếu</Text>
+              )}
             </Card>
           </Col>
         </Row>
@@ -1501,13 +1527,7 @@ function Dashboard() {
                     </div>
                     <Progress
                       percent={room.occupancy}
-                      strokeColor={
-                        room.occupancy >= 85
-                          ? "#b91c1c"
-                          : room.occupancy >= 70
-                            ? "#f59e0b"
-                            : "#10b981"
-                      }
+                      strokeColor={getOccupancyColor(room.occupancy)}
                       trailColor="#e2e8f0"
                       showInfo={false}
                       strokeWidth={10}
