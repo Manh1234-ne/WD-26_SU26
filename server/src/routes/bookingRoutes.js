@@ -34,6 +34,8 @@ routerBooking.patch("/:id/print", protect, isAdmin, markBookingPrinted);
 
 routerBooking.patch(
   "/:id/complete",
+  protect,
+  isAdmin,
   completeBooking
 );
 

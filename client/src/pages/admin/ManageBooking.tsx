@@ -244,7 +244,7 @@ function ManageBooking() {
       if (booking.status === "confirmed") {
         try {
           await completeBooking(bookingId);
-          void message.success("Soát vé thành công! Đã tự động hoàn tất soát vé đơn hàng.");
+          void message.success("Soát vé thành công! Vé đã chuyển sang trạng thái hoàn tất.");
           void fetchAllBookings();
         } catch (completeErr) {
           console.error("Lỗi khi tự động hoàn tất soát vé:", completeErr);
@@ -1461,6 +1461,20 @@ function ManageBooking() {
                       </Space>
                     ) : (
                       <Tag>Chưa in</Tag>
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái soát vé">
+                    {selectedBookingDetails.booking.status === "completed" ? (
+                      <Space size={6} wrap>
+                        <Tag color="success">Đã soát vé</Tag>
+                        {selectedBookingDetails.booking.checkedInAt && (
+                          <Text type="secondary">
+                            {dayjs(selectedBookingDetails.booking.checkedInAt).format("DD/MM/YYYY HH:mm")}
+                          </Text>
+                        )}
+                      </Space>
+                    ) : (
+                      <Tag color="processing">Chưa soát vé</Tag>
                     )}
                   </Descriptions.Item>
                   <Descriptions.Item label="Ghế đã chọn">

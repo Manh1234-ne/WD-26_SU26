@@ -45,6 +45,8 @@ export type Booking = {
     printStatus?: "not_printed" | "printed",
     printedAt?: string | null,
     printedBy?: { _id: string; fullName: string; email: string } | null,
+    checkedInAt?: string | null,
+    checkedInBy?: { _id: string; fullName: string; email: string } | null,
     expiresAt?: string | null,
     cancelledAt?: string | null,
     createdAt: string,

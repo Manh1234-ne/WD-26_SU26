@@ -60,6 +60,13 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    checkedInAt: {
+      type: Date,
+    },
+    checkedInBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     expiresAt: {
       type: Date,
     },

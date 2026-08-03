@@ -123,25 +123,26 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
 });
 
 export const completeBooking = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
+  const booking = await Booking.findOneAndUpdate(
+    { _id: req.params.id, status: "confirmed" },
+    {
+      $set: {
+        status: "completed",
+        checkedInAt: new Date(),
+        ...(req.user?._id ? { checkedInBy: req.user._id } : {}),
+      },
+    },
+    { new: true, runValidators: true }
+  );
 
-  if (!booking) {
-    return fail(res, 404, "Không tìm thấy booking");
+  if (booking) return ok(res, booking);
+
+  const existing = await Booking.findById(req.params.id);
+  if (!existing) return fail(res, 404, "Không tìm thấy booking");
+  if (existing.status === "completed") {
+    return fail(res, 409, "Vé này đã được soát trước đó");
   }
-
-  if (booking.status !== "confirmed") {
-    return fail(
-      res,
-      400,
-      "Chỉ booking đã thanh toán mới được hoàn thành"
-    );
-  }
-
-  booking.status = "completed";
-
-  await booking.save();
-
-  return ok(res, booking);
+  return fail(res, 400, "Chỉ vé đã thanh toán mới được soát");
 });
 
 export const markBookingPrinted = asyncHandler(async (req, res) => {
