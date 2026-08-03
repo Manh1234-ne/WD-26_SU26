@@ -814,10 +814,10 @@ function ManageBooking() {
       b.status === "pending"
         ? "Chờ thanh toán"
         : b.status === "confirmed"
-        ? "Đã thanh toán"
-        : b.status === "completed"
-        ? "Hoàn tất"
-        : "Đã hủy",
+          ? "Đã thanh toán"
+          : b.status === "completed"
+            ? "Hoàn tất"
+            : "Đã hủy",
       dayjs(b.createdAt).format("DD/MM/YYYY HH:mm"),
     ]);
 
@@ -1011,7 +1011,8 @@ function ManageBooking() {
 
   return (
     <section style={{ padding: "24px", minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .booking-card {
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           border: 1px solid #f1f5f9;
@@ -1583,10 +1584,10 @@ function ManageBooking() {
                   </div>
                   <div style={{ width: "1px", height: "50px", backgroundColor: "#e2e8f0" }} />
                   {qrCodeUrl ? (
-                    <img 
-                      src={qrCodeUrl} 
-                      alt="Ticket QR Code" 
-                      style={{ width: "80px", height: "80px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }} 
+                    <img
+                      src={qrCodeUrl}
+                      alt="Ticket QR Code"
+                      style={{ width: "80px", height: "80px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
                     />
                   ) : (
                     <QrcodeOutlined style={{ fontSize: 44, color: "#94a3b8" }} />
@@ -1644,34 +1645,34 @@ function ManageBooking() {
                   },
                   ...(selectedBookingDetails.booking.status === "completed"
                     ? [
-                        {
-                          color: "blue" as const,
-                          children: (
-                            <div>
-                              <strong>Hoàn tất soát vé (Đã sử dụng)</strong>
-                              <p style={{ fontSize: 11, color: "#64748b", margin: "4px 0 0 0" }}>
-                                Khách hàng đã được soát vé vào rạp lúc{" "}
-                                {dayjs(selectedBookingDetails.booking.updatedAt).format("DD/MM/YYYY HH:mm:ss")}
-                              </p>
-                            </div>
-                          ),
-                        },
-                      ]
+                      {
+                        color: "blue" as const,
+                        children: (
+                          <div>
+                            <strong>Hoàn tất soát vé (Đã sử dụng)</strong>
+                            <p style={{ fontSize: 11, color: "#64748b", margin: "4px 0 0 0" }}>
+                              Khách hàng đã được soát vé vào rạp lúc{" "}
+                              {dayjs(selectedBookingDetails.booking.updatedAt).format("DD/MM/YYYY HH:mm:ss")}
+                            </p>
+                          </div>
+                        ),
+                      },
+                    ]
                     : []),
                   ...(selectedBookingDetails.booking.status === "cancelled"
                     ? [
-                        {
-                          color: "red" as const,
-                          children: (
-                            <div>
-                              <strong>Đã hủy đơn đặt vé</strong>
-                              <p style={{ fontSize: 11, color: "#ef4444", margin: "4px 0 0 0" }}>
-                                Đơn đặt chỗ bị hủy tự động do hết hạn thanh toán hoặc thao tác hủy bởi quản trị viên.
-                              </p>
-                            </div>
-                          ),
-                        },
-                      ]
+                      {
+                        color: "red" as const,
+                        children: (
+                          <div>
+                            <strong>Đã hủy đơn đặt vé</strong>
+                            <p style={{ fontSize: 11, color: "#ef4444", margin: "4px 0 0 0" }}>
+                              Đơn đặt chỗ bị hủy tự động do hết hạn thanh toán hoặc thao tác hủy bởi quản trị viên.
+                            </p>
+                          </div>
+                        ),
+                      },
+                    ]
                     : []),
                 ]}
               />
@@ -1684,19 +1685,19 @@ function ManageBooking() {
                 <Space>
                   {(selectedBookingDetails.booking.status === "pending" ||
                     selectedBookingDetails.booking.status === "confirmed") && (
-                    <Popconfirm
-                      title="Bạn có chắc chắn muốn hủy đơn vé?"
-                      description="Hành động này sẽ giải phóng toàn bộ ghế đã đặt."
-                      onConfirm={() => void handleCancel(selectedBookingDetails.booking)}
-                      okText="Hủy vé"
-                      cancelText="Quay lại"
-                      okButtonProps={{ danger: true }}
-                    >
-                      <Button type="primary" danger ghost icon={<CloseCircleOutlined />} loading={actionLoading}>
-                        Hủy đặt vé
-                      </Button>
-                    </Popconfirm>
-                  )}
+                      <Popconfirm
+                        title="Bạn có chắc chắn muốn hủy đơn vé?"
+                        description="Hành động này sẽ giải phóng toàn bộ ghế đã đặt."
+                        onConfirm={() => void handleCancel(selectedBookingDetails.booking)}
+                        okText="Hủy vé"
+                        cancelText="Quay lại"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Button type="primary" danger ghost icon={<CloseCircleOutlined />} loading={actionLoading}>
+                          Hủy đặt vé
+                        </Button>
+                      </Popconfirm>
+                    )}
 
                   {selectedBookingDetails.booking.status === "confirmed" && (
                     <Popconfirm
@@ -1719,15 +1720,15 @@ function ManageBooking() {
 
                   {(selectedBookingDetails.booking.status === "confirmed" ||
                     selectedBookingDetails.booking.status === "completed") && (
-                    <Button
-                      type="primary"
-                      style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
-                      icon={<PrinterOutlined />}
-                      onClick={handlePrintConfirm}
-                    >
-                      In vé
-                    </Button>
-                  )}
+                      <Button
+                        type="primary"
+                        style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
+                        icon={<PrinterOutlined />}
+                        onClick={handlePrintConfirm}
+                      >
+                        In vé
+                      </Button>
+                    )}
 
                   <Button onClick={() => setDrawerOpen(false)}>Đóng</Button>
                 </Space>
@@ -1769,17 +1770,17 @@ function ManageBooking() {
         }}
       >
         <div style={{ textAlign: "center", margin: "8px 0" }}>
-          <div 
-            id="reader" 
-            style={{ 
-              width: "100%", 
-              maxWidth: "400px", 
-              margin: "0 auto", 
-              overflow: "hidden", 
+          <div
+            id="reader"
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              margin: "0 auto",
+              overflow: "hidden",
               borderRadius: "12px",
               border: "1px dashed #cbd5e1",
               backgroundColor: "#f8fafc"
-            }} 
+            }}
           />
           <p style={{ marginTop: 16, color: "#64748b", fontWeight: 500, fontSize: 13 }}>
             Đưa mã QR trên vé của khách hàng vào khung hình camera để quét soát vé tự động.
