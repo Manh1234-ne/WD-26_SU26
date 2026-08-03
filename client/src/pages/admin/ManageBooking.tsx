@@ -53,6 +53,7 @@ import {
   cancelBooking,
   completeBooking,
   getBookingById,
+  markBookingPrinted,
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
 import QRCode from "qrcode";
@@ -289,7 +290,7 @@ function ManageBooking() {
     }
   };
 
-  const handlePrintTickets = () => {
+  const handlePrintTickets = async () => {
     if (!selectedBookingDetails) return;
     const { booking, seats } = selectedBookingDetails;
 
@@ -297,6 +298,20 @@ function ManageBooking() {
     if (!printWindow) {
       void message.error("Vui lòng cho phép mở popup để in vé.");
       return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await markBookingPrinted(booking._id);
+      const printedBooking = response.data;
+      setSelectedBookingDetails((current) => current ? { ...current, booking: { ...current.booking, ...printedBooking } } : current);
+      setBookings((current) => current.map((item) => item._id === booking._id ? { ...item, ...printedBooking } : item));
+    } catch (err: any) {
+      printWindow.close();
+      void message.error(err?.response?.data?.message || "Không thể xác nhận quyền in vé");
+      return;
+    } finally {
+      setActionLoading(false);
     }
 
     const movieTitle = booking.showtime?.movie?.title || "Phim chưa xác định";
@@ -1420,6 +1435,20 @@ function ManageBooking() {
                         : "Chưa cập nhật"}
                     </span>
                   </Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái in">
+                    {selectedBookingDetails.booking.printStatus === "printed" ? (
+                      <Space size={6} wrap>
+                        <Tag color="success">Đã in</Tag>
+                        {selectedBookingDetails.booking.printedAt && (
+                          <Text type="secondary">
+                            {dayjs(selectedBookingDetails.booking.printedAt).format("DD/MM/YYYY HH:mm")}
+                          </Text>
+                        )}
+                      </Space>
+                    ) : (
+                      <Tag>Chưa in</Tag>
+                    )}
+                  </Descriptions.Item>
                   <Descriptions.Item label="Ghế đã chọn">
                     <Space wrap style={{ marginTop: 4 }}>
                       {selectedBookingDetails.seats && selectedBookingDetails.seats.length > 0 ? (
@@ -1634,9 +1663,11 @@ function ManageBooking() {
                       type="primary"
                       style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
                       icon={<PrinterOutlined />}
-                      onClick={handlePrintTickets}
+                      onClick={() => void handlePrintTickets()}
+                      loading={actionLoading}
+                      disabled={selectedBookingDetails.booking.printStatus === "printed"}
                     >
-                      In vé
+                      {selectedBookingDetails.booking.printStatus === "printed" ? "Vé đã in" : "In vé"}
                     </Button>
                   )}
 
