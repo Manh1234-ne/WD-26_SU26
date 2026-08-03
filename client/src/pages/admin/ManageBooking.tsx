@@ -545,6 +545,20 @@ function ManageBooking() {
     printWindow.document.close();
   };
 
+  const confirmPrintTickets = () => {
+    if (!selectedBookingDetails) return;
+    const { booking, seats } = selectedBookingDetails;
+    Modal.confirm({
+      title: "Xác nhận in vé lần duy nhất?",
+      icon: <PrinterOutlined style={{ color: "#4f46e5" }} />,
+      content: `Booking ${booking.bookingCode} có ${seats.length} vé. Sau khi xác nhận, hệ thống sẽ ghi nhận đã in và không cho phép in lại.`,
+      okText: "Xác nhận in",
+      cancelText: "Hủy",
+      okButtonProps: { style: { backgroundColor: "#4f46e5" } },
+      onOk: handlePrintTickets,
+    });
+  };
+
   const fetchAllBookings = async () => {
     setLoading(true);
     setSyncProgress({ current: 0, total: 0, stage: "users" });
@@ -1663,7 +1677,7 @@ function ManageBooking() {
                       type="primary"
                       style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
                       icon={<PrinterOutlined />}
-                      onClick={() => void handlePrintTickets()}
+                      onClick={confirmPrintTickets}
                       loading={actionLoading}
                       disabled={selectedBookingDetails.booking.printStatus === "printed"}
                     >
