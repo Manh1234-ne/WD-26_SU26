@@ -20,6 +20,19 @@ const fail = (res, status, message) =>
     message,
   });
 
+const validateVoucherDates = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "Ngày bắt đầu hoặc ngày kết thúc không hợp lệ";
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (end < today) return "Ngày kết thúc không được nằm trong quá khứ";
+  if (end < start) return "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu";
+  return null;
+};
+
 export const getAllVouchers = asyncHandler(
   async (req, res) => {
     const vouchers = await Voucher.find()
@@ -79,6 +92,9 @@ export const createVoucher = asyncHandler(
       return fail(res, 400, "Phần trăm giảm giá phải nằm trong khoảng 0 đến 100%");
     }
 
+    const dateError = validateVoucherDates(startDate, endDate);
+    if (dateError) return fail(res, 400, dateError);
+
     const voucher = await Voucher.create({
       code,
       name,
@@ -116,6 +132,11 @@ export const updateVoucher = asyncHandler(
     if (nextDiscountType === "percent" && (nextDiscountValue < 0 || nextDiscountValue > 100)) {
       return fail(res, 400, "Phần trăm giảm giá phải nằm trong khoảng 0 đến 100%");
     }
+
+    const nextStartDate = req.body.startDate ?? voucher.startDate;
+    const nextEndDate = req.body.endDate ?? voucher.endDate;
+    const dateError = validateVoucherDates(nextStartDate, nextEndDate);
+    if (dateError) return fail(res, 400, dateError);
 
     Object.assign(voucher, req.body);
 
