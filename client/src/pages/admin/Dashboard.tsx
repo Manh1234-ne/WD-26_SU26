@@ -158,6 +158,13 @@ interface RoomOccupancyRow {
   occupancy: number;
 }
 
+interface ShowtimeStatistics {
+  peakHours: { hour: number; count: number }[];
+  peakRooms: { roomId: string; roomName: string; count: number }[];
+  peakDates: { date: string; count: number }[];
+  peakWeekdays: { dayOfWeek: number; count: number }[];
+}
+
 
 const formatVND = (value: number) => {
   return new Intl.NumberFormat("vi-VN", {
@@ -183,6 +190,7 @@ function Dashboard() {
   const [selectedMovie, setSelectedMovie] = useState<string>("all");
   const [revenueTimeframe, setRevenueTimeframe] = useState<"day" | "week" | "month">("day");
   const [tableSearchText, setTableSearchText] = useState<string>("");
+  const [showtimeStatistics, setShowtimeStatistics] = useState<ShowtimeStatistics | null>(null);
 
 
   const fetchDashboardData = useCallback(async () => {
@@ -195,6 +203,7 @@ function Dashboard() {
         showtimesRes,
         roomsRes,
         bookingSeatsRes,
+        showtimeStatisticsRes,
       ] = await Promise.allSettled([
         api.get("/bookings"),
         api.get("/movies"),
@@ -202,6 +211,7 @@ function Dashboard() {
         api.get("/showtimes?includePast=true"),
         api.get("/rooms"),
         api.get("/booking-seats"),
+        api.get("/statistics/showtimes"),
       ]);
 
       if (bookingsRes.status === "fulfilled" && bookingsRes.value.data?.data) {
@@ -227,6 +237,9 @@ function Dashboard() {
       if (bookingSeatsRes.status === "fulfilled" && bookingSeatsRes.value.data?.data) {
         const raw = bookingSeatsRes.value.data.data;
         setBookingSeats(Array.isArray(raw) ? raw : Array.isArray(raw.bookingSeats) ? raw.bookingSeats : []);
+      }
+      if (showtimeStatisticsRes.status === "fulfilled" && showtimeStatisticsRes.value.data?.data) {
+        setShowtimeStatistics(showtimeStatisticsRes.value.data.data);
       }
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu từ server API:", error);
@@ -1021,6 +1034,26 @@ function Dashboard() {
         </div>
 
 
+        <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="cinema-card" title={<span><ClockCircleOutlined className="card-title-icon" /> Khung giờ chiếu nhiều nhất</span>}>
+              <Title level={3} style={{ margin: 0 }}>{showtimeStatistics?.peakHours[0] ? `${String(showtimeStatistics.peakHours[0].hour).padStart(2, "0")}:00 - ${String((showtimeStatistics.peakHours[0].hour + 1) % 24).padStart(2, "0")}:00` : "Chưa có dữ liệu"}</Title>
+              <Text type="secondary">{showtimeStatistics?.peakHours[0]?.count || 0} suất chiếu</Text>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="cinema-card" title={<span><VideoCameraOutlined className="card-title-icon" /> Phòng chiếu nhiều nhất</span>}>
+              <Title level={3} style={{ margin: 0 }}>{showtimeStatistics?.peakRooms[0]?.roomName || "Chưa có dữ liệu"}</Title>
+              <Text type="secondary">{showtimeStatistics?.peakRooms[0]?.count || 0} suất chiếu</Text>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="cinema-card" title={<span><CalendarOutlined className="card-title-icon" /> Ngày chiếu nhiều nhất</span>}>
+              <Title level={3} style={{ margin: 0 }}>{showtimeStatistics?.peakDates[0] ? dayjs(showtimeStatistics.peakDates[0].date).format("DD/MM/YYYY") : "Chưa có dữ liệu"}</Title>
+              <Text type="secondary">{showtimeStatistics?.peakDates[0]?.count || 0} suất chiếu</Text>
+            </Card>
+          </Col>
+        </Row>
         <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
           {kpiData.map((item) => (
             <Col xs={24} sm={12} lg={6} key={item.id}>
