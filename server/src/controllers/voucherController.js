@@ -75,6 +75,10 @@ export const createVoucher = asyncHandler(
       );
     }
 
+    if (discountType === "percent" && (discountValue < 0 || discountValue > 100)) {
+      return fail(res, 400, "Phần trăm giảm giá phải nằm trong khoảng 0 đến 100%");
+    }
+
     const voucher = await Voucher.create({
       code,
       name,
@@ -105,6 +109,12 @@ export const updateVoucher = asyncHandler(
         404,
         "Không tìm thấy voucher"
       );
+    }
+
+    const nextDiscountType = req.body.discountType ?? voucher.discountType;
+    const nextDiscountValue = req.body.discountValue ?? voucher.discountValue;
+    if (nextDiscountType === "percent" && (nextDiscountValue < 0 || nextDiscountValue > 100)) {
+      return fail(res, 400, "Phần trăm giảm giá phải nằm trong khoảng 0 đến 100%");
     }
 
     Object.assign(voucher, req.body);

@@ -294,8 +294,8 @@ function ManageVoucher() {
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item name="discountValue" label="Giá trị giảm thêm (%)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }]}> 
-                  <InputNumber min={0} style={{ width: '100%' }} addonAfter="%" />
+                <Form.Item name="discountValue" label="Giá trị giảm thêm (%)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }, { type: 'number', min: 0, max: 100, message: 'Phần trăm giảm phải từ 0 đến 100%' }]}> 
+                  <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={8}>
