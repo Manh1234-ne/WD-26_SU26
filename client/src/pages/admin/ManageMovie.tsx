@@ -228,7 +228,7 @@ function ManageMovie() {
   const loadMovies = async () => {
     setIsLoading(true)
     try {
-      const data = await getMovies()
+      const data = await getMovies({ isActive: 'all', limit: '1000' })
       // Tự động cập nhật trạng thái dựa vào ngày hiện tại và ngày chiếu
       const computedData = data.map((movie: Movie) => {
         let computedStatus = movie.status;
