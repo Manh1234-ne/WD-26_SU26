@@ -9,6 +9,12 @@ import BookingCombo from "../models/BookingCombo.js";
 import {
   releaseReservedStock,
 } from "../services/inventoryService.js";
+import {
+  getComboPrice,
+} from "../services/comboService.js";
+import {
+  reserveComboStock,
+} from "../services/inventoryService.js";
 
 const ok = (res, data) =>
   res.status(200).json({
@@ -432,4 +438,148 @@ export const incrementPrintCount = asyncHandler(async (req, res) => {
   await booking.save();
 
   return ok(res, booking);
+});
+
+export const updateBookingCombos = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { combos } = req.body; // expect [{ combo: id, quantity }]
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  if (!Array.isArray(combos)) {
+    return fail(res, 400, "Dữ liệu combó không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+  if (!booking) return fail(res, 404, "Không tìm thấy booking");
+  if (booking.status !== "pending") return fail(res, 400, "Booking không thể chỉnh sửa");
+  if (booking.expiresAt && booking.expiresAt < new Date()) return fail(res, 400, "Booking đã hết hạn");
+
+  // Validate combos and compute prices
+  const { combos: resolvedCombos, totalComboPrice } = await getComboPrice(combos);
+
+  // existing combos
+  const existingBookingCombos = await BookingCombo.find({ booking: booking._id });
+  const existingMap = {};
+  existingBookingCombos.forEach((b) => {
+    existingMap[b.combo.toString()] = b.quantity;
+  });
+
+  const newMap = {};
+  resolvedCombos.forEach((c) => {
+    newMap[c.combo.toString()] = c.quantity;
+  });
+
+  // prepare reserve and release lists based on delta
+  const reserveList = [];
+  const releaseList = [];
+
+  // combos present in newMap
+  for (const comboId of Object.keys(newMap)) {
+    const newQty = newMap[comboId] || 0;
+    const oldQty = existingMap[comboId] || 0;
+    if (newQty > oldQty) reserveList.push({ combo: comboId, quantity: newQty - oldQty });
+    else if (oldQty > newQty) releaseList.push({ combo: comboId, quantity: oldQty - newQty });
+  }
+
+  // combos removed entirely
+  for (const comboId of Object.keys(existingMap)) {
+    if (!newMap[comboId]) {
+      releaseList.push({ combo: comboId, quantity: existingMap[comboId] });
+    }
+  }
+
+  // Reserve additional stock first
+  try {
+    if (reserveList.length > 0) {
+      await reserveComboStock(reserveList);
+    }
+  } catch (err) {
+    return fail(res, 400, err.message || "Không đủ tồn kho cho combo");
+  }
+
+  // Release removed quantities
+  if (releaseList.length > 0) {
+    try {
+      await releaseReservedStock(releaseList);
+    } catch (err) {
+      // log but don't fail the whole operation
+      console.error("releaseReservedStock error:", err.message);
+    }
+  }
+
+  // Replace BookingCombo documents
+  await BookingCombo.deleteMany({ booking: booking._id });
+  if (resolvedCombos.length > 0) {
+    const bookingCombos = resolvedCombos.map((c) => ({
+      booking: booking._id,
+      combo: c.combo,
+      quantity: c.quantity,
+      unitPrice: c.price,
+      totalPrice: c.price * c.quantity,
+    }));
+
+    await BookingCombo.insertMany(bookingCombos);
+  }
+
+  // update booking totals and re-apply voucher if present
+  booking.totalComboPrice = totalComboPrice;
+
+  let orderAmount = (booking.totalSeatPrice || 0) + (booking.totalComboPrice || 0);
+  booking.discountAmount = 0;
+  booking.finalAmount = orderAmount;
+
+  if (booking.voucher) {
+    const voucher = await Voucher.findOne({ _id: booking.voucher, isActive: true });
+    if (voucher) {
+      const now = new Date();
+      try {
+        if (now < voucher.startDate) throw new Error("Voucher chưa đến thời gian sử dụng");
+        if (now > voucher.endDate) throw new Error("Voucher đã hết hạn");
+
+        const pendingBookingCount = await Booking.countDocuments({ voucher: voucher._id, status: "pending", _id: { $ne: booking._id } });
+        if (voucher.usageLimit != null && voucher.usedCount + pendingBookingCount >= voucher.usageLimit) throw new Error("Voucher sắp hết lượt sử dụng");
+
+        const userVoucherCount = await Booking.countDocuments({ user: booking.user, voucher: voucher._id, status: { $ne: "cancelled" }, _id: { $ne: booking._id } });
+        if (userVoucherCount >= 1) throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này tối đa 1 lần");
+
+        if (voucher.code === "CHAOMUNGNGUOIMOI") {
+          const hasPastBooking = await Booking.findOne({ user: booking.user, status: { $in: ["confirmed", "completed"] }, _id: { $ne: booking._id } });
+          if (hasPastBooking) throw new Error("Voucher này chỉ dành cho đơn hàng đầu tiên của tài khoản mới");
+        }
+
+        if (orderAmount < voucher.minOrderAmount) throw new Error(`Đơn hàng tối thiểu ${voucher.minOrderAmount} để sử dụng voucher`);
+
+        let discountAmount = 0;
+        if (voucher.discountType === "percent") {
+          discountAmount = (orderAmount * voucher.discountValue) / 100;
+          if (voucher.maxDiscountAmount && discountAmount > voucher.maxDiscountAmount) discountAmount = voucher.maxDiscountAmount;
+        } else if (voucher.discountType === "fixed") {
+          discountAmount = voucher.discountValue;
+        }
+        if (discountAmount > orderAmount) discountAmount = orderAmount;
+
+        booking.discountAmount = discountAmount;
+        booking.finalAmount = orderAmount - discountAmount;
+      } catch (err) {
+        // if voucher invalid after combo change, remove voucher
+        booking.voucher = undefined;
+        booking.discountAmount = 0;
+        booking.finalAmount = orderAmount;
+      }
+    }
+  }
+
+  await booking.save();
+
+  const updatedBooking = await Booking.findById(booking._id)
+    .populate("user")
+    .populate("voucher")
+    .populate({ path: "showtime", populate: [{ path: "movie" }, { path: "room" }, { path: "cinema" }] });
+
+  const bookingCombos = await BookingCombo.find({ booking: booking._id }).populate("combo");
+
+  return ok(res, { booking: updatedBooking, combos: bookingCombos });
 });

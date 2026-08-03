@@ -1501,6 +1501,20 @@ function ManageBooking() {
                       )}
                     </Space>
                   </Descriptions.Item>
+                  <Descriptions.Item label="Combo đã chọn">
+                    {selectedBookingDetails.combos && selectedBookingDetails.combos.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {selectedBookingDetails.combos.map((item: any) => (
+                          <div key={item._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontWeight: 700 }}>{item.combo?.name || (item.combo && item.combo.name) || "Không xác định"} x{item.quantity}</div>
+                            <div style={{ fontWeight: 700 }}>{formatCurrency(item.totalPrice || (item.unitPrice || 0) * (item.quantity || 0))}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Text type="secondary">Không có combo</Text>
+                    )}
+                  </Descriptions.Item>
                   <Descriptions.Item label="Trạng thái in vé">
                     {selectedBookingDetails.booking.printCount && selectedBookingDetails.booking.printCount > 0 ? (
                       <Tag color="cyan" style={{ fontWeight: 700, borderRadius: "4px" }}>
