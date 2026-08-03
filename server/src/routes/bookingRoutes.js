@@ -8,9 +8,12 @@ import {
   cancelBooking,
   cancelBookingBeacon,
   completeBooking,
+  markBookingPrinted,
   applyVoucherToBooking,
   updateBookingSeats
 } from "../controllers/bookingController.js";
+import { protect } from "../middlewares/authMiddleware.js";
+import { isAdmin } from "../middlewares/adminMiddleware.js";
 
 const routerBooking = express.Router();
 
@@ -25,6 +28,8 @@ routerBooking.patch("/:id/seats", updateBookingSeats);
 routerBooking.patch("/:id/cancel", cancelBooking);
 
 routerBooking.post("/:id/cancel-beacon", cancelBookingBeacon);
+
+routerBooking.patch("/:id/print", protect, isAdmin, markBookingPrinted);
 
 
 routerBooking.patch(

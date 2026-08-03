@@ -61,6 +61,7 @@ export const getBookingById = asyncHandler(async (req, res) => {
 
   const booking = await Booking.findById(id)
     .populate("user")
+    .populate("printedBy", "fullName email")
     .populate("voucher")
     .populate({
       path: "showtime",
@@ -141,6 +142,39 @@ export const completeBooking = asyncHandler(async (req, res) => {
   await booking.save();
 
   return ok(res, booking);
+});
+
+export const markBookingPrinted = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findOneAndUpdate(
+    {
+      _id: id,
+      status: { $in: ["confirmed", "completed"] },
+      printStatus: { $ne: "printed" },
+    },
+    {
+      $set: {
+        printStatus: "printed",
+        printedAt: new Date(),
+        printedBy: req.user._id,
+      },
+    },
+    { new: true, runValidators: true }
+  ).populate("printedBy", "fullName email");
+
+  if (booking) return ok(res, booking);
+
+  const existing = await Booking.findById(id);
+  if (!existing) return fail(res, 404, "Không tìm thấy booking");
+  if (!["confirmed", "completed"].includes(existing.status)) {
+    return fail(res, 400, "Chỉ vé đã thanh toán mới được in");
+  }
+  return fail(res, 409, "Vé này đã được in trước đó");
 });
 
 export const cancelBooking = asyncHandler(async (req, res) => {

@@ -48,6 +48,18 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "cancelled", "expired", "completed"],
       default: "pending",
     },
+    printStatus: {
+      type: String,
+      enum: ["not_printed", "printed"],
+      default: "not_printed",
+    },
+    printedAt: {
+      type: Date,
+    },
+    printedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     expiresAt: {
       type: Date,
     },
