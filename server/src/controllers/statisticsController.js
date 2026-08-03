@@ -1,4 +1,6 @@
 import Showtime from "../models/Showtime.js";
+import Booking from "../models/Booking.js";
+import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asynHandler.js";
 
 const TIMEZONE = "Asia/Bangkok";
@@ -22,8 +24,8 @@ const parseDateRange = (query) => {
 
 export const getShowtimeStatistics = asyncHandler(async (req, res) => {
   const match = parseDateRange(req.query);
-  if (req.query.movie) match.movie = req.query.movie;
-  if (req.query.cinema) match.cinema = req.query.cinema;
+  if (mongoose.Types.ObjectId.isValid(req.query.movie)) match.movie = new mongoose.Types.ObjectId(req.query.movie);
+  if (mongoose.Types.ObjectId.isValid(req.query.cinema)) match.cinema = new mongoose.Types.ObjectId(req.query.cinema);
 
   const baseMatch = { $match: match };
   const [peakHours, peakRooms, peakDates, peakWeekdays] = await Promise.all([
@@ -61,5 +63,70 @@ export const getShowtimeStatistics = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: { peakHours, peakRooms, peakDates, peakWeekdays },
+  });
+});
+
+export const getMovieRankings = asyncHandler(async (req, res) => {
+  const showtimeMatch = {};
+  if (req.query.startDate) {
+    const start = new Date(req.query.startDate);
+    if (!Number.isNaN(start.getTime())) showtimeMatch["showtime.startTime"] = { $gte: start };
+  }
+  if (req.query.endDate) {
+    const end = new Date(req.query.endDate);
+    if (!Number.isNaN(end.getTime())) {
+      showtimeMatch["showtime.startTime"] = { ...(showtimeMatch["showtime.startTime"] || {}), $lte: end };
+    }
+  }
+  if (mongoose.Types.ObjectId.isValid(req.query.movie)) {
+    showtimeMatch["showtime.movie"] = new mongoose.Types.ObjectId(req.query.movie);
+  }
+
+  const [result] = await Booking.aggregate([
+    { $match: { status: { $in: ["confirmed", "completed"] } } },
+    { $lookup: { from: "showtimes", localField: "showtime", foreignField: "_id", as: "showtime" } },
+    { $unwind: "$showtime" },
+    ...(Object.keys(showtimeMatch).length ? [{ $match: showtimeMatch }] : []),
+    { $lookup: { from: "bookingseats", localField: "_id", foreignField: "booking", as: "seats" } },
+    {
+      $set: {
+        ticketCount: {
+          $size: {
+            $filter: { input: "$seats", as: "seat", cond: { $eq: ["$$seat.status", "booked"] } },
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$showtime.movie",
+        revenue: { $sum: "$finalAmount" },
+        tickets: { $sum: "$ticketCount" },
+        bookings: { $sum: 1 },
+      },
+    },
+    { $lookup: { from: "movies", localField: "_id", foreignField: "_id", as: "movie" } },
+    { $unwind: { path: "$movie", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 0,
+        movieId: "$_id",
+        title: { $ifNull: ["$movie.title", "Phim không xác định"] },
+        revenue: 1,
+        tickets: 1,
+        bookings: 1,
+      },
+    },
+    {
+      $facet: {
+        topRevenue: [{ $sort: { revenue: -1, title: 1 } }, { $limit: 5 }],
+        hotMovies: [{ $sort: { tickets: -1, revenue: -1, title: 1 } }, { $limit: 5 }],
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: result || { topRevenue: [], hotMovies: [] },
   });
 });
