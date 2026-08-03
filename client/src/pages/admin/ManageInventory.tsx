@@ -30,7 +30,6 @@ import {
   InboxOutlined,
   WarningOutlined,
   CheckCircleOutlined,
-  StopOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";

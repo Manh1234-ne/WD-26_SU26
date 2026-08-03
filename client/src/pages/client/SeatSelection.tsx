@@ -5,7 +5,6 @@ import { getShowtimeById } from '../../features/showtime/showtime.service'
 import { getSeatsByRoom } from '../../features/seat/seat.service'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { api } from '../../services/api'
-import { format } from 'date-fns'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 import Loading from '../../components/Loading/Loading'
@@ -29,7 +28,7 @@ function SeatSelection() {
     const { user, isAuthenticated } = useAuth()
     const { message } = AntdApp.useApp()
     const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isSubmitting] = useState(false)
 
     const SESSION_KEY = `cinema_holding_${showtimeId}`;
     const [holdingSession, setHoldingSession] = useState<{ bookingId: string; expiresAt: number } | null>(null);
@@ -342,7 +341,7 @@ function SeatSelection() {
 
                 const session = {
                     bookingId: holdingSession.bookingId,
-                    expiresAt: new Date(res.data.expiresAt).getTime(),
+                    expiresAt: new Date(res.data.expiresAt ?? Date.now()).getTime(),
                 };
 
                 sessionStorage.setItem(
