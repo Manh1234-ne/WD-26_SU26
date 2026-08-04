@@ -4,7 +4,7 @@ class MovieController {
   // GET /movies - Lấy tất cả phim
   async getMovies(req, res) {
     try {
-      const { status, search, isActive, page = 1, limit = 10 } = req.query;
+      const { status, search, isActive, genre, page = 1, limit = 10 } = req.query;
       const query = {};
 
       // Filter theo status
@@ -24,6 +24,11 @@ class MovieController {
         query.isActive = true; // Mặc định chỉ lấy phim active
       } else if (isActive !== "all") {
         query.isActive = isActive === "true";
+      }
+
+      // Filter theo genre
+      if (genre && genre !== "all") {
+        query.genres = { $in: [new RegExp(genre.trim(), "i")] };
       }
 
       // Tìm kiếm
