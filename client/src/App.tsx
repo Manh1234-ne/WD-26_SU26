@@ -18,6 +18,7 @@ import ManageVoucher from "./pages/admin/ManageVoucher";
 import ManagePricing from "./pages/admin/ManagePricing";
 
 import Home from "./pages/client/Home";
+import Movies from "./pages/client/Movies";
 import MovieDetail from "./pages/client/MovieDetail";
 import Showtime from "./pages/client/Showtime";
 import SeatSelection from "./pages/client/SeatSelection";
@@ -60,6 +61,7 @@ function App() {
             {/* Client */}
             <Route element={<ClientLayout />}>
               <Route index element={<Home />} />
+              <Route path="movies" element={<Movies />} />
               <Route path="movies/:id" element={<MovieDetail />} />
               <Route path="movies/:movieId/showtimes" element={<Showtime />} />
               <Route path="booking/:showtimeId" element={<AuthGuard><SeatSelection /></AuthGuard>} />
