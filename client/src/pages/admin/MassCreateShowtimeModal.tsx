@@ -65,6 +65,7 @@ interface PreviewItem {
     startObj: Date
     endObj: Date
     isOverlap: boolean
+    isInvalidTime?: boolean
 }
 
 export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = ({
@@ -151,65 +152,81 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
             return
         }
 
-        const [startDay, endDay] = data.dateRange
-        const newPreviewList: PreviewItem[] = []
-        let currentDay = startDay.startOf('day')
+        try {
+            const [startDay, endDay] = data.dateRange
+            const newPreviewList: PreviewItem[] = []
+            let currentDay = startDay.startOf('day')
 
-        while (currentDay.isSameOrBefore(endDay.startOf('day'))) {
-            for (const timeSlot of data.timeSlots) {
-                const hour = timeSlot.hour()
-                const minute = timeSlot.minute()
+            while (currentDay.valueOf() <= endDay.startOf('day').valueOf()) {
+                for (const timeSlot of data.timeSlots) {
+                    const hour = timeSlot.hour()
+                    const minute = timeSlot.minute()
 
-                const startObj = currentDay.hour(hour).minute(minute).second(0).toDate()
-                // endTime = startTime + duration + 20 mins
-                const endObj = new Date(startObj.getTime() + (Number(duration) + 20) * 60 * 1000)
+                    const startObj = currentDay.hour(hour).minute(minute).second(0).toDate()
+                    // endTime = startTime + duration + 20 mins
+                    const endObj = new Date(startObj.getTime() + (Number(duration) + 20) * 60 * 1000)
 
-                // Check overlap with existing showtimes
-                const isOverlap = existingShowtimes.some(existing => {
-                    const exRoomId = typeof existing.room === 'object' ? (existing.room as any)._id : existing.room;
-                    if (exRoomId !== data.roomId) return false;
-                    if ((existing as any).status === 'cancelled') return false;
+                    const startH = startObj.getHours()
+                    const endH = endObj.getHours()
+                    const endM = endObj.getMinutes()
+                    const isSameDay = endObj.getFullYear() === startObj.getFullYear() &&
+                        endObj.getMonth() === startObj.getMonth() &&
+                        endObj.getDate() === startObj.getDate()
 
-                    const exStart = new Date(existing.startTime)
-                    const exEnd = new Date(existing.endTime)
+                    const isInvalidTime = startH < 8 || !isSameDay || endH > 23 || (endH === 23 && endM > 0)
 
-                    // overlap condition: start < exEnd AND end > exStart
-                    return startObj < exEnd && endObj > exStart
-                })
+                    // Check overlap with existing showtimes
+                    const isOverlap = existingShowtimes.some(existing => {
+                        const exRoomId = existing.room && typeof existing.room === 'object' ? (existing.room as any)._id : existing.room;
+                        if (!exRoomId || exRoomId !== data.roomId) return false;
+                        if ((existing as any).status === 'cancelled') return false;
 
-                newPreviewList.push({
-                    id: `${currentDay.format('YYYY-MM-DD')}-${hour}-${minute}`,
-                    date: currentDay.format('DD/MM/YYYY'),
-                    startTime: dayjs(startObj).format('HH:mm'),
-                    endTime: dayjs(endObj).format('HH:mm'),
-                    startObj,
-                    endObj,
-                    isOverlap
-                })
+                        const exStart = new Date(existing.startTime)
+                        const exEnd = new Date(existing.endTime)
+
+                        // overlap condition: start < exEnd AND end > exStart
+                        return startObj < exEnd && endObj > exStart
+                    })
+
+                    newPreviewList.push({
+                        id: `${currentDay.format('YYYY-MM-DD')}-${hour}-${minute}`,
+                        date: currentDay.format('DD/MM/YYYY'),
+                        startTime: dayjs(startObj).format('HH:mm'),
+                        endTime: dayjs(endObj).format('HH:mm'),
+                        startObj,
+                        endObj,
+                        isOverlap,
+                        isInvalidTime
+                    })
+                }
+                currentDay = currentDay.add(1, 'day')
             }
-            currentDay = currentDay.add(1, 'day')
-        }
 
-        // Check internal overlaps within the new list
-        for (let i = 0; i < newPreviewList.length; i++) {
-            for (let j = i + 1; j < newPreviewList.length; j++) {
-                const item1 = newPreviewList[i]
-                const item2 = newPreviewList[j]
-                if (item1.startObj < item2.endObj && item1.endObj > item2.startObj) {
-                    item1.isOverlap = true
-                    item2.isOverlap = true
+            // Check internal overlaps within the new list
+            for (let i = 0; i < newPreviewList.length; i++) {
+                for (let j = i + 1; j < newPreviewList.length; j++) {
+                    const item1 = newPreviewList[i]
+                    const item2 = newPreviewList[j]
+                    if (item1.startObj < item2.endObj && item1.endObj > item2.startObj) {
+                        item1.isOverlap = true
+                        item2.isOverlap = true
+                    }
                 }
             }
-        }
 
-        setPreviewList(newPreviewList)
-        setShowPreview(true)
-        setIsGenerating(false)
+            setPreviewList(newPreviewList)
+            setShowPreview(true)
+        } catch (error: any) {
+            console.error("Preview generation error:", error)
+            message.error(`Lỗi: ${error.message || String(error)}`)
+        } finally {
+            setIsGenerating(false)
+        }
     }
 
     const handleConfirmCreate = async () => {
         const data = getValues()
-        const validItems = previewList.filter(item => !item.isOverlap)
+        const validItems = previewList.filter(item => !item.isOverlap && !item.isInvalidTime)
 
         if (validItems.length === 0) {
             message.warning('Không có suất chiếu nào hợp lệ để tạo')
@@ -282,13 +299,16 @@ export const MassCreateShowtimeModal: React.FC<MassCreateShowtimeModalProps> = (
         {
             title: 'Trạng thái',
             key: 'status',
-            render: (_: any, record: PreviewItem) => (
-                record.isOverlap ? (
+            render: (_: any, record: PreviewItem) => {
+                if (record.isInvalidTime) {
+                    return <Tag icon={<CloseCircleOutlined />} color="warning">Quá giờ (8h-23h)</Tag>
+                }
+                return record.isOverlap ? (
                     <Tag icon={<CloseCircleOutlined />} color="error">Trùng lịch</Tag>
                 ) : (
                     <Tag icon={<CheckCircleOutlined />} color="success">Hợp lệ</Tag>
                 )
-            )
+            }
         },
         {
             title: 'Hành động',
