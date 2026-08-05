@@ -160,6 +160,10 @@ export const cancelBooking = asyncHandler(async (req, res) => {
     return fail(res, 400, "Booking đã bị hủy");
   }
 
+  if (booking.status !== "pending") {
+    return fail(res, 400, "Chỉ có thể hủy booking đang chờ thanh toán");
+  }
+
   booking.status = "cancelled";
   booking.cancelledAt = new Date();
 

@@ -58,14 +58,7 @@ export function useBookingUnloadGuard(
     };
 
     const handleBeforeUnload = () => {
-      const id = bookingIdRef.current;
-      const active = isActiveRef.current;
-      if (id && active) {
-        console.log(
-          `[UnloadGuard] beforeunload – gửi cancel-beacon cho booking ${id}`
-        );
-        sendCancel(id);
-      }
+      console.log(`[UnloadGuard] Reload/unloaded for booking ${bookingIdRef.current}`);
     };
 
     const handleVisibilityChange = () => {
