@@ -235,9 +235,9 @@ function BookingHistory() {
       key: "action",
       render: (_: any, record: any) => (
         <Space size="middle">
-          <Button 
-            type="link" 
-            icon={<EyeOutlined />} 
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
             onClick={(e) => {
               e.stopPropagation()
               handleOpenDetails(record.key)
@@ -385,7 +385,7 @@ function BookingHistory() {
           </div>
         ) : bookingDetail ? (
           <div>
-            <div 
+            <div
               style={{
                 background: "#fff",
                 borderRadius: "12px",
@@ -397,8 +397,8 @@ function BookingHistory() {
             >
               <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
                 {bookingDetail.booking?.showtime?.movie?.image && (
-                  <img 
-                    src={bookingDetail.booking.showtime.movie.image} 
+                  <img
+                    src={bookingDetail.booking.showtime.movie.image}
                     alt={bookingDetail.booking.showtime.movie.title}
                     style={{ width: "90px", height: "130px", objectFit: "cover", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
                   />
@@ -409,13 +409,13 @@ function BookingHistory() {
                       {bookingDetail.booking?.showtime?.movie?.title}
                     </h3>
                     <Tag color={
-                      bookingDetail.booking.status === "confirmed" || bookingDetail.booking.status === "completed" ? "green" : 
-                      bookingDetail.booking.status === "cancelled" ? "red" : "orange"
+                      bookingDetail.booking.status === "confirmed" || bookingDetail.booking.status === "completed" ? "green" :
+                        bookingDetail.booking.status === "cancelled" ? "red" : "orange"
                     } style={{ fontWeight: 600, borderRadius: "4px", padding: "2px 8px", marginRight: 0 }}>
                       {getStatusLabel(bookingDetail.booking.status)}
                     </Tag>
                   </div>
-                  
+
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px", color: "#4b5563", fontSize: "14px", marginTop: "8px" }}>
                     <div><strong>Rạp:</strong> Rạp Lumora ({bookingDetail.booking?.showtime?.room?.name})</div>
                     <div><strong>Suất chiếu:</strong> {bookingDetail.booking?.showtime?.startTime ? formatDateTime(bookingDetail.booking.showtime.startTime) : "-"}</div>
@@ -425,24 +425,24 @@ function BookingHistory() {
               </div>
 
               {bookingDetail.booking.status === "pending" && bookingDetail.booking.expiresAt && (
-                <div style={{ 
-                  background: "#fffbeb", 
-                  border: "1px solid #fde68a", 
-                  borderRadius: "8px", 
-                  padding: "10px 12px", 
+                <div style={{
+                  background: "#fffbeb",
+                  border: "1px solid #fde68a",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
                   marginBottom: "16px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                   fontSize: "14px"
                 }}>
-                  <CountdownTimer 
-                    expiresAt={bookingDetail.booking.expiresAt} 
+                  <CountdownTimer
+                    expiresAt={bookingDetail.booking.expiresAt}
                     onExpire={() => {
                       message.warning("Đơn đặt vé đã hết hạn thanh toán!")
                       setIsModalOpen(false)
                       loadBookings()
-                    }} 
+                    }}
                   />
                 </div>
               )}
@@ -458,14 +458,20 @@ function BookingHistory() {
                 </div>
 
                 {bookingDetail.combos && bookingDetail.combos.length > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <span>Đồ ăn / Nước uống:</span>
-                    <div style={{ textAlign: "right", fontWeight: 600, color: "#111827" }}>
-                      {bookingDetail.combos.map((item: any) => (
-                        <div key={item._id}>
-                          {item.combo?.name} (x{item.quantity})
-                        </div>
-                      ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>Đồ ăn / Nước uống:</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {bookingDetail.combos.map((item: any) => (
+                          <div key={item._id} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ color: "#374151" }}>{item.combo?.name}</div>
+                            <div style={{ display: "flex", gap: 12, minWidth: 120, justifyContent: "flex-end", color: "#111827", fontWeight: 600 }}>
+                              <div>x{item.quantity}</div>
+                              <div style={{ color: "#e11d48" }}>{(item.totalPrice ?? (item.unitPrice ?? item.combo?.price ?? 0) * item.quantity).toLocaleString()} đ</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -477,8 +483,8 @@ function BookingHistory() {
                     <span>Tiền vé:</span>
                     <span>{bookingDetail.booking.totalSeatPrice?.toLocaleString()} đ</span>
                   </div>
-                  
-                  {bookingDetail.booking.totalComboPrice > 0 && (
+
+                  {(!bookingDetail.combos || bookingDetail.combos.length === 0) && bookingDetail.booking.totalComboPrice > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                       <span>Tiền combo:</span>
                       <span>{bookingDetail.booking.totalComboPrice?.toLocaleString()} đ</span>
@@ -499,16 +505,16 @@ function BookingHistory() {
                 </div>
 
                 {qrCodeUrl && (
-                  <div style={{ 
-                    display: "flex", 
-                    flexDirection: "column", 
-                    alignItems: "center", 
-                    justifyContent: "center", 
-                    padding: "16px", 
-                    background: "#f9fafb", 
-                    borderRadius: "8px", 
-                    border: "1px dashed #e5e7eb", 
-                    marginTop: "16px" 
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "16px",
+                    background: "#f9fafb",
+                    borderRadius: "8px",
+                    border: "1px dashed #e5e7eb",
+                    marginTop: "16px"
                   }}>
                     <h4 style={{ margin: "0 0 8px 0", color: "#4b5563", fontSize: "14px", fontWeight: 600 }}>📌 QR Code vé của bạn</h4>
                     <img src={qrCodeUrl} alt="Ticket QR Code" style={{ width: "160px", height: "160px", border: "4px solid #fff", borderRadius: "8px", boxShadow: "0 4px 10px rgba(0,0,0,0.06)" }} />
@@ -521,16 +527,16 @@ function BookingHistory() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
               {bookingDetail.booking.status === "pending" && (
                 <>
-                  <Button 
-                    type="primary" 
-                    danger 
+                  <Button
+                    type="primary"
+                    danger
                     ghost
                     icon={<CloseCircleOutlined />}
                     onClick={() => handleCancelBooking(bookingDetail.booking._id)}
                   >
                     Hủy đặt vé
                   </Button>
-                  <Button 
+                  <Button
                     type="primary"
                     icon={<CreditCardOutlined />}
                     onClick={() => {

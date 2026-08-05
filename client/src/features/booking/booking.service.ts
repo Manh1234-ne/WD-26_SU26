@@ -55,3 +55,10 @@ export const updateBookingSeats = async (
 
   return response.data;
 };
+
+export const incrementPrintCount = async (id: string) => {
+  const response = await api.patch<ApiResponse<Booking>>(
+    `/bookings/${id}/print`
+  );
+  return response.data;
+};

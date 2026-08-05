@@ -194,6 +194,66 @@
   margin-left: 6px;
 }
 
+/* Most Used Room Card */
+.most-used-room-card {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border: 1px solid rgba(185, 28, 28, 0.14);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.most-used-room-badge {
+  align-self: flex-start;
+  background: var(--cinema-red);
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.most-used-room-main h3 {
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 4px;
+}
+
+.most-used-room-main p {
+  color: #64748b;
+  margin: 0;
+}
+
+.most-used-room-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.most-used-room-stats>div {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(185, 28, 28, 0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.most-used-room-stats span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.most-used-room-stats strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
 /* Room Occupancy Progress Bars */
 .room-item {
   padding: 12px 14px;
@@ -207,7 +267,7 @@
 .room-item:hover {
   background-color: #ffffff;
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .room-header {
@@ -254,7 +314,7 @@
 }
 
 /* Custom Table Polish */
-.cinema-table .ant-table-thead > tr > th {
+.cinema-table .ant-table-thead>tr>th {
   background: #f8fafc !important;
   color: #475569 !important;
   font-weight: 700 !important;
@@ -264,7 +324,7 @@
   border-bottom: 1px solid #e2e8f0 !important;
 }
 
-.cinema-table .ant-table-tbody > tr:hover > td {
+.cinema-table .ant-table-tbody>tr:hover>td {
   background: #fff1f2 !important;
 }
 
@@ -278,9 +338,11 @@
   .dashboard-wrapper {
     padding: 16px;
   }
+
   .filter-card {
     padding: 16px;
   }
+
   .kpi-value {
     font-size: 22px;
   }
@@ -345,10 +407,25 @@
   font-size: 18px;
 }
 
-.circle-day { background-color: #fef2f2; color: #b91c1c; }
-.circle-month { background-color: #eef2ff; color: #4338ca; }
-.circle-year { background-color: #fffbeb; color: #b45309; }
-.circle-hour { background-color: #fff7ed; color: #c2410c; }
+.circle-day {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.circle-month {
+  background-color: #eef2ff;
+  color: #4338ca;
+}
+
+.circle-year {
+  background-color: #fffbeb;
+  color: #b45309;
+}
+
+.circle-hour {
+  background-color: #fff7ed;
+  color: #c2410c;
+}
 
 .peak-card-value {
   font-size: 22px;
@@ -363,20 +440,34 @@
   color: #64748b;
 }
 
-.text-day strong { color: #b91c1c; }
-.text-month strong { color: #4338ca; }
-.text-year strong { color: #b45309; }
-.text-hour strong { color: #c2410c; }
+.text-day strong {
+  color: #b91c1c;
+}
+
+.text-month strong {
+  color: #4338ca;
+}
+
+.text-year strong {
+  color: #b45309;
+}
+
+.text-hour strong {
+  color: #c2410c;
+}
 
 .peak-card-day:hover {
   border-color: #fca5a5 !important;
 }
+
 .peak-card-month:hover {
   border-color: #a5b4fc !important;
 }
+
 .peak-card-year:hover {
   border-color: #fde68a !important;
 }
+
 .peak-card-hour:hover {
   border-color: #fdba74 !important;
 }
@@ -391,4 +482,3 @@
   display: flex;
   align-items: center;
 }
-

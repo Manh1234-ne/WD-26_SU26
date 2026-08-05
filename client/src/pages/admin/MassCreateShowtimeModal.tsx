@@ -22,7 +22,8 @@ import dayjs from 'dayjs'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
 
-
+dayjs.extend(isSameOrAfter)
+dayjs.extend(isSameOrBefore)
 
 import type { Movie } from '../../features/movie/movie.types'
 import type { Room } from '../../features/room/room.types'
