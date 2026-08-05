@@ -291,21 +291,19 @@ export const verifyVnPayReturnService = async (params) => {
     payment.note =
       `VNPay error: ${responseCode}`;
 
-    booking.status = "cancelled";
-
-    await BookingSeat.updateMany(
-      {
-        booking: booking._id,
-      },
-      {
-        status: "cancelled",
-      }
-    );
-
-    /**
-     * Hoàn reserved kho
-     */
-    await releaseReservedStock(comboIds);
+    if (booking.expiresAt && new Date(booking.expiresAt) < new Date()) {
+      booking.status = "expired";
+      booking.cancelledAt = new Date();
+      await BookingSeat.updateMany(
+        {
+          booking: booking._id,
+        },
+        {
+          status: "cancelled",
+        }
+      );
+      await releaseReservedStock(comboIds);
+    }
   }
 
   await payment.save();
