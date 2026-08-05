@@ -378,7 +378,7 @@ img {
 
 .movie-card-body p,
 .movie-card-footer,
-td span {
+.custom-legacy-table td span {
   color: #64748b;
 }
 
@@ -769,32 +769,32 @@ td span {
   margin-top: 10px;
 }
 
-.table-wrap {
+.custom-legacy-table .table-wrap {
   overflow-x: auto;
 }
 
-table {
+.custom-legacy-table table {
   border-collapse: collapse;
   min-width: 720px;
   width: 100%;
 }
 
-th,
-td {
+.custom-legacy-table th,
+.custom-legacy-table td {
   border-bottom: 1px solid #e2e8f0;
   padding: 14px 12px;
   text-align: left;
   vertical-align: top;
 }
 
-th {
+.custom-legacy-table th {
   color: #64748b;
   font-size: 13px;
   text-transform: uppercase;
 }
 
-td strong,
-td span {
+.custom-legacy-table td strong,
+.custom-legacy-table td span {
   display: block;
 }
 
