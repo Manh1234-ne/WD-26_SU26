@@ -39,7 +39,6 @@ function sortObject(obj) {
  */
 export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
   const booking = await Booking.findById(bookingId);
-
   if (!booking) throw new Error("Không tìm thấy booking");
 
   if (booking.status !== "pending") {
@@ -81,8 +80,12 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
   if (!tmnCode || !secretKey || !vnpUrl || !returnUrl) {
     throw new Error("Thiếu cấu hình VNPay");
   }
-
-  const createDate = moment().utcOffset(7).format("YYYYMMDDHHmmss");
+  const vnpCreateDate = moment().utcOffset(7).format("YYYYMMDDHHmmss");
+  const BUFFER_MS = 2.5 * 60 * 1000; // 2.5 phút
+  const vnpExpireDate = moment(booking.expiresAt)
+    .subtract(BUFFER_MS, "ms")
+    .utcOffset(7)
+    .format("YYYYMMDDHHmmss");
 
   const cleanIp =
     !ipAddr || ipAddr.includes("::") ? "127.0.0.1" : ipAddr;
@@ -98,7 +101,8 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
     vnp_OrderType: "other",
     vnp_ReturnUrl: returnUrl,
     vnp_IpAddr: cleanIp,
-    vnp_CreateDate: createDate,
+    vnp_CreateDate: vnpCreateDate,
+    vnp_ExpireDate: vnpExpireDate,
     vnp_Locale: "vn",
   };
 
@@ -190,27 +194,23 @@ export const verifyVnPayReturnService = async (params) => {
    * Thanh toán thành công
    */
   if (responseCode === "00") {
-    /**
-     * Kiểm tra ghế lần cuối
-     */
-    const bookingSeats =
-      await BookingSeat.find({
-        booking: booking._id,
-      });
+    if (booking.expiresAt && new Date(booking.expiresAt) < new Date() && booking.status !== "pending") {
+      payment.status = "failed";
+      payment.note = "Booking đã hết hạn giữ ghế trước khi xác nhận thanh toán.";
+      payment.needRefund = true;
+      await payment.save();
+      throw new Error("Booking đã hết hạn giữ ghế.");
+    }
 
-    const seatIds = bookingSeats.map(
-      (item) => item.seat
-    );
+    const bookingSeats = await BookingSeat.find({ booking: booking._id });
+    const seatIds = bookingSeats.map((bs) => bs.seat);
 
-    const alreadyBooked =
-      await BookingSeat.findOne({
-        showtime: booking.showtime,
-        seat: {
-          $in: seatIds,
-        },
-        status: "booked",
-      });
-
+    const alreadyBooked = await BookingSeat.findOne({
+      showtime: booking.showtime,
+      seat: { $in: seatIds },
+      status: "booked",
+      booking: { $ne: booking._id }
+    });
     if (alreadyBooked) {
       payment.status = "failed";
 
