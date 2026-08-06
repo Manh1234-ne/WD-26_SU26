@@ -288,6 +288,17 @@ function Payment() {
         )
     }
 
+    if (booking.status === "cancelled" || booking.status === "expired") {
+        return (
+            <div className="page-state">
+                <p className="state-text error-text">Đặt vé này đã bị hủy hoặc hết hạn giữ ghế.</p>
+                <Link className="ghost-button" to="/">
+                    Quay lại Trang chủ
+                </Link>
+            </div>
+        )
+    }
+
     if (booking.status === "confirmed" || booking.status === "completed") {
         return (
             <div className="page-state">

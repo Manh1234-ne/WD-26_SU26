@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getMovieById } from '../../features/movie/movie.service'
@@ -7,10 +7,15 @@ import { format, addDays, isSameDay } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import type { Showtime as ShowtimeType } from '../../features/showtime/showtime.type'
 import Loading from '../../components/Loading/Loading'
+import { cancelActiveHoldingSessions } from '../../features/booking/booking.service'
 
 function Showtime() {
     const { movieId } = useParams()
     const navigate = useNavigate()
+
+    useEffect(() => {
+        void cancelActiveHoldingSessions()
+    }, [])
 
     const dates = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i))
     const [selectedDate, setSelectedDate] = useState<Date>(dates[0])
