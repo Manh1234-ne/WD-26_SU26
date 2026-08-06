@@ -612,7 +612,9 @@ function ManageBooking() {
       okText: "Xác nhận in",
       cancelText: "Hủy",
       okButtonProps: { style: { backgroundColor: "#4f46e5" } },
-      onOk: handlePrintTickets,
+      onOk: () => {
+        void executePrint(booking._id);
+      },
     });
   };
 
