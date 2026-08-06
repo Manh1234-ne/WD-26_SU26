@@ -53,7 +53,6 @@ import {
   cancelBooking,
   completeBooking,
   getBookingById,
-  markBookingPrinted,
   incrementPrintCount,
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
@@ -245,7 +244,7 @@ function ManageBooking() {
       if (booking.status === "confirmed") {
         try {
           await completeBooking(bookingId);
-          void message.success("Soát vé thành công! Vé đã chuyển sang trạng thái hoàn tất.");
+          void message.success("Soát vé thành công! Đã tự động hoàn tất soát vé đơn hàng.");
           void fetchAllBookings();
         } catch (completeErr) {
           console.error("Lỗi khi tự động hoàn tất soát vé:", completeErr);
@@ -299,20 +298,6 @@ function ManageBooking() {
     if (!printWindow) {
       void message.error("Vui lòng cho phép mở popup để in vé.");
       return;
-    }
-
-    setActionLoading(true);
-    try {
-      const response = await markBookingPrinted(booking._id);
-      const printedBooking = response.data;
-      setSelectedBookingDetails((current) => current ? { ...current, booking: { ...current.booking, ...printedBooking } } : current);
-      setBookings((current) => current.map((item) => item._id === booking._id ? { ...item, ...printedBooking } : item));
-    } catch (err: any) {
-      printWindow.close();
-      void message.error(err?.response?.data?.message || "Không thể xác nhận quyền in vé");
-      return;
-    } finally {
-      setActionLoading(false);
     }
 
     const movieTitle = booking.showtime?.movie?.title || "Phim chưa xác định";
@@ -600,22 +585,6 @@ function ManageBooking() {
     } else {
       void executePrint(booking._id);
     }
-  };
-
-  const confirmPrintTickets = () => {
-    if (!selectedBookingDetails) return;
-    const { booking, seats } = selectedBookingDetails;
-    Modal.confirm({
-      title: "Xác nhận in vé lần duy nhất?",
-      icon: <PrinterOutlined style={{ color: "#4f46e5" }} />,
-      content: `Booking ${booking.bookingCode} có ${seats.length} vé. Sau khi xác nhận, hệ thống sẽ ghi nhận đã in và không cho phép in lại.`,
-      okText: "Xác nhận in",
-      cancelText: "Hủy",
-      okButtonProps: { style: { backgroundColor: "#4f46e5" } },
-      onOk: () => {
-        void executePrint(booking._id);
-      },
-    });
   };
 
   const fetchAllBookings = async () => {
@@ -1516,34 +1485,6 @@ function ManageBooking() {
                         : "Chưa cập nhật"}
                     </span>
                   </Descriptions.Item>
-                  <Descriptions.Item label="Trạng thái in">
-                    {selectedBookingDetails.booking.printStatus === "printed" ? (
-                      <Space size={6} wrap>
-                        <Tag color="success">Đã in</Tag>
-                        {selectedBookingDetails.booking.printedAt && (
-                          <Text type="secondary">
-                            {dayjs(selectedBookingDetails.booking.printedAt).format("DD/MM/YYYY HH:mm")}
-                          </Text>
-                        )}
-                      </Space>
-                    ) : (
-                      <Tag>Chưa in</Tag>
-                    )}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Trạng thái soát vé">
-                    {selectedBookingDetails.booking.status === "completed" ? (
-                      <Space size={6} wrap>
-                        <Tag color="success">Đã soát vé</Tag>
-                        {selectedBookingDetails.booking.checkedInAt && (
-                          <Text type="secondary">
-                            {dayjs(selectedBookingDetails.booking.checkedInAt).format("DD/MM/YYYY HH:mm")}
-                          </Text>
-                        )}
-                      </Space>
-                    ) : (
-                      <Tag color="processing">Chưa soát vé</Tag>
-                    )}
-                  </Descriptions.Item>
                   <Descriptions.Item label="Ghế đã chọn">
                     <Space wrap style={{ marginTop: 4 }}>
                       {selectedBookingDetails.seats && selectedBookingDetails.seats.length > 0 ? (
@@ -1779,15 +1720,15 @@ function ManageBooking() {
 
                   {(selectedBookingDetails.booking.status === "confirmed" ||
                     selectedBookingDetails.booking.status === "completed") && (
-                    <Button
-                      type="primary"
-                      style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
-                      icon={<PrinterOutlined />}
-                      onClick={handlePrintConfirm}
-                    >
-                      In vé
-                    </Button>
-                  )}
+                      <Button
+                        type="primary"
+                        style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5" }}
+                        icon={<PrinterOutlined />}
+                        onClick={handlePrintConfirm}
+                      >
+                        In vé
+                      </Button>
+                    )}
 
                   <Button onClick={() => setDrawerOpen(false)}>Đóng</Button>
                 </Space>
