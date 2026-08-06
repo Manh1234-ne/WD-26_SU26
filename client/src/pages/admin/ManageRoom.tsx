@@ -8,6 +8,7 @@ import {
 import { getCinemas } from '../../features/cinema/cinema.service'
 import type { Room, RoomPayload } from '../../features/room/room.types'
 import type { Cinema } from '../../features/cinema/cinema.types'
+import { getAllShowtimes } from '../../features/showtime/showtime.service'
 import {
   Form,
   Input,
@@ -138,6 +139,25 @@ function ManageRoom() {
       const parsedAisleRowsSubmit = values.aisleRows
         ? values.aisleRows.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
         : []
+
+      if (editingId && values.isActive === false) {
+        // Check if there are upcoming showtimes for this room
+        const showtimes = await getAllShowtimes({ includePast: false })
+        const now = new Date()
+        const hasUpcoming = showtimes.some((st: any) => {
+          const stRoomId = typeof st.room === 'object' && st.room ? st.room._id : st.room
+          if (stRoomId !== editingId) return false
+          if (st.status === 'cancelled') return false
+          const startTime = new Date(st.startTime)
+          return startTime >= now
+        })
+
+        if (hasUpcoming) {
+          void message.error('Không thể chuyển sang trạng thái "Không hoạt động" vì phòng đang có lịch chiếu sắp diễn ra!')
+          setIsSaving(false)
+          return
+        }
+      }
       const payload: RoomPayload = {
         cinema: values.cinema || cinemas[0]?._id || '',
         name: values.name,
