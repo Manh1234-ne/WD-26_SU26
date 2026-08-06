@@ -5,7 +5,8 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "db": "node --watch app.js"
+    "db": "node --watch app.js",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "keywords": [],
   "author": "",

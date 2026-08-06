@@ -36,6 +36,13 @@ export const completeBooking = async (id: string) => {
   return response.data;
 };
 
+export const markBookingPrinted = async (id: string) => {
+  const response = await api.patch<ApiResponse<Booking>>(
+    `/bookings/${id}/print`
+  );
+  return response.data;
+};
+
 export const cancelBooking = async (id: string) => {
   const response = await api.patch<ApiResponse<Booking>>(
     `/bookings/${id}/cancel`

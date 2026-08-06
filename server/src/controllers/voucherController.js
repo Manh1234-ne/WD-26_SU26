@@ -20,6 +20,19 @@ const fail = (res, status, message) =>
     message,
   });
 
+const validateVoucherDates = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "Ngày bắt đầu hoặc ngày kết thúc không hợp lệ";
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (end < today) return "Ngày kết thúc không được nằm trong quá khứ";
+  if (end < start) return "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu";
+  return null;
+};
+
 export const getAllVouchers = asyncHandler(
   async (req, res) => {
     const vouchers = await Voucher.find()

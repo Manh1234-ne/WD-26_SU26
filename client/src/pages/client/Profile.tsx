@@ -74,7 +74,6 @@ function Profile() {
     }, [id]);
 
     //Tổng số vé và người dùng đã đặt
-    const [totalBookings, setTotalBookings] = useState<number>(0);
     const [totalSpent, setTotalSpent] = useState<number>(0);
 
     useEffect(() => {
@@ -89,7 +88,6 @@ function Profile() {
                 const bookingSuccess = booking.filter(
                     (booking) => booking.status === "completed"
                 )
-                setTotalBookings(bookingSuccess.length);
                 setTotalSpent(
                     bookingSuccess.reduce((sum, booking) => sum + (booking.finalAmount || 0), 0)
                 );

@@ -14,8 +14,7 @@ import {
     Typography,
     Row,
     Col,
-    message,
-    Divider
+    message
 } from 'antd'
 import { useForm, Controller } from 'react-hook-form'
 import dayjs from 'dayjs'
