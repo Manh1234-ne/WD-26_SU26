@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getMovies } from '../../features/movie/movie.service'
 import type { Movie, MovieStatus } from '../../features/movie/movie.types'
 import Loading from '../../components/Loading/Loading'
+import { cancelActiveHoldingSessions } from '../../features/booking/booking.service'
 
 const statusTabs: Array<{ label: string; value: MovieStatus | 'all' }> = [
   { label: 'Tất cả', value: 'all' },
@@ -23,6 +24,10 @@ function Home() {
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    void cancelActiveHoldingSessions()
+  }, [])
 
   useEffect(() => {
     let isMounted = true
