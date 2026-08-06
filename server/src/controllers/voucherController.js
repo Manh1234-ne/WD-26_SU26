@@ -75,6 +75,29 @@ export const createVoucher = asyncHandler(
       endDate,
     } = req.body;
 
+    if (
+      !code ||
+      !name ||
+      !description ||
+      !discountType ||
+      discountValue === undefined ||
+      discountValue === null ||
+      maxDiscountAmount === undefined ||
+      maxDiscountAmount === null ||
+      minOrderAmount === undefined ||
+      minOrderAmount === null ||
+      usageLimit === undefined ||
+      usageLimit === null ||
+      !startDate ||
+      !endDate
+    ) {
+      return fail(
+        res,
+        400,
+        "Vui lòng điền đầy đủ tất cả thông tin"
+      );
+    }
+
     const existingVoucher =
       await Voucher.findOne({
         code: code.toUpperCase(),
@@ -127,6 +150,38 @@ export const updateVoucher = asyncHandler(
       );
     }
 
+    const {
+      code,
+      name,
+      description,
+      discountType,
+      discountValue,
+      maxDiscountAmount,
+      minOrderAmount,
+      usageLimit,
+      startDate,
+      endDate
+    } = req.body;
+
+    if (
+      (code !== undefined && !code) ||
+      (name !== undefined && !name) ||
+      (description !== undefined && !description) ||
+      (discountType !== undefined && !discountType) ||
+      (discountValue !== undefined && (discountValue === null || discountValue === "")) ||
+      (maxDiscountAmount !== undefined && (maxDiscountAmount === null || maxDiscountAmount === "")) ||
+      (minOrderAmount !== undefined && (minOrderAmount === null || minOrderAmount === "")) ||
+      (usageLimit !== undefined && (usageLimit === null || usageLimit === "")) ||
+      (startDate !== undefined && !startDate) ||
+      (endDate !== undefined && !endDate)
+    ) {
+      return fail(
+        res,
+        400,
+        "Vui lòng điền đầy đủ tất cả thông tin"
+      );
+    }
+
     const nextDiscountType = req.body.discountType ?? voucher.discountType;
     const nextDiscountValue = req.body.discountValue ?? voucher.discountValue;
     if (nextDiscountType === "percent" && (nextDiscountValue < 0 || nextDiscountValue > 100)) {
@@ -135,8 +190,8 @@ export const updateVoucher = asyncHandler(
 
     const nextStartDate = req.body.startDate ?? voucher.startDate;
     const nextEndDate = req.body.endDate ?? voucher.endDate;
-    const dateError = validateVoucherDates(nextStartDate, nextEndDate);
-    if (dateError) return fail(res, 400, dateError);
+    const dateErr = validateVoucherDates(nextStartDate, nextEndDate);
+    if (dateErr) return fail(res, 400, dateErr);
 
     Object.assign(voucher, req.body);
 

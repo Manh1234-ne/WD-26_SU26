@@ -303,9 +303,6 @@ export const updateShowtime = asyncHandler(async (req, res) => {
   }
 
   const reqBody = { ...req.body };
-  if (reqBody.basePrice && newStart) {
-    reqBody.basePrice = await calculateDynamicPrice(reqBody.basePrice, newStart);
-  }
 
   const showtime = await Showtime.findByIdAndUpdate(
     id,

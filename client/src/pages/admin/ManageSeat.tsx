@@ -705,7 +705,15 @@ function ManageSeat() {
             </Row>
           )}
           <Form.Item label="Loại ghế" name="type">
-            <Select placeholder="Giữ nguyên" allowClear>
+            <Select placeholder="Giữ nguyên" allowClear onChange={(val) => {
+              if (val === 'vip') {
+                form.setFieldValue('priceMultiplier', 1.1)
+              } else if (val === 'standard' || val === 'disabled') {
+                form.setFieldValue('priceMultiplier', 1)
+              } else if (val === 'couple') {
+                form.setFieldValue('priceMultiplier', 2)
+              }
+            }}>
               <Select.Option value="standard">Standard (Tiêu chuẩn)</Select.Option>
               <Select.Option value="vip">VIP</Select.Option>
               {modalMode !== 'create' && <Select.Option value="couple">Couple (Ghế đôi)</Select.Option>}

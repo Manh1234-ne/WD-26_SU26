@@ -67,6 +67,11 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    printCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     expiresAt: {
       type: Date,
     },

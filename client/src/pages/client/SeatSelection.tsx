@@ -8,7 +8,7 @@ import { api } from '../../services/api'
 import { App as AntdApp } from 'antd'
 import Swal from 'sweetalert2'
 import Loading from '../../components/Loading/Loading'
-import { cancelBooking, getBookingsByUser, getBookingById, createBooking, updateBookingSeats } from '../../features/booking/booking.service'
+import { cancelBooking, getBookingsByUser, getBookingById, createBooking, updateBookingSeats, cancelActiveHoldingSessions, cancelOtherHoldingSessions } from '../../features/booking/booking.service'
 import { useBookingUnloadGuard } from '../../features/booking/useBookingUnloadGuard'
 import { ClockCircleOutlined } from '@ant-design/icons'
 
@@ -72,6 +72,7 @@ function SeatSelection() {
 
     useEffect(() => {
         if (!showtimeId) return;
+        void cancelOtherHoldingSessions(showtimeId);
         const raw = sessionStorage.getItem(SESSION_KEY);
         if (raw) {
             try {
@@ -402,6 +403,22 @@ function SeatSelection() {
         navigate(`/payment/${holdingSession.bookingId}`);
     }
 
+    const handleCancelAndChangeShowtime = async () => {
+        if (holdingSession?.bookingId) {
+            try {
+                await cancelBooking(holdingSession.bookingId)
+            } catch (err) {
+                console.error("Lỗi nhả ghế khi đổi suất chiếu:", err)
+            }
+            sessionStorage.removeItem(SESSION_KEY)
+            setHoldingSession(null)
+            setSelectedSeats([])
+        }
+        await cancelActiveHoldingSessions()
+        const movieId = showtime?.movie?._id || showtime?.movie
+        navigate(movieId ? `/movies/${movieId}/showtimes` : '/movies')
+    }
+
     return (
         <div className="seat-selection-page">
 
@@ -506,13 +523,14 @@ function SeatSelection() {
                     {isSubmitting ? 'Đang đặt vé...' : 'Tiến Hành Đặt Vé'}
                 </button>
 
-                <Link
+                <button
                     className="ghost-button"
-                    style={{ marginTop: '12px', display: 'inline-flex', width: '100%', alignItems: 'center', justifyContent: 'center' }}
-                    to={`/movies/${showtime.movie._id}/showtimes`}
+                    style={{ marginTop: '12px', display: 'inline-flex', width: '100%', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    onClick={handleCancelAndChangeShowtime}
+                    type="button"
                 >
                     Đổi suất chiếu khác
-                </Link>
+                </button>
             </div>
         </div>
     )

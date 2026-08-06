@@ -47,6 +47,7 @@ export type Booking = {
     printedBy?: { _id: string; fullName: string; email: string } | null,
     checkedInAt?: string | null,
     checkedInBy?: { _id: string; fullName: string; email: string } | null,
+    printCount?: number,
     expiresAt?: string | null,
     cancelledAt?: string | null,
     createdAt: string,
@@ -93,7 +94,9 @@ export type BookingDetail = {
     combos: BookingComboItem[]
 }
 
-export type BookingWithSeats = BookingDetail
+export type BookingWithSeats = BookingDetail & {
+    customExpiresAt?: number | string
+}
 
 export type UpdateBookingSeatsPayload = {
     seatIds: string[]

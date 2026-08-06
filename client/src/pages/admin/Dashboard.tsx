@@ -39,6 +39,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
+import 'dayjs/locale/vi';
 import isBetween from "dayjs/plugin/isBetween";
 import {
   ResponsiveContainer,
@@ -61,6 +62,7 @@ import * as XLSX from "xlsx";
 import "./Dashboard.css";
 
 dayjs.extend(isBetween);
+dayjs.locale('vi');
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -184,6 +186,12 @@ const formatVND = (value: number) => {
 
 const formatNumber = (value: number) => {
   return new Intl.NumberFormat("vi-VN").format(value || 0);
+};
+
+const getOccupancyColor = (occupancy: number) => {
+  if (occupancy >= 85) return "#b91c1c"; // red
+  if (occupancy >= 70) return "#f59e0b"; // yellow
+  return "#10b981"; // green
 };
 
 function Dashboard() {
@@ -677,6 +685,29 @@ function Dashboard() {
     });
   }, [rooms, filteredBookings]);
 
+  const mostUsedRoom = useMemo(() => {
+    if (roomOccupancyData.length === 0) {
+      return null;
+    }
+
+    const sorted = [...roomOccupancyData].sort((a, b) => b.occupancy - a.occupancy);
+    return sorted[0];
+  }, [roomOccupancyData]);
+
+  const peakShowtimeDays = useMemo(() => {
+    if (!showtimes || showtimes.length === 0) return [];
+    const counts = new Map<string, number>();
+    showtimes.forEach((st) => {
+      const d = st.startTime ? dayjs(st.startTime).format("DD/MM/YYYY") : "Unknown";
+      counts.set(d, (counts.get(d) || 0) + 1);
+    });
+    const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    return entries.slice(0, 3).map(([rawDate, cnt]) => {
+      const formatted = rawDate === 'Unknown' ? 'Unknown' : dayjs(rawDate, 'DD/MM/YYYY').format('dddd - DD/MM');
+      return { date: rawDate, dateFormatted: formatted, count: cnt };
+    });
+  }, [showtimes]);
+
   const topCustomersData: CustomerRow[] = useMemo(() => {
     const userMap = new Map<
       string,
@@ -1113,6 +1144,73 @@ function Dashboard() {
             </Col>
           ))}
         </Row>
+
+        <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+          <Col xs={24} lg={8}>
+            <Card
+              className="cinema-card"
+              title={
+                <span>
+                  <FireOutlined className="card-title-icon" /> Phòng chiếu nhiều nhất
+                </span>
+              }
+              bodyStyle={{ padding: "20px" }}
+            >
+              {mostUsedRoom ? (
+                <div className="most-used-room-card">
+                  <div className="most-used-room-badge">Hot</div>
+                  <div className="most-used-room-main">
+                    <h3>{mostUsedRoom.roomName}</h3>
+                    <p>{mostUsedRoom.cinema || "Rạp Lumora"}</p>
+                  </div>
+                  <div className="most-used-room-stats">
+                    <div>
+                      <span>Loại phòng</span>
+                      <strong>{mostUsedRoom.type}</strong>
+                    </div>
+                    <div>
+                      <span>Tỷ lệ lấp đầy</span>
+                      <strong style={{ color: getOccupancyColor(mostUsedRoom.occupancy) }}>{mostUsedRoom.occupancy}%</strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Text type="secondary">Chưa có dữ liệu phòng chiếu</Text>
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={16}>
+            <Card
+              className="cinema-card"
+              title={
+                <span>
+                  <CalendarOutlined className="card-title-icon" /> Ngày có nhiều suất chiếu nhất
+                </span>
+              }
+              bodyStyle={{ padding: "20px" }}
+            >
+              {peakShowtimeDays && peakShowtimeDays.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {peakShowtimeDays.map((d, idx) => (
+                    <div key={`${d.date}-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{d.dateFormatted || d.date}</div>
+                        <div style={{ color: "#64748b", marginTop: 6 }}>{d.count} suất chiếu</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#b91c1c" }}>{d.count}</div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>Suất</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Text type="secondary">Chưa có dữ liệu suất chiếu</Text>
+              )}
+            </Card>
+          </Col>
+        </Row>
         <div style={{ marginBottom: 24 }}>
           <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <FireOutlined style={{ color: "#b91c1c", fontSize: 20 }} />
@@ -1513,13 +1611,7 @@ function Dashboard() {
                     </div>
                     <Progress
                       percent={room.occupancy}
-                      strokeColor={
-                        room.occupancy >= 85
-                          ? "#b91c1c"
-                          : room.occupancy >= 70
-                            ? "#f59e0b"
-                            : "#10b981"
-                      }
+                      strokeColor={getOccupancyColor(room.occupancy)}
                       trailColor="#e2e8f0"
                       showInfo={false}
                       strokeWidth={10}
