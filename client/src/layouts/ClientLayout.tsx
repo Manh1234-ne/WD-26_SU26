@@ -213,6 +213,14 @@ function ClientLayout() {
       },
       { type: 'divider' as const },
     ] : []),
+    ...(user.role === 'staff' ? [
+      {
+        key: 'staff',
+        icon: <DashboardOutlined />,
+        label: <NavLink to="/staff">Kênh quản trị</NavLink>,
+      },
+      { type: 'divider' as const },
+    ] : []),
     {
       key: 'profile',
       icon: <UserOutlined />,
