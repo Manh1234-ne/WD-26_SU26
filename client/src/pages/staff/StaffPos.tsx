@@ -16,6 +16,7 @@ import {
   Radio,
   Divider,
   Result,
+  DatePicker,
 } from "antd";
 import {
   ShoppingOutlined,
@@ -52,7 +53,7 @@ interface Showtime {
   room: { _id: string; name: string };
   startTime: string;
   endTime: string;
-  price: number;
+  basePrice: number;
 }
 
 interface Seat {
@@ -85,6 +86,7 @@ export function StaffPos() {
   const [selectedMovieId, setSelectedMovieId] = useState<string>("");
   const [selectedShowtimeId, setSelectedShowtimeId] = useState<string>("");
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
 
   // Seat & Occupied data
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -106,14 +108,31 @@ export function StaffPos() {
   const [createdBooking, setCreatedBooking] = useState<any>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
 
+  // Fetch showtimes by selected date
+  const fetchShowtimesByDate = async (date: dayjs.Dayjs) => {
+    try {
+      const dateStr = date.format("YYYY-MM-DD");
+      const showtimesRes = await api.get(`/showtimes?date=${dateStr}&includePast=true`);
+      const sList: Showtime[] = showtimesRes.data?.data || showtimesRes.data || [];
+      setShowtimes(sList);
+      // Reset showtime selection when date changes
+      setSelectedShowtimeId("");
+      setSelectedMovieId("");
+    } catch (err) {
+      toast.error("Lỗi khi tải danh sách suất chiếu");
+    }
+  };
+
   // Fetch initial data
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
+        const today = dayjs();
+        const dateStr = today.format("YYYY-MM-DD");
         const [moviesRes, showtimesRes, combosRes] = await Promise.all([
           api.get("/movies"),
-          api.get("/showtimes"),
+          api.get(`/showtimes?date=${dateStr}&includePast=true`),
           api.get("/combos"),
         ]);
 
@@ -162,24 +181,46 @@ export function StaffPos() {
     const st = showtimes.find((s) => s._id === selectedShowtimeId);
     setSelectedShowtime(st || null);
 
-    if (st?.room?._id) {
+    const roomId = (st?.room as any)?._id || st?.room?._id;
+
+    if (roomId) {
       setLoading(true);
-      Promise.all([
-        api.get(`/seats/room/${st.room._id}`),
-        api.get(`/booking-seats/showtime/${selectedShowtimeId}/occupied`),
-      ])
-        .then(([seatsRes, occRes]) => {
-          const seatArr = seatsRes.data?.data || seatsRes.data || [];
-          const occArr = occRes.data?.data || occRes.data || [];
+      setSeats([]);
+      setOccupiedSeatIds([]);
+
+      // Load seats
+      api.get(`/seats/room/${roomId}`)
+        .then((seatsRes) => {
+          // API trả về { room, seats } bên trong data
+          const raw = seatsRes.data?.data ?? seatsRes.data;
+          const seatArr: Seat[] = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.seats)
+              ? raw.seats
+              : [];
+          console.log("[POS] seats fetched:", seatArr.length, "ghế");
           setSeats(seatArr);
+        })
+        .catch((err) => {
+          console.error("[POS] Lỗi tải ghế:", err);
+          toast.error("Không thể tải sơ đồ ghế");
+        })
+        .finally(() => setLoading(false));
+      api.get(`/booking-seats/showtime/${selectedShowtimeId}/occupied`)
+        .then((occRes) => {
+          const rawOcc = occRes.data?.data ?? occRes.data;
+          const occArr: any[] = Array.isArray(rawOcc) ? rawOcc : [];
           setOccupiedSeatIds(
             occArr.map((item: any) => item.seat?._id || item.seat || item)
           );
         })
-        .catch(() => {
-          toast.error("Không thể tải sơ đồ ghế");
-        })
-        .finally(() => setLoading(false));
+        .catch((err) => {
+          console.error("[POS] Không tải được ghế đã bán, tiếp tục:", err);
+          // Not blocking - seat map still shows without occupied info
+        });
+    } else {
+      console.warn("[POS] Suất chiếu không có room._id:", st);
+      toast.warning("Suất chiếu này chưa được gán phòng chiếu!");
     }
   }, [selectedShowtimeId, showtimes]);
 
@@ -217,7 +258,7 @@ export function StaffPos() {
   // Price calculations
   const seatTotalPrice = useMemo(() => {
     if (!selectedShowtime) return 0;
-    const basePrice = selectedShowtime.price || 0;
+    const basePrice = selectedShowtime.basePrice || 0;
     return selectedSeats.reduce((acc, seat) => {
       const multiplier = seat.priceMultiplier || (seat.type === "vip" ? 1.2 : seat.type === "couple" ? 2 : 1);
       return acc + basePrice * multiplier;
@@ -352,8 +393,33 @@ export function StaffPos() {
         {/* Left Column: Movie, Showtime & Seat Selection */}
         <Col xs={24} lg={15} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Step 1: Select Movie & Showtime */}
-          <Card title="1 🎬 Chọn Phim & Suất Chiếu" style={{ borderRadius: 12 }}>
+          <Card title="1.Chọn Phim & Suất Chiếu" style={{ borderRadius: 12 }}>
             <Row gutter={[16, 16]}>
+              {/* Date picker row */}
+              <Col xs={24}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                  <Text strong>Ngày Chiếu:</Text>
+                  <DatePicker
+                    value={selectedDate}
+                    format="DD/MM/YYYY"
+                    allowClear={false}
+                    onChange={(date) => {
+                      if (date) {
+                        setSelectedDate(date);
+                        fetchShowtimesByDate(date);
+                      }
+                    }}
+                    style={{ flex: 1, maxWidth: 200 }}
+                  />
+                  <Tag color={selectedDate.isSame(dayjs(), "day") ? "green" : "orange"}>
+                    {selectedDate.isSame(dayjs(), "day") ? "Hôm nay" : selectedDate.format("dddd, DD/MM")}
+                  </Tag>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {showtimes.length} suất chiếu trong ngày
+                  </Text>
+                </div>
+              </Col>
+
               <Col xs={24} md={12}>
                 <Text strong>Chọn Phim Rạp:</Text>
                 <Select
@@ -376,18 +442,23 @@ export function StaffPos() {
               </Col>
 
               <Col xs={24} md={12}>
-                <Text strong>Suất Chiếu Trong Ngày:</Text>
+                <Text strong>Suất Chiếu Trong Ngày ({selectedDate.format("DD/MM")}):</Text>
                 <Select
-                  placeholder="-- Chọn Suất Chiếu --"
+                  placeholder={selectedMovieId ? "-- Chọn Suất Chiếu --" : "Chọn phim trước"}
                   style={{ width: "100%", marginTop: 6 }}
                   value={selectedShowtimeId || undefined}
                   onChange={(sId) => setSelectedShowtimeId(sId)}
                   disabled={!selectedMovieId}
+                  notFoundContent={
+                    selectedMovieId
+                      ? <span style={{ fontSize: 12, color: "#94a3b8" }}>Không có suất chiếu hôm nay cho phim này</span>
+                      : null
+                  }
                 >
                   {filteredShowtimes.map((st) => (
                     <Option key={st._id} value={st._id}>
-                      [{dayjs(st.startTime).format("HH:mm")}] Phòng {st.room?.name} -{" "}
-                      {st.price?.toLocaleString("vi-VN")}đ
+                      [{dayjs(st.startTime).format("HH:mm")} - {dayjs(st.endTime).format("HH:mm")}] Phòng {st.room?.name} —{" "}
+                      {st.basePrice?.toLocaleString("vi-VN")}đ
                     </Option>
                   ))}
                 </Select>
@@ -399,11 +470,11 @@ export function StaffPos() {
           <Card
             title={
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>2 💺 Sơ Đồ Chọn Ghế ({selectedSeats.length} ghế đã chọn)</span>
+                <span>2.Sơ Đồ Chọn Ghế ({selectedSeats.length} ghế đã chọn)</span>
                 {selectedShowtime && (
                   <Tag color="purple">
                     Phòng: {selectedShowtime.room?.name} | Giá gốc:{" "}
-                    {selectedShowtime.price?.toLocaleString("vi-VN")}đ
+                    {selectedShowtime.basePrice?.toLocaleString("vi-VN")}đ
                   </Tag>
                 )}
               </div>
@@ -416,6 +487,12 @@ export function StaffPos() {
               <div style={{ textAlign: "center", padding: 40 }}>
                 <Spin tip="Đang tải sơ đồ ghế phòng chiếu..." />
               </div>
+            ) : seats.length === 0 ? (
+              <Result
+                status="warning"
+                title="Không tìm thấy ghế trong phòng chiếu này"
+                subTitle="Phòng chiếu chưa được cấu hình ghế hoặc có lỗi kết nối. Vui lòng kiểm tra lại."
+              />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 {/* Screen representation */}
@@ -552,6 +629,7 @@ export function StaffPos() {
                             textColor = "#ffffff";
                           }
 
+
                           return (
                             <button
                               key={seat._id}
@@ -591,7 +669,7 @@ export function StaffPos() {
             title={
               <Space>
                 <CoffeeOutlined style={{ color: "#d97706" }} />
-                <span>3 🍿 Bỏng & Nước Uống</span>
+                <span>3.Bỏng & Nước Uống</span>
               </Space>
             }
             style={{ borderRadius: 12 }}
@@ -634,7 +712,12 @@ export function StaffPos() {
           </Card>
 
           {/* Step 4: Customer Info & Order Summary */}
-          <Card title="4 💳 Thông Tin Đơn Hàng Quầy" style={{ borderRadius: 12 }}>
+          <Card title={
+            <Space>
+              <DollarOutlined style={{ color: "#d97706" }} />
+              <span>4.Thông Tin Đơn Hàng Quầy</span>
+            </Space>
+          } style={{ borderRadius: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <Text strong>Tên Khách Hàng:</Text>
@@ -667,12 +750,12 @@ export function StaffPos() {
                   <Row gutter={[8, 8]}>
                     <Col span={12}>
                       <Radio.Button value="cash" style={{ width: "100%", textAlign: "center" }}>
-                        💵 Tiền Mặt
+                        Tiền Mặt
                       </Radio.Button>
                     </Col>
                     <Col span={12}>
                       <Radio.Button value="vnpay" style={{ width: "100%", textAlign: "center" }}>
-                        📱 QR Chuyển Khoản
+                        QR Chuyển Khoản
                       </Radio.Button>
                     </Col>
                   </Row>

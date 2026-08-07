@@ -223,7 +223,7 @@ export function StaffDashboard() {
       {/* Metrics Row */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card borderRadius-lg="12">
+          <Card style={{ borderRadius: 12 }}>
             <Statistic
               title="Doanh Thu Ca Hôm Nay"
               value={stats.todayRevenue}
@@ -235,7 +235,7 @@ export function StaffDashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card borderRadius-lg="12">
+          <Card style={{ borderRadius: 12 }}>
             <Statistic
               title="Số Vé Bán Ca Trực"
               value={stats.todayTicketsCount}
@@ -246,7 +246,7 @@ export function StaffDashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card borderRadius-lg="12">
+          <Card style={{ borderRadius: 12 }}>
             <Statistic
               title="Lượt Soát Vé Thành Công"
               value={stats.checkedInCount}
@@ -257,7 +257,7 @@ export function StaffDashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card borderRadius-lg="12">
+          <Card style={{ borderRadius: 12 }}>
             <Statistic
               title="Suất Chiếu Hôm Nay"
               value={stats.activeShowtimesCount}
