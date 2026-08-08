@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   HomeOutlined, VideoCameraOutlined, EnvironmentOutlined, PhoneOutlined,
-  ShoppingCartOutlined, BgColorsOutlined, UserOutlined, HistoryOutlined,
+  UserOutlined, HistoryOutlined,
   LogoutOutlined, DashboardOutlined, FacebookOutlined, TwitterOutlined,
   InstagramOutlined, YoutubeOutlined, InfoCircleOutlined, TeamOutlined,
   MailOutlined, FileTextOutlined, SafetyCertificateOutlined,
@@ -12,6 +12,7 @@ import { useAuth } from '../features/auth/hooks/useAuth'
 import { Button, Dropdown, Avatar, Space, Typography, Row, Col, Divider, Input } from 'antd'
 import { logout } from '../features/auth/services/auth.service'
 import Swal from "sweetalert2"
+import { cancelActiveHoldingSessions } from '../features/booking/booking.service'
 
 const { Text } = Typography;
 
@@ -212,6 +213,14 @@ function ClientLayout() {
       },
       { type: 'divider' as const },
     ] : []),
+    ...(user.role === 'staff' ? [
+      {
+        key: 'staff',
+        icon: <DashboardOutlined />,
+        label: <NavLink to="/staff">Kênh quản trị</NavLink>,
+      },
+      { type: 'divider' as const },
+    ] : []),
     {
       key: 'profile',
       icon: <UserOutlined />,
@@ -235,14 +244,14 @@ function ClientLayout() {
   return (
     <div style={styles.shell}>
       <header style={styles.header}>
-        <NavLink to="/" style={styles.brand}>
+        <NavLink to="/" style={styles.brand} onClick={() => void cancelActiveHoldingSessions()}>
           <VideoCameraOutlined style={styles.brandIcon} />
           <span className="brand-mark">L</span>
           <span>Lumora</span>
         </NavLink>
 
         <nav style={styles.navCenter}>
-          <NavLink to="/" style={({ isActive }) => ({ ...styles.navLink, ...(isActive && styles.navLinkActive) })}>
+          <NavLink to="/" style={({ isActive }) => ({ ...styles.navLink, ...(isActive && styles.navLinkActive) })} onClick={() => void cancelActiveHoldingSessions()}>
             <HomeOutlined />
             <span>Trang Chủ</span>
           </NavLink>

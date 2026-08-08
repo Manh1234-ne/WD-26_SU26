@@ -295,14 +295,7 @@ function ManageVoucher() {
             </Row>
             <Row gutter={16}>
               <Col xs={24} sm={12} md={8}>
-                <Form.Item
-                  name="discountValue"
-                  label="Giá trị giảm thêm (%)"
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập giá trị giảm' },
-                    { type: 'number', max: 100, message: 'Giá trị giảm không được vượt quá 100%' }
-                  ]}
-                > 
+                <Form.Item name="discountValue" label="Giá trị giảm thêm (%)" rules={[{ required: true, message: 'Vui lòng nhập giá trị giảm' }, { type: 'number', min: 0, max: 100, message: 'Phần trăm giảm phải từ 0 đến 100%' }]}> 
                   <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
                 </Form.Item>
               </Col>
@@ -337,12 +330,13 @@ function ManageVoucher() {
                     { required: true, message: 'Vui lòng chọn ngày kết thúc' },
                     ({ getFieldValue }) => ({
                       validator(_, value) {
-                        const startDate = getFieldValue('startDate');
-                        if (!value || !startDate) {
-                          return Promise.resolve();
+                        if (!value) return Promise.resolve();
+                        if (value.startOf('day').isBefore(dayjs().startOf('day'))) {
+                          return Promise.reject(new Error('Ngày kết thúc không được nằm trong quá khứ'));
                         }
-                        if (value.isBefore(startDate, 'day')) {
-                          return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+                        const startDate = getFieldValue('startDate');
+                        if (startDate && value.startOf('day').isBefore(startDate.startOf('day'))) {
+                          return Promise.reject(new Error('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu'));
                         }
                         return Promise.resolve();
                       },
@@ -352,7 +346,9 @@ function ManageVoucher() {
                   <DatePicker 
                     style={{ width: '100%' }} 
                     disabledDate={(current) => {
-                      return startDateValue ? current && current.isBefore(startDateValue, 'day') : false;
+                      if (!current) return false;
+                      if (current.startOf('day').isBefore(dayjs().startOf('day'))) return true;
+                      return startDateValue ? current.isBefore(startDateValue, 'day') : false;
                     }}
                   />
                 </Form.Item>

@@ -127,7 +127,7 @@ function getInventoryUnit(item: InventoryItem | string, inventoryList: Inventory
   if (typeof item === "string") {
     return inventoryList.find((i) => i._id === item)?.unit ?? "";
   }
-  return item.unit;
+  return "";
 }
 
 function isIngredientActive(item: InventoryItem | string, inventoryList: InventoryItem[]) {
@@ -560,7 +560,7 @@ function ManageCombo() {
                     min={0}
                     step={5000}
                     formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                    parser={(v) => Number(v?.replace(/,/g, "") ?? 0)}
+                    parser={(v) => Number(v?.replace(/,/g, "") ?? 0) as 0}
                     style={{ width: "100%" }}
                     addonAfter="VND"
                   />
@@ -666,7 +666,7 @@ function ManageCombo() {
             </Row>
 
             {/* ── Nguyên liệu ─────────────────────────────────────── */}
-            <Divider orientation="left" style={{ color: "#475569", fontWeight: 700, borderColor: "#e2e8f0" }}>
+            <Divider style={{ color: "#475569", fontWeight: 700, borderColor: "#e2e8f0" }}>
               <Space>
                 <CoffeeOutlined style={{ color: "#e11d48" }} />
                 Nguyên liệu của combo

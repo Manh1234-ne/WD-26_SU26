@@ -35,6 +35,12 @@ import { AdminRoute } from "./routes/AdminRoute";
 import Profile from "./pages/client/Profile";
 import ManageCombo from "./pages/admin/ManageCombo";
 import ManageInventory from "./pages/admin/ManageInventory";
+import StaffLayout from "./layouts/StaffLayout";
+import StaffRoute from "./routes/StaffRoute";
+import StaffPos from "./pages/staff/StaffPos";
+import StaffBookings from "./pages/staff/StaffBookings";
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import StaffCheckIn from "./pages/staff/StaffCheckIn";
 
 function App() {
   return (
@@ -72,6 +78,15 @@ function App() {
               <Route path="profile/:id" element={<AuthGuard><Profile /></AuthGuard>}></Route>
             </Route>
 
+            {/* Staff */}
+            <Route path="staff" element={
+              <StaffRoute><StaffLayout /></StaffRoute>}>
+              <Route index element={<StaffDashboard />} />
+              <Route path='pos' element={<StaffPos />} />
+              <Route path='bookings' element={<StaffBookings />} />
+              <Route path='checkin' element={<StaffCheckIn />} />
+            </Route>
+
             {/* Admin */}
             <Route path="admin" element={
               <AdminRoute><AdminLayout /></AdminRoute>}>
@@ -92,7 +107,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </AntdApp>
-    </ConfigProvider>
+    </ConfigProvider >
   );
 }
 
