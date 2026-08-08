@@ -32,6 +32,7 @@ import { api } from "../../services/api";
 import { toast } from "react-toastify";
 import QRCode from "qrcode";
 import { useAuthStore } from "../../features/auth/auth.store";
+import Swal from "sweetalert2";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -225,15 +226,33 @@ export function StaffPos() {
       toast.warning(`Ghế ${seat.code} đã được đặt trước!`);
       return;
     }
-    if (selectedSeats.find((s) => s._id === seat._id)) {
-      setSelectedSeats(selectedSeats.filter((s) => s._id !== seat._id));
-    } else {
-      if (selectedSeats.length >= 10) {
-        toast.warning("Chỉ được chọn tối đa 10 ghế trong 1 giao dịch quầy");
-        return;
-      }
-      setSelectedSeats([...selectedSeats, seat]);
+
+    const isAlreadySelected = selectedSeats.some((s) => s._id === seat._id);
+    const newSelected = isAlreadySelected
+      ? selectedSeats.filter((s) => s._id !== seat._id)
+      : [...selectedSeats, seat];
+
+    if (!isAlreadySelected && selectedSeats.length >= 8) {
+      Swal.fire({
+        title: "Quá số lượng ghế!",
+        text: "Chỉ được chọn tối đa 8 ghế trong 1 giao dịch quầy",
+        icon: "warning",
+        confirmButtonColor: "#1890ff",
+      });
+      return;
     }
+
+    if (checkAllRowsForIsolation(newSelected)) {
+      Swal.fire({
+        title: "Thông báo",
+        text: "Việc chọn vị trí ghế của bạn không được để trống 1 ghế ở bên trái, giữa hoặc bên phải trên cùng hàng ghế mà bạn vừa chọn.",
+        icon: "warning",
+        confirmButtonColor: "#e11d48",
+      });
+      return;
+    }
+
+    setSelectedSeats(newSelected);
   };
 
   // Group seats by row
@@ -249,6 +268,31 @@ export function StaffPos() {
     });
     return map;
   }, [seats]);
+
+  const hasIsolatedSeat = (rowSeats: Seat[], occupied: Set<string>, selected: Set<string>) => {
+    const states = rowSeats.map((s) => {
+      if (occupied.has(s._id)) return 'used';
+      if (selected.has(s._id)) return 'used';
+      return 'empty';
+    });
+    for (let i = 1; i < states.length - 1; i++) {
+      if (
+        states[i] === 'empty' &&
+        states[i - 1] === 'used' &&
+        states[i + 1] === 'used'
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const checkAllRowsForIsolation = (selected: Seat[]) => {
+    const selectedSet = new Set<string>(selected.map((s) => s._id));
+    return Object.values(seatRows).some((rowSeats) =>
+      hasIsolatedSeat(rowSeats, new Set(occupiedSeatIds), selectedSet)
+    );
+  };
 
   // Price calculations
   const seatTotalPrice = useMemo(() => {
