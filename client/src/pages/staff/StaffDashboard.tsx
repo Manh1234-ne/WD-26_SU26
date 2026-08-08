@@ -207,8 +207,8 @@ export function StaffDashboard() {
           size="large"
           icon={<ShoppingOutlined />}
           style={{
-            background: "#10b981",
-            borderColor: "#10b981",
+            background: "#b91c1c",
+            borderColor: "#b91c1c",
             height: 48,
             padding: "0 24px",
             fontWeight: 600,
@@ -270,7 +270,7 @@ export function StaffDashboard() {
       </Row>
 
       {/* Quick Action Navigation Buttons */}
-      <Card title="⚡ Thao Tác Nhanh" style={{ borderRadius: 12 }}>
+      <Card title="Thao Tác Nhanh" style={{ borderRadius: 12 }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <Card
@@ -297,7 +297,7 @@ export function StaffDashboard() {
                   <Title level={5} style={{ margin: 0, color: "#065f46" }}>
                     Bán Vé Tại Quầy (POS)
                   </Title>
-                  <Text style={{ fontSize: 12, color: "#047857" }}>
+                  <Text style={{ fontSize: 12, color: "#b91c1c" }}>
                     Chọn phim, sơ đồ ghế, combo & xuất vé cho khách
                   </Text>
                 </div>

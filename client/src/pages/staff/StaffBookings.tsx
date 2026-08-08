@@ -11,7 +11,6 @@ import {
   Drawer,
   Descriptions,
   Divider,
-  Spin,
   Row,
   Col,
 } from "antd";
@@ -21,8 +20,6 @@ import {
   EyeOutlined,
   PrinterOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
-  ClockCircleOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -251,7 +248,7 @@ export function StaffBookings() {
       >
         <div>
           <Title level={4} style={{ color: "white", margin: 0 }}>
-            Tra Cứu & Quản Lý Vé Tại Quầy 📋
+            Tra Cứu & Quản Lý Vé Tại Quầy
           </Title>
           <Text style={{ color: "#94a3b8", fontSize: 13 }}>
             Tìm kiếm theo mã vé, số điện thoại khách hàng, in lại vé và xác nhận soát vé nhanh

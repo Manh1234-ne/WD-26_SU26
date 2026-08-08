@@ -12,7 +12,6 @@ import {
   InputNumber,
   Spin,
   Modal,
-  Badge,
   Radio,
   Divider,
   Result,
@@ -25,12 +24,9 @@ import {
   ReloadOutlined,
   UserOutlined,
   DollarOutlined,
-  BarcodeOutlined,
-  CreditCardOutlined,
   CoffeeOutlined,
-  ArrowRightOutlined,
 } from "@ant-design/icons";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
@@ -76,7 +72,6 @@ interface Combo {
 
 export function StaffPos() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { user: staffUser } = useAuthStore();
   const queryShowtimeId = searchParams.get("showtimeId");
 
@@ -368,10 +363,10 @@ export function StaffPos() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <ShoppingOutlined style={{ fontSize: 24, color: "#10b981" }} />
+          <ShoppingOutlined style={{ fontSize: 24, color: "#b91c1c" }} />
           <div>
             <Title level={4} style={{ color: "white", margin: 0 }}>
-              Hệ Thống Bán Vé Quầy (POS Terminal)
+              Hệ Thống Bán Vé Quầy
             </Title>
             <Text style={{ color: "#94a3b8", fontSize: 13 }}>
               Nhân viên lập vé trực tiếp • Ca làm việc: {staffUser?.fullName}
@@ -392,10 +387,8 @@ export function StaffPos() {
       <Row gutter={[20, 20]}>
         {/* Left Column: Movie, Showtime & Seat Selection */}
         <Col xs={24} lg={15} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Step 1: Select Movie & Showtime */}
           <Card title="1.Chọn Phim & Suất Chiếu" style={{ borderRadius: 12 }}>
             <Row gutter={[16, 16]}>
-              {/* Date picker row */}
               <Col xs={24}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
                   <Text strong>Ngày Chiếu:</Text>
@@ -411,7 +404,7 @@ export function StaffPos() {
                     }}
                     style={{ flex: 1, maxWidth: 200 }}
                   />
-                  <Tag color={selectedDate.isSame(dayjs(), "day") ? "green" : "orange"}>
+                  <Tag color={selectedDate.isSame(dayjs(), "day") ? "red" : "orange"}>
                     {selectedDate.isSame(dayjs(), "day") ? "Hôm nay" : selectedDate.format("dddd, DD/MM")}
                   </Tag>
                   <Text type="secondary" style={{ fontSize: 12 }}>
@@ -693,7 +686,7 @@ export function StaffPos() {
                       {cb.name}
                     </Text>
                     <br />
-                    <Text type="success" style={{ fontSize: 12 }}>
+                    <Text type="danger" style={{ fontSize: 12 }}>
                       {cb.price?.toLocaleString("vi-VN")} đ
                     </Text>
                   </div>
@@ -782,15 +775,15 @@ export function StaffPos() {
                     alignItems: "center",
                     marginTop: 10,
                     padding: "12px",
-                    background: "#ecfdf5",
+                    background: "#fff2f2ff",
                     borderRadius: 8,
-                    border: "1px solid #a7f3d0",
+                    border: "1px solid #f50505ff",
                   }}
                 >
-                  <Text strong style={{ fontSize: 16, color: "#065f46" }}>
+                  <Text strong style={{ fontSize: 16, color: "#9e0b0bff" }}>
                     TỔNG THANH TOÁN:
                   </Text>
-                  <Text strong style={{ fontSize: 20, color: "#10b981" }}>
+                  <Text strong style={{ fontSize: 20, color: "#b91c1c" }}>
                     {grandTotal.toLocaleString("vi-VN")} đ
                   </Text>
                 </div>
@@ -805,12 +798,13 @@ export function StaffPos() {
                 icon={<CheckCircleOutlined />}
                 style={{
                   height: 52,
-                  background: "#10b981",
-                  borderColor: "#10b981",
+                  background: "#ff0000ff",
+                  borderColor: "#a44242ff",
                   fontSize: 16,
                   fontWeight: "bold",
                   borderRadius: 10,
                   marginTop: 8,
+                  color: "white"
                 }}
                 onClick={handleCreateCounterBooking}
               >

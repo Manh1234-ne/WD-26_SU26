@@ -103,7 +103,7 @@ function StaffLayout() {
             style={{
               width: 36,
               height: 36,
-              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              background: "linear-gradient(135deg, #b91c1c, #db6464ff)",
               borderRadius: 10,
               display: "flex",
               alignItems: "center",
@@ -111,7 +111,7 @@ function StaffLayout() {
               color: "white",
               fontWeight: "bold",
               fontSize: 20,
-              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
+              boxShadow: "0 2px 8px rgba(149, 76, 136, 0.4)",
             }}
           >
             S
@@ -175,7 +175,7 @@ function StaffLayout() {
               <Title level={4} style={{ margin: 0, color: "#1e293b" }}>
                 Giao Diện Vận Hành Rạp
               </Title>
-              <Tag color="green" icon={<SafetyCertificateOutlined />}>
+              <Tag color="red" icon={<SafetyCertificateOutlined />}>
                 Ca Trực POS
               </Tag>
             </div>
@@ -213,7 +213,7 @@ function StaffLayout() {
             >
               <Space style={{ cursor: "pointer", padding: "4px 8px" }}>
                 <Avatar
-                  style={{ backgroundColor: "#10b981" }}
+                  style={{ backgroundColor: "#b91c1c" }}
                   icon={<UserOutlined />}
                   src={user?.avatar}
                 />

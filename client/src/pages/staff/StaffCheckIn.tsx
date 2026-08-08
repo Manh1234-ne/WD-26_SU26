@@ -20,8 +20,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ClockCircleOutlined,
-  UserOutlined,
-  PrinterOutlined,
   ReloadOutlined,
   ScanOutlined,
 } from "@ant-design/icons";
@@ -294,10 +292,10 @@ export function StaffCheckIn() {
                   <Space wrap size={[8, 8]}>
                     {bookingSeats.length > 0
                       ? bookingSeats.map((bs) => (
-                          <Tag key={bs._id || bs.seat?._id} color="volcano" style={{ fontSize: 15, padding: "4px 10px" }}>
-                            Ghế {bs.seat?.code || bs.code}
-                          </Tag>
-                        ))
+                        <Tag key={bs._id || bs.seat?._id} color="volcano" style={{ fontSize: 15, padding: "4px 10px" }}>
+                          Ghế {bs.seat?.code || bs.code}
+                        </Tag>
+                      ))
                       : "Chưa cập nhật thông tin ghế"}
                   </Space>
                 </Descriptions.Item>
