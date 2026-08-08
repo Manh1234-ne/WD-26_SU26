@@ -17,6 +17,8 @@ import {
   Result,
   DatePicker,
 } from "antd";
+import { ClapperboardIcon, PopcornIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ShoppingOutlined,
   PrinterOutlined,
@@ -490,7 +492,8 @@ export function StaffPos() {
                 transition: "all 0.2s",
               }}
             >
-              🎬 Bán Vé
+              <HugeiconsIcon icon={ClapperboardIcon}
+                style={{ fontSixe: 16 }} /> Bán Vé
             </button>
             <button
               type="button"
@@ -507,7 +510,11 @@ export function StaffPos() {
                 transition: "all 0.2s",
               }}
             >
-              🍿 Chỉ Bán Bắp Nước
+              <HugeiconsIcon
+                icon={PopcornIcon}
+                style={{ fontSixe: 16 }}
+              /> Chỉ Bán Bắp Nước
+
             </button>
           </div>
 
@@ -521,29 +528,6 @@ export function StaffPos() {
           </Button>
         </div>
       </div>
-
-      {/* Combo-only mode banner */}
-      {posMode === "combo" && (
-        <div
-          style={{
-            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-            border: "1px solid #f59e0b",
-            borderRadius: 10,
-            padding: "12px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            color: "#92400e",
-            fontWeight: 600,
-          }}
-        >
-          <CoffeeOutlined style={{ fontSize: 20, color: "#d97706" }} />
-          <span>
-            Chế độ <strong>Bán Bắp Nước Riêng</strong> — Không cần chọn ghế hay suất chiếu. Chọn combo bên dưới và thanh toán ngay.
-          </span>
-        </div>
-      )}
-
       <Row gutter={[20, 20]}>
         {/* Left Column: Movie, Showtime & Seat Selection — ẩn khi mode combo */}
         <Col xs={24} lg={posMode === "combo" ? 0 : 15} style={{ display: posMode === "combo" ? "none" : "flex", flexDirection: "column", gap: 20 }}>
@@ -1107,7 +1091,7 @@ export function StaffPos() {
           )}
         </div>
       </Modal>
-    </div>
+    </div >
   );
 }
 
