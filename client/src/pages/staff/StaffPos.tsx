@@ -99,6 +99,12 @@ export function StaffPos() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [submitting, setSubmitting] = useState(false);
 
+  // POS Mode: 'ticket' = bán vé + bắp nước, 'combo' = chỉ bán bắp nước
+  const [posMode, setPosMode] = useState<"ticket" | "combo">("ticket");
+
+  // Combo-only order result
+  const [createdComboOrder, setCreatedComboOrder] = useState<any>(null);
+
   // Receipt Modal State
   const [printModalVisible, setPrintModalVisible] = useState(false);
   const [createdBooking, setCreatedBooking] = useState<any>(null);
@@ -313,6 +319,45 @@ export function StaffPos() {
 
   const grandTotal = seatTotalPrice + comboTotalPrice;
 
+  // Handle Combo-Only Order (không cần ghế/showtime)
+  const handleCreateComboOnlyOrder = async () => {
+    const hasItems = Object.values(selectedCombos).some((qty) => qty > 0);
+    if (!hasItems) {
+      toast.error("Vui lòng chọn ít nhất 1 combo/bắp nước!");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const items = Object.entries(selectedCombos)
+        .filter(([_, qty]) => qty > 0)
+        .map(([combo, quantity]) => ({ combo, quantity }));
+
+      const payload = {
+        items,
+        customerName: customerName || "Khách vãng lai",
+        customerPhone: customerPhone || "",
+        paymentMethod,
+      };
+
+      const res = await api.post("/combo-orders", payload);
+      const orderData = res.data?.data || res.data;
+
+      const orderCode = orderData?.orderCode || "CO-POS";
+      const qrData = await QRCode.toDataURL(orderCode);
+
+      setQrCodeDataUrl(qrData);
+      setCreatedComboOrder(orderData);
+      setPrintModalVisible(true);
+      toast.success("Tạo đơn bắp nước thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Có lỗi xảy ra khi tạo đơn bắp nước");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Handle Complete Booking
   const handleCreateCounterBooking = async () => {
     if (!selectedShowtimeId) {
@@ -382,6 +427,7 @@ export function StaffPos() {
     setCustomerPhone("");
     setPrintModalVisible(false);
     setCreatedBooking(null);
+    setCreatedComboOrder(null);
   };
 
   if (loading && !seats.length && !movies.length) {
@@ -418,19 +464,89 @@ export function StaffPos() {
           </div>
         </div>
 
-        <Button
-          type="default"
-          icon={<ReloadOutlined />}
-          onClick={resetPosState}
-          style={{ background: "#334155", color: "white", borderColor: "#475569" }}
-        >
-          Làm Mới Đơn Bán
-        </Button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {/* Mode selector */}
+          <div
+            style={{
+              display: "flex",
+              background: "#1e293b",
+              borderRadius: 8,
+              padding: 4,
+              gap: 4,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { setPosMode("ticket"); resetPosState(); }}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 6,
+                border: "none",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                background: posMode === "ticket" ? "#b91c1c" : "transparent",
+                color: posMode === "ticket" ? "white" : "#94a3b8",
+                transition: "all 0.2s",
+              }}
+            >
+              🎬 Bán Vé
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPosMode("combo"); resetPosState(); }}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 6,
+                border: "none",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                background: posMode === "combo" ? "#d97706" : "transparent",
+                color: posMode === "combo" ? "white" : "#94a3b8",
+                transition: "all 0.2s",
+              }}
+            >
+              🍿 Chỉ Bán Bắp Nước
+            </button>
+          </div>
+
+          <Button
+            type="default"
+            icon={<ReloadOutlined />}
+            onClick={resetPosState}
+            style={{ background: "#334155", color: "white", borderColor: "#475569" }}
+          >
+            Làm Mới Đơn Bán
+          </Button>
+        </div>
       </div>
 
+      {/* Combo-only mode banner */}
+      {posMode === "combo" && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+            border: "1px solid #f59e0b",
+            borderRadius: 10,
+            padding: "12px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            color: "#92400e",
+            fontWeight: 600,
+          }}
+        >
+          <CoffeeOutlined style={{ fontSize: 20, color: "#d97706" }} />
+          <span>
+            Chế độ <strong>Bán Bắp Nước Riêng</strong> — Không cần chọn ghế hay suất chiếu. Chọn combo bên dưới và thanh toán ngay.
+          </span>
+        </div>
+      )}
+
       <Row gutter={[20, 20]}>
-        {/* Left Column: Movie, Showtime & Seat Selection */}
-        <Col xs={24} lg={15} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Left Column: Movie, Showtime & Seat Selection — ẩn khi mode combo */}
+        <Col xs={24} lg={posMode === "combo" ? 0 : 15} style={{ display: posMode === "combo" ? "none" : "flex", flexDirection: "column", gap: 20 }}>
           <Card title="1.Chọn Phim & Suất Chiếu" style={{ borderRadius: 12 }}>
             <Row gutter={[16, 16]}>
               <Col xs={24}>
@@ -700,16 +816,16 @@ export function StaffPos() {
         </Col>
 
         {/* Right Column: Combos, Customer & Checkout */}
-        <Col xs={24} lg={9} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <Col xs={24} lg={posMode === "combo" ? 24 : 9} style={{ display: "flex", flexDirection: posMode === "combo" ? "row" : "column", gap: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
           {/* Step 3: Combos */}
           <Card
             title={
               <Space>
                 <CoffeeOutlined style={{ color: "#d97706" }} />
-                <span>3.Bỏng & Nước Uống</span>
+                <span>{posMode === "combo" ? "Chọn Bắp Nước" : "3.Bỏng & Nước Uống"}</span>
               </Space>
             }
-            style={{ borderRadius: 12 }}
+            style={{ borderRadius: 12, flex: posMode === "combo" ? 1 : undefined, minWidth: posMode === "combo" ? 320 : undefined }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 220, overflowY: "auto" }}>
               {combos.map((cb) => (
@@ -833,27 +949,60 @@ export function StaffPos() {
                 </div>
               </div>
 
-              <Button
-                type="primary"
-                size="large"
-                block
-                loading={submitting}
-                disabled={selectedSeats.length === 0}
-                icon={<CheckCircleOutlined />}
-                style={{
-                  height: 52,
-                  background: "#ff0000ff",
-                  borderColor: "#a44242ff",
-                  fontSize: 16,
-                  fontWeight: "bold",
-                  borderRadius: 10,
-                  marginTop: 8,
-                  color: "white"
-                }}
-                onClick={handleCreateCounterBooking}
-              >
-                XÁC NHẬN THANH TOÁN & IN VÉ
-              </Button>
+              {(() => {
+                const hasSeats = selectedSeats.length > 0;
+                const hasCombos = Object.values(selectedCombos).some((q) => q > 0);
+
+                if (posMode === "combo" || (!hasSeats && hasCombos)) {
+                  return (
+                    <Button
+                      type="primary"
+                      size="large"
+                      block
+                      loading={submitting}
+                      disabled={!hasCombos}
+                      icon={<CheckCircleOutlined />}
+                      style={{
+                        height: 52,
+                        background: "#ff0000ff",
+                        borderColor: "#a44242ff",
+                        fontSize: 16,
+                        fontWeight: "bold",
+                        borderRadius: 10,
+                        marginTop: 8,
+                        color: "white",
+                      }}
+                      onClick={handleCreateComboOnlyOrder}
+                    >
+                      XÁC NHẬN BÁN BẮP NƯỚC
+                    </Button>
+                  );
+                }
+
+                return (
+                  <Button
+                    type="primary"
+                    size="large"
+                    block
+                    loading={submitting}
+                    disabled={!hasSeats}
+                    icon={<CheckCircleOutlined />}
+                    style={{
+                      height: 52,
+                      background: "#ff0000ff",
+                      borderColor: "#a44242ff",
+                      fontSize: 16,
+                      fontWeight: "bold",
+                      borderRadius: 10,
+                      marginTop: 8,
+                      color: "white",
+                    }}
+                    onClick={handleCreateCounterBooking}
+                  >
+                    XÁC NHẬN THANH TOÁN & IN VÉ
+                  </Button>
+                );
+              })()}
             </div>
           </Card>
         </Col>
@@ -892,24 +1041,42 @@ export function StaffPos() {
           <Title level={3} style={{ margin: 0, color: "#0f172a" }}>
             LUMORA CINEMA
           </Title>
-          <Text style={{ fontSize: 12 }}>HÓA ĐƠN XÁC NHẬN VÉ XEM PHIM</Text>
+          <Text style={{ fontSize: 12 }}>
+            {createdComboOrder ? "HÓA ĐƠN BẮP NƯỚC" : "HÓA ĐƠN XÁC NHẬN VÉ XEM PHIM"}
+          </Text>
           <Divider style={{ margin: "12px 0", borderColor: "#000" }} />
 
           <div style={{ textAlign: "left", fontSize: 13, display: "flex", flexDirection: "column", gap: 4 }}>
-            <div>Mã đơn: <strong>{createdBooking?.bookingCode || "LUMORA-POS"}</strong></div>
+            <div>Mã đơn: <strong>{createdComboOrder?.orderCode || createdBooking?.bookingCode || "LUMORA-POS"}</strong></div>
             <div>Ngày tạo: {dayjs().format("DD/MM/YYYY HH:mm")}</div>
             <div>Khách hàng: {customerName} {customerPhone ? `(${customerPhone})` : ""}</div>
             <div>Thu ngân: {staffUser?.fullName}</div>
             <Divider style={{ margin: "8px 0", borderColor: "#ccc" }} />
 
-            <div>Phim: <strong>{selectedShowtime?.movie?.title}</strong></div>
-            <div>Phòng: <strong>{selectedShowtime?.room?.name}</strong></div>
-            <div>Suất chiếu: <strong>{dayjs(selectedShowtime?.startTime).format("DD/MM/YYYY - HH:mm")}</strong></div>
-            <div>
-              Ghế: <strong>{selectedSeats.map((s) => s.code).join(", ")}</strong>
-            </div>
+            {/* Ticket info — chỉ hiển thị khi mode vé */}
+            {!createdComboOrder && (
+              <>
+                <div>Phim: <strong>{selectedShowtime?.movie?.title}</strong></div>
+                <div>Phòng: <strong>{selectedShowtime?.room?.name}</strong></div>
+                <div>Suất chiếu: <strong>{dayjs(selectedShowtime?.startTime).format("DD/MM/YYYY - HH:mm")}</strong></div>
+                <div>
+                  Ghế: <strong>{selectedSeats.map((s) => s.code).join(", ")}</strong>
+                </div>
+              </>
+            )}
 
-            {Object.keys(selectedCombos).some((k) => selectedCombos[k] > 0) && (
+            {/* Combo items */}
+            {createdComboOrder ? (
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Bắp nước:</div>
+                {createdComboOrder.items?.map((item: any, idx: number) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>{item.combo?.name || "Combo"} x{item.quantity}</span>
+                    <span>{(item.totalPrice || 0).toLocaleString("vi-VN")} đ</span>
+                  </div>
+                ))}
+              </div>
+            ) : Object.keys(selectedCombos).some((k) => selectedCombos[k] > 0) && (
               <div>
                 Combo:{" "}
                 <strong>
@@ -927,7 +1094,7 @@ export function StaffPos() {
             <Divider style={{ margin: "8px 0", borderColor: "#ccc" }} />
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: "bold" }}>
               <span>TỔNG TIỀN:</span>
-              <span>{grandTotal.toLocaleString("vi-VN")} đ</span>
+              <span>{(createdComboOrder?.totalAmount ?? grandTotal).toLocaleString("vi-VN")} đ</span>
             </div>
             <div>Hình thức: {paymentMethod === "cash" ? "Tiền mặt" : "Chuyển khoản / QR"}</div>
           </div>
