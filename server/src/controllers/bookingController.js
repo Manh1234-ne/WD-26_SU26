@@ -37,9 +37,23 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds, voucherCode, comboIds = [], customExpiresAt } = req.body;
+    const {
+      user,
+      showtime,
+      seatIds,
+      voucherCode,
+      comboIds = [],
+      combos = [],
+      customExpiresAt,
+      isCounterSale,
+      customerName,
+      customerPhone,
+      paymentMethod,
+    } = req.body;
 
-    if (!user || !showtime || !seatIds?.length) {
+    const targetUser = user || req.user?._id || null;
+
+    if ((!targetUser && !isCounterSale) || !showtime || !seatIds?.length) {
       return fail(
         res,
         400,
@@ -47,12 +61,18 @@ export const createBooking = asyncHandler(
       );
     }
     const booking = await createBookingService({
-      user,
+      user: targetUser,
       showtime,
       seatIds,
       voucherCode,
       comboIds,
-      customExpiresAt
+      combos,
+      customExpiresAt,
+      isCounterSale: Boolean(isCounterSale),
+      customerName: customerName || "Khách vãng lai",
+      customerPhone: customerPhone || "",
+      paymentMethod: paymentMethod || "cash",
+      createdByStaff: req.user?._id || null,
     });
 
     return created(res, booking);
@@ -68,6 +88,7 @@ export const getBookingById = asyncHandler(async (req, res) => {
   const booking = await Booking.findById(id)
     .populate("user")
     .populate("printedBy", "fullName email")
+    .populate("createdByStaff", "fullName email phone")
     .populate("voucher")
     .populate({
       path: "showtime",
@@ -99,6 +120,8 @@ export const getBookingById = asyncHandler(async (req, res) => {
 export const getAllBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find()
     .populate("user")
+    .populate("createdByStaff", "fullName email phone")
+    .populate("printedBy", "fullName email")
     .populate("voucher")
     .populate({
       path: "showtime",
