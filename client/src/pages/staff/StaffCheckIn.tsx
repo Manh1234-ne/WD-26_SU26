@@ -72,7 +72,9 @@ export function StaffCheckIn() {
           b.bookingCode?.toUpperCase() === cleanCode ||
           b._id === cleanCode ||
           b._id?.toLowerCase() === code.toLowerCase() ||
-          b.user?.phone?.includes(code)
+          b.customerPhone?.includes(code) ||
+          b.user?.phone?.includes(code) ||
+          b.customerName?.toLowerCase().includes(code.toLowerCase())
       );
 
       if (!found) {

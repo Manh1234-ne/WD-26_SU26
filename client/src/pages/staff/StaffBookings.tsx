@@ -119,6 +119,8 @@ export function StaffBookings() {
       const matchSearch =
         !searchText ||
         item.bookingCode?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.customerName?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.customerPhone?.includes(searchText) ||
         item.user?.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
         item.user?.phone?.includes(searchText) ||
         item.showtime?.movie?.title?.toLowerCase().includes(searchText.toLowerCase());
