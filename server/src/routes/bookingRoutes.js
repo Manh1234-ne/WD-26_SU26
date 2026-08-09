@@ -14,13 +14,13 @@ import {
   updateBookingCombos,
   incrementPrintCount
 } from "../controllers/bookingController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+import { protect, optionalProtect } from "../middlewares/authMiddleware.js";
 import { isAdmin, isStaffOrAdmin } from "../middlewares/adminMiddleware.js";
 
 const routerBooking = express.Router();
 
 routerBooking.get("/", getAllBookings);
-routerBooking.post("/", createBooking);
+routerBooking.post("/", optionalProtect, createBooking);
 
 routerBooking.get("/user/:userId", getBookingsByUser);
 

@@ -5,6 +5,7 @@ import {
   toggleUserActive,
   updateUserRole,
   deleteUser,
+  getUserByPhone,
 } from "../controllers/userController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
@@ -14,6 +15,7 @@ const routerUser = express.Router();
 routerUser.use(protect);
 
 routerUser.get("/", getAllUsers);
+routerUser.get("/by-phone/:phone", getUserByPhone);
 routerUser.get("/:id", getUserById);
 routerUser.patch("/:id/toggle-active", toggleUserActive);
 routerUser.patch("/:id/role", updateUserRole);
