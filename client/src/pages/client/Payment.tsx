@@ -215,6 +215,39 @@ function Payment() {
         }
     }
 
+    const applyCombosLocally = async () => {
+        if (!bookingId || !booking) return;
+        setIsProcessing(true);
+        try {
+            const combosPayload = Object.entries(selectedCombos)
+                .map(([combo, quantity]) => ({ combo, quantity }))
+                .filter((c) => c.quantity > 0);
+
+            const res = await api.patch(`/bookings/${bookingId}/combos`, { combos: combosPayload });
+            if (!res.data?.success) {
+                message.error(res.data?.message || "Không thể cập nhật combo");
+                setIsProcessing(false);
+                return;
+            }
+
+            const data = res.data.data;
+            if (data?.booking) {
+                setFinalAmount(data.booking.finalAmount ?? finalAmount);
+                setDiscountAmount(data.booking.discountAmount ?? 0);
+                setAppliedVoucher(data.booking.voucher ?? null);
+            }
+
+            // refresh booking cache
+            queryClient.invalidateQueries({ queryKey: ["booking", bookingId] });
+            message.success("Cập nhật combo thành công");
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || "Lỗi khi cập nhật combo";
+            message.error(msg);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handlePayment = async () => {
         if (!bookingId || !booking) return;
 
@@ -432,9 +465,9 @@ function Payment() {
                             )
                         })}
                     </div>
-                    {/* <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <button type="button" onClick={applyCombosLocally} className="primary-button" style={{ padding: '8px 12px' }}>Cập nhật combo</button>
-                    </div> */}
+                    </div>
                 </div>
 
                 <div style={{ marginTop: "20px", border: "1px dashed #f59e0b", borderRadius: "10px", padding: "14px", background: "#fff7ed" }}>

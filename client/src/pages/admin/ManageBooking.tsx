@@ -145,6 +145,7 @@ function ManageBooking() {
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<BookingWithSeats | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [qrComboUrl, setQrComboUrl] = useState<string>("");
   const [scannerModalOpen, setScannerModalOpen] = useState(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
@@ -154,6 +155,7 @@ function ManageBooking() {
     setLoadingDetails(true);
     setSelectedBookingDetails(null);
     setQrCodeUrl("");
+    setQrComboUrl("");
 
     try {
       const res = await getBookingById(bookingId);
@@ -173,6 +175,18 @@ function ManageBooking() {
           };
           const url = await QRCode.toDataURL(JSON.stringify(ticketData));
           setQrCodeUrl(url);
+
+          const comboData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            type: "combo",
+          };
+          const comboUrl = await QRCode.toDataURL(JSON.stringify(comboData));
+          setQrComboUrl(comboUrl);
         }
       } else {
         void message.error("Không thể tải chi tiết vé");
@@ -683,6 +697,7 @@ function ManageBooking() {
     setLoadingDetails(true);
     setSelectedBookingDetails(null);
     setQrCodeUrl("");
+    setQrComboUrl("");
 
     try {
       const res = await getBookingById(booking._id);
@@ -701,6 +716,18 @@ function ManageBooking() {
           };
           const url = await QRCode.toDataURL(JSON.stringify(ticketData));
           setQrCodeUrl(url);
+
+          const comboData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            type: "combo",
+          };
+          const comboUrl = await QRCode.toDataURL(JSON.stringify(comboData));
+          setQrComboUrl(comboUrl);
         }
       } else {
         void message.error("Không thể tải chi tiết ghế ngồi");
@@ -720,6 +747,7 @@ function ManageBooking() {
         let matchesSearch = true;
         if (searchLower) {
           matchesSearch = [
+            booking._id,
             booking.bookingCode,
             booking.user?.fullName,
             booking.user?.email,
@@ -1506,9 +1534,14 @@ function ManageBooking() {
                     {selectedBookingDetails.combos && selectedBookingDetails.combos.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {selectedBookingDetails.combos.map((item: any) => (
-                          <div key={item._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ fontWeight: 700 }}>{item.combo?.name || (item.combo && item.combo.name) || "Không xác định"} x{item.quantity}</div>
-                            <div style={{ fontWeight: 700 }}>{formatCurrency(item.totalPrice || (item.unitPrice || 0) * (item.quantity || 0))}</div>
+                          <div key={item._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px" }}>
+                            <div>
+                              <strong>{item.combo?.name || (item.combo && item.combo.name) || "Không xác định"}</strong>
+                              <span style={{ marginLeft: 8, color: "#64748b", fontWeight: 400 }}>x{item.quantity}</span>
+                            </div>
+                            <div style={{ fontWeight: 700, color: "#e11d48", whiteSpace: "nowrap" }}>
+                              {formatCurrency(item.totalPrice || (item.unitPrice || 0) * (item.quantity || 0))}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1539,8 +1572,15 @@ function ManageBooking() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 16px", backgroundColor: "#f8fafc", borderRadius: "8px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <Text type="secondary">Tiền ghế gốc</Text>
-                    <Text strong>{formatCurrency(selectedBookingDetails.booking.totalSeatPrice || selectedBookingDetails.booking.finalAmount)}</Text>
+                    <Text strong>{formatCurrency(selectedBookingDetails.booking.totalSeatPrice || 0)}</Text>
                   </div>
+
+                  {selectedBookingDetails.booking.totalComboPrice > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <Text type="secondary">Tiền combo</Text>
+                      <Text strong>{formatCurrency(selectedBookingDetails.booking.totalComboPrice)}</Text>
+                    </div>
+                  )}
 
                   {selectedBookingDetails.booking.voucher && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1584,11 +1624,26 @@ function ManageBooking() {
                   </div>
                   <div style={{ width: "1px", height: "50px", backgroundColor: "#e2e8f0" }} />
                   {qrCodeUrl ? (
-                    <img
-                      src={qrCodeUrl}
-                      alt="Ticket QR Code"
-                      style={{ width: "80px", height: "80px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
-                    />
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <img
+                          src={qrCodeUrl}
+                          alt="Ticket QR Code"
+                          style={{ width: "70px", height: "70px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+                        />
+                        <span style={{ fontSize: "8px", color: "#64748b", marginTop: 2, fontWeight: 700 }}>VÉ VÀO CỔNG</span>
+                      </div>
+                      {qrComboUrl && selectedBookingDetails.booking.totalComboPrice > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <img
+                            src={qrComboUrl}
+                            alt="Combo QR Code"
+                            style={{ width: "70px", height: "70px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+                          />
+                          <span style={{ fontSize: "8px", color: "#64748b", marginTop: 2, fontWeight: 700 }}>QR COMBO</span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <QrcodeOutlined style={{ fontSize: 44, color: "#94a3b8" }} />
                   )}
