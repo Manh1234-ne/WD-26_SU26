@@ -17,7 +17,7 @@ import {
   Result,
   DatePicker,
 } from "antd";
-import { ClapperboardIcon, PopcornIcon } from "@hugeicons/core-free-icons"
+import { ClapperboardIcon, PopcornIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ShoppingOutlined,
@@ -27,6 +27,9 @@ import {
   UserOutlined,
   DollarOutlined,
   CoffeeOutlined,
+  SearchOutlined,
+  PercentageOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -98,6 +101,16 @@ export function StaffPos() {
   // Customer info & Payment method
   const [customerName, setCustomerName] = useState<string>("Khách vãng lai");
   const [customerPhone, setCustomerPhone] = useState<string>("");
+  const [foundUser, setFoundUser] = useState<any>(null);
+  const [searchingUser, setSearchingUser] = useState(false);
+
+  // Voucher state
+  const [voucherCodeInput, setVoucherCodeInput] = useState<string>("");
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+
+  // Cash payment calculator state
+  const [cashGiven, setCashGiven] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [submitting, setSubmitting] = useState(false);
 
@@ -119,7 +132,6 @@ export function StaffPos() {
       const showtimesRes = await api.get(`/showtimes?date=${dateStr}&includePast=true`);
       const sList: Showtime[] = showtimesRes.data?.data || showtimesRes.data || [];
       setShowtimes(sList);
-      // Reset showtime selection when date changes
       setSelectedShowtimeId("");
       setSelectedMovieId("");
     } catch (err) {
@@ -192,17 +204,14 @@ export function StaffPos() {
       setSeats([]);
       setOccupiedSeatIds([]);
 
-      // Load seats
       api.get(`/seats/room/${roomId}`)
         .then((seatsRes) => {
-          // API trả về { room, seats } bên trong data
           const raw = seatsRes.data?.data ?? seatsRes.data;
           const seatArr: Seat[] = Array.isArray(raw)
             ? raw
             : Array.isArray(raw?.seats)
               ? raw.seats
               : [];
-          console.log("[POS] seats fetched:", seatArr.length, "ghế");
           setSeats(seatArr);
         })
         .catch((err) => {
@@ -210,6 +219,7 @@ export function StaffPos() {
           toast.error("Không thể tải sơ đồ ghế");
         })
         .finally(() => setLoading(false));
+
       api.get(`/booking-seats/showtime/${selectedShowtimeId}/occupied`)
         .then((occRes) => {
           const rawOcc = occRes.data?.data ?? occRes.data;
@@ -219,11 +229,9 @@ export function StaffPos() {
           );
         })
         .catch((err) => {
-          console.error("[POS] Không tải được ghế đã bán, tiếp tục:", err);
-          // Not blocking - seat map still shows without occupied info
+          console.error("[POS] Không tải được ghế đã bán:", err);
         });
     } else {
-      console.warn("[POS] Suất chiếu không có room._id:", st);
       toast.warning("Suất chiếu này chưa được gán phòng chiếu!");
     }
   }, [selectedShowtimeId, showtimes]);
@@ -270,7 +278,6 @@ export function StaffPos() {
       if (!map[seat.row]) map[seat.row] = [];
       map[seat.row].push(seat);
     });
-    // Sort seats in each row by number
     Object.keys(map).forEach((r) => {
       map[r].sort((a, b) => a.number - b.number);
     });
@@ -319,13 +326,115 @@ export function StaffPos() {
     }, 0);
   }, [selectedCombos, combos]);
 
-  const grandTotal = seatTotalPrice + comboTotalPrice;
+  // Customer search by phone
+  const handleSearchCustomerByPhone = async () => {
+    if (!customerPhone || !customerPhone.trim()) {
+      toast.warning("Vui lòng nhập số điện thoại để tra cứu thành viên");
+      return;
+    }
+    setSearchingUser(true);
+    try {
+      const res = await api.get(`/users/by-phone/${customerPhone.trim()}`);
+      const userData = res.data?.data || res.data;
+      if (userData && userData._id) {
+        setFoundUser(userData);
+        setCustomerName(userData.fullName || "Khách thành viên");
+        toast.success(`Đã tìm thấy thành viên: ${userData.fullName}`);
+      } else {
+        setFoundUser(null);
+        toast.info("Không tìm thấy thành viên với SĐT này (Đơn lưu dạng Khách vãng lai)");
+      }
+    } catch {
+      setFoundUser(null);
+      toast.info("Không tìm thấy thông tin thành viên (Đơn lưu dạng Khách vãng lai)");
+    } finally {
+      setSearchingUser(false);
+    }
+  };
 
-  // Handle Combo-Only Order (không cần ghế/showtime)
+  // Voucher validation
+  const handleApplyVoucher = async () => {
+    if (!voucherCodeInput.trim()) {
+      toast.warning("Vui lòng nhập mã voucher");
+      return;
+    }
+    setVoucherLoading(true);
+    try {
+      const res = await api.get("/vouchers");
+      const list: any[] = res.data?.data || res.data || [];
+      const codeUpper = voucherCodeInput.trim().toUpperCase();
+      const v = list.find((item) => item.code?.toUpperCase() === codeUpper && item.isActive);
+
+      if (!v) {
+        toast.error("Mã voucher không tồn tại hoặc đã bị khóa/hết hạn!");
+        setAppliedVoucher(null);
+        return;
+      }
+
+      const now = new Date();
+      if (new Date(v.startDate) > now || new Date(v.endDate) < now) {
+        toast.error("Voucher không nằm trong thời gian sử dụng!");
+        setAppliedVoucher(null);
+        return;
+      }
+
+      const subtotal = seatTotalPrice + comboTotalPrice;
+      if (v.minOrderAmount && subtotal < v.minOrderAmount) {
+        toast.error(`Đơn hàng tối thiểu ${v.minOrderAmount.toLocaleString("vi-VN")} đ để áp dụng voucher này!`);
+        setAppliedVoucher(null);
+        return;
+      }
+
+      setAppliedVoucher(v);
+      toast.success(`Đã áp dụng mã giảm giá ${v.code}!`);
+    } catch {
+      toast.error("Lỗi khi kiểm tra voucher");
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCodeInput("");
+    toast.info("Đã hủy áp dụng voucher");
+  };
+
+  // Discount & Totals calculation
+  const discountAmount = useMemo(() => {
+    if (!appliedVoucher) return 0;
+    const subtotal = seatTotalPrice + comboTotalPrice;
+    if (appliedVoucher.minOrderAmount && subtotal < appliedVoucher.minOrderAmount) return 0;
+
+    let discount = 0;
+    if (appliedVoucher.discountType === "percent") {
+      discount = (subtotal * appliedVoucher.discountValue) / 100;
+      if (appliedVoucher.maxDiscountAmount && discount > appliedVoucher.maxDiscountAmount) {
+        discount = appliedVoucher.maxDiscountAmount;
+      }
+    } else if (appliedVoucher.discountType === "fixed") {
+      discount = appliedVoucher.discountValue;
+    }
+
+    return Math.min(discount, subtotal);
+  }, [appliedVoucher, seatTotalPrice, comboTotalPrice]);
+
+  const grandTotal = Math.max(0, seatTotalPrice + comboTotalPrice - discountAmount);
+
+  const cashChange = useMemo(() => {
+    if (cashGiven === null || cashGiven === undefined) return 0;
+    return cashGiven - grandTotal;
+  }, [cashGiven, grandTotal]);
+
+  // Handle Combo-Only Order
   const handleCreateComboOnlyOrder = async () => {
     const hasItems = Object.values(selectedCombos).some((qty) => qty > 0);
     if (!hasItems) {
       toast.error("Vui lòng chọn ít nhất 1 combo/bắp nước!");
+      return;
+    }
+    if (paymentMethod === "cash" && (cashGiven === null || cashGiven < grandTotal)) {
+      toast.error("Số tiền khách đưa chưa đủ để hoàn tất thanh toán!");
       return;
     }
 
@@ -370,15 +479,17 @@ export function StaffPos() {
       toast.error("Vui lòng chọn ít nhất 1 ghế!");
       return;
     }
+    if (paymentMethod === "cash" && (cashGiven === null || cashGiven < grandTotal)) {
+      toast.error("Số tiền khách đưa chưa đủ để hoàn tất thanh toán!");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      // 1. Prepare combos array
       const comboItems = Object.entries(selectedCombos)
         .filter(([_, qty]) => qty > 0)
         .map(([cId, qty]) => ({ combo: cId, quantity: qty }));
 
-      // 2. Create booking payload
       const payload = {
         showtime: selectedShowtimeId,
         seatIds: selectedSeats.map((s) => s._id),
@@ -387,32 +498,21 @@ export function StaffPos() {
         customerPhone: customerPhone || "",
         paymentMethod: paymentMethod,
         isCounterSale: true,
+        voucherCode: appliedVoucher?.code || undefined,
+        user: foundUser?._id || undefined,
       };
 
       const res = await api.post("/bookings", payload);
       const bookingData = res.data?.data || res.data;
 
-      // 3. Automatically complete booking for POS cash/counter payment
-      let finalBooking = bookingData;
-      if (bookingData?._id) {
-        try {
-          const completeRes = await api.patch(`/bookings/${bookingData._id}/complete`);
-          finalBooking = completeRes.data?.data || completeRes.data || bookingData;
-        } catch {
-          // Keep base booking if complete patch auto-handled by server
-        }
-      }
-
-      // Generate QR code for receipt
-      const bookingCode = finalBooking?.bookingCode || bookingData?._id || "LUMORA-POS";
+      const bookingCode = bookingData?.bookingCode || bookingData?._id || "LUMORA-POS";
       const qrData = await QRCode.toDataURL(bookingCode);
 
       setQrCodeDataUrl(qrData);
-      setCreatedBooking(finalBooking);
+      setCreatedBooking(bookingData);
       setPrintModalVisible(true);
       toast.success("Tạo đơn vé quầy thành công!");
 
-      // Refresh occupied seats
       setOccupiedSeatIds([...occupiedSeatIds, ...selectedSeats.map((s) => s._id)]);
     } catch (err: any) {
       console.error(err);
@@ -427,6 +527,10 @@ export function StaffPos() {
     setSelectedCombos({});
     setCustomerName("Khách vãng lai");
     setCustomerPhone("");
+    setFoundUser(null);
+    setVoucherCodeInput("");
+    setAppliedVoucher(null);
+    setCashGiven(null);
     setPrintModalVisible(false);
     setCreatedBooking(null);
     setCreatedComboOrder(null);
@@ -458,16 +562,15 @@ export function StaffPos() {
           <ShoppingOutlined style={{ fontSize: 24, color: "#b91c1c" }} />
           <div>
             <Title level={4} style={{ color: "white", margin: 0 }}>
-              Hệ Thống Bán Vé Quầy
+              Hệ Thống Bán Vé Quầy (Staff POS)
             </Title>
             <Text style={{ color: "#94a3b8", fontSize: 13 }}>
-              Nhân viên lập vé trực tiếp • Ca làm việc: {staffUser?.fullName}
+              Nhân viên lập vé trực tiếp • Ca làm việc: {staffUser?.fullName || "Staff"}
             </Text>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {/* Mode selector */}
           <div
             style={{
               display: "flex",
@@ -492,8 +595,7 @@ export function StaffPos() {
                 transition: "all 0.2s",
               }}
             >
-              <HugeiconsIcon icon={ClapperboardIcon}
-                style={{ fontSixe: 16 }} /> Bán Vé
+              <HugeiconsIcon icon={ClapperboardIcon} style={{ fontSize: 16 }} /> Bán Vé
             </button>
             <button
               type="button"
@@ -510,11 +612,7 @@ export function StaffPos() {
                 transition: "all 0.2s",
               }}
             >
-              <HugeiconsIcon
-                icon={PopcornIcon}
-                style={{ fontSixe: 16 }}
-              /> Chỉ Bán Bắp Nước
-
+              <HugeiconsIcon icon={PopcornIcon} style={{ fontSize: 16 }} /> Chỉ Bán Bắp Nước
             </button>
           </div>
 
@@ -528,8 +626,9 @@ export function StaffPos() {
           </Button>
         </div>
       </div>
+
       <Row gutter={[20, 20]}>
-        {/* Left Column: Movie, Showtime & Seat Selection — ẩn khi mode combo */}
+        {/* Left Column: Movie, Showtime & Seat Selection */}
         <Col xs={24} lg={posMode === "combo" ? 0 : 15} style={{ display: posMode === "combo" ? "none" : "flex", flexDirection: "column", gap: 20 }}>
           <Card title="1.Chọn Phim & Suất Chiếu" style={{ borderRadius: 12 }}>
             <Row gutter={[16, 16]}>
@@ -632,7 +731,6 @@ export function StaffPos() {
               />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                {/* Screen representation */}
                 <div
                   style={{
                     width: "80%",
@@ -652,69 +750,29 @@ export function StaffPos() {
                   MÀN HÌNH CHIẾU
                 </div>
 
-                {/* Seat legend */}
                 <Space size="large" style={{ marginBottom: 20 }}>
                   <Space>
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        background: "#e2e8f0",
-                        border: "1px solid #cbd5e1",
-                      }}
-                    />
+                    <div style={{ width: 20, height: 20, borderRadius: 4, background: "#e2e8f0", border: "1px solid #cbd5e1" }} />
                     <Text style={{ fontSize: 12 }}>Thường</Text>
                   </Space>
                   <Space>
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        background: "#fef08a",
-                        border: "1px solid #eab308",
-                      }}
-                    />
+                    <div style={{ width: 20, height: 20, borderRadius: 4, background: "#fef08a", border: "1px solid #eab308" }} />
                     <Text style={{ fontSize: 12 }}>VIP</Text>
                   </Space>
                   <Space>
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        background: "#fbcfe8",
-                        border: "1px solid #ec4899",
-                      }}
-                    />
+                    <div style={{ width: 20, height: 20, borderRadius: 4, background: "#fbcfe8", border: "1px solid #ec4899" }} />
                     <Text style={{ fontSize: 12 }}>Đôi</Text>
                   </Space>
                   <Space>
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        background: "#10b981",
-                      }}
-                    />
+                    <div style={{ width: 20, height: 20, borderRadius: 4, background: "#10b981" }} />
                     <Text style={{ fontSize: 12 }}>Đang chọn</Text>
                   </Space>
                   <Space>
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 4,
-                        background: "#94a3b8",
-                      }}
-                    />
+                    <div style={{ width: 20, height: 20, borderRadius: 4, background: "#64748b" }} />
                     <Text style={{ fontSize: 12 }}>Đã bán</Text>
                   </Space>
                 </Space>
 
-                {/* Seats Grid */}
                 <div style={{ overflowX: "auto", maxWidth: "100%", padding: "10px 0" }}>
                   {Object.keys(seatRows).map((row) => (
                     <div
@@ -727,14 +785,7 @@ export function StaffPos() {
                         justifyContent: "center",
                       }}
                     >
-                      <span
-                        style={{
-                          width: 24,
-                          fontWeight: "bold",
-                          textAlign: "center",
-                          color: "#64748b",
-                        }}
-                      >
+                      <span style={{ width: 24, fontWeight: "bold", textAlign: "center", color: "#64748b" }}>
                         {row}
                       </span>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -765,7 +816,6 @@ export function StaffPos() {
                             borderColor = "#475569";
                             textColor = "#ffffff";
                           }
-
 
                           return (
                             <button
@@ -854,8 +904,40 @@ export function StaffPos() {
               <DollarOutlined style={{ color: "#d97706" }} />
               <span>4.Thông Tin Đơn Hàng Quầy</span>
             </Space>
-          } style={{ borderRadius: 12 }}>
+          } style={{ borderRadius: 12, flex: posMode === "combo" ? 1 : undefined, minWidth: posMode === "combo" ? 340 : undefined }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Customer Phone & Member Search */}
+              <div>
+                <Text strong>Số Điện Thoại Khách Hàng:</Text>
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <Input
+                    placeholder="SĐT thành viên / khách vãng lai..."
+                    value={customerPhone}
+                    onChange={(e) => {
+                      setCustomerPhone(e.target.value);
+                      if (foundUser) setFoundUser(null);
+                    }}
+                    onPressEnter={handleSearchCustomerByPhone}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<SearchOutlined />}
+                    loading={searchingUser}
+                    onClick={handleSearchCustomerByPhone}
+                  >
+                    Tra cứu
+                  </Button>
+                </div>
+                {foundUser && (
+                  <div style={{ marginTop: 6, padding: "6px 10px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6 }}>
+                    <Tag color="success" icon={<CheckCircleOutlined />}>Thành viên hệ thống</Tag>
+                    <Text strong style={{ fontSize: 13, color: "#166534" }}>{foundUser.fullName}</Text>
+                    {foundUser.email && <Text type="secondary" style={{ fontSize: 12, display: "block" }}>{foundUser.email}</Text>}
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Name */}
               <div>
                 <Text strong>Tên Khách Hàng:</Text>
                 <Input
@@ -867,21 +949,51 @@ export function StaffPos() {
                 />
               </div>
 
+              {/* Voucher Code Input */}
               <div>
-                <Text strong>Số Điện Thoại:</Text>
-                <Input
-                  placeholder="SĐT để lưu tích điểm (tùy chọn)"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  style={{ marginTop: 4 }}
-                />
+                <Text strong>Mã Giảm Giá / Voucher Quầy:</Text>
+                {appliedVoucher ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, padding: "8px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6 }}>
+                    <div>
+                      <Tag color="blue" icon={<PercentageOutlined />}>{appliedVoucher.code}</Tag>
+                      <Text style={{ fontSize: 12, color: "#1e40af" }}>
+                        {appliedVoucher.discountType === "percent"
+                          ? `Giảm ${appliedVoucher.discountValue}%`
+                          : `Giảm ${appliedVoucher.discountValue?.toLocaleString("vi-VN")} đ`}
+                      </Text>
+                    </div>
+                    <Button size="small" type="text" danger icon={<CloseCircleOutlined />} onClick={handleRemoveVoucher}>
+                      Gỡ
+                    </Button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <Input
+                      prefix={<PercentageOutlined />}
+                      placeholder="Nhập mã voucher..."
+                      value={voucherCodeInput}
+                      onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
+                      onPressEnter={handleApplyVoucher}
+                    />
+                    <Button
+                      loading={voucherLoading}
+                      onClick={handleApplyVoucher}
+                    >
+                      Áp dụng
+                    </Button>
+                  </div>
+                )}
               </div>
 
+              {/* Payment Method */}
               <div>
                 <Text strong>Hình Thức Thanh Toán:</Text>
                 <Radio.Group
                   value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  onChange={(e) => {
+                    setPaymentMethod(e.target.value);
+                    if (e.target.value !== "cash") setCashGiven(null);
+                  }}
                   style={{ width: "100%", marginTop: 6 }}
                 >
                   <Row gutter={[8, 8]}>
@@ -899,7 +1011,64 @@ export function StaffPos() {
                 </Radio.Group>
               </div>
 
-              <Divider style={{ margin: "12px 0" }} />
+              {/* Cash Given & Change Calculator */}
+              {paymentMethod === "cash" && (
+                <div style={{ background: "#f8fafc", padding: 12, borderRadius: 8, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <Text strong style={{ fontSize: 13 }}>Máy Tính Tiền Mặt Khách Đưa:</Text>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Số tiền nhận từ khách:</Text>
+                    <InputNumber
+                      style={{ width: "100%", marginTop: 2 }}
+                      min={0}
+                      step={10000}
+                      formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, "") || 0)}
+                      placeholder="Nhập số tiền mặt..."
+                      value={cashGiven}
+                      onChange={(val) => setCashGiven(val)}
+                    />
+                  </div>
+
+                  {/* Quick cash buttons */}
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    <Button size="small" onClick={() => setCashGiven(grandTotal)}>
+                      Đủ tiền ({grandTotal.toLocaleString("vi-VN")} đ)
+                    </Button>
+                    <Button size="small" onClick={() => setCashGiven((prev) => (prev || 0) + 50000)}>
+                      +50k
+                    </Button>
+                    <Button size="small" onClick={() => setCashGiven((prev) => (prev || 0) + 100000)}>
+                      +100k
+                    </Button>
+                    <Button size="small" onClick={() => setCashGiven((prev) => (prev || 0) + 200000)}>
+                      +200k
+                    </Button>
+                    <Button size="small" onClick={() => setCashGiven((prev) => (prev || 0) + 500000)}>
+                      +500k
+                    </Button>
+                  </div>
+
+                  {/* Cash Change result */}
+                  {cashGiven !== null && (
+                    <div style={{ marginTop: 4 }}>
+                      {cashGiven < grandTotal ? (
+                        <Text type="danger" strong style={{ fontSize: 12 }}>
+                          ⚠️ Tiền khách đưa chưa đủ! (Còn thiếu {(grandTotal - (cashGiven || 0)).toLocaleString("vi-VN")} đ)
+                        </Text>
+                      ) : (
+                        <div style={{ padding: "6px 10px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Text strong style={{ color: "#15803d" }}>TIỀN THỪA TRẢ KHÁCH:</Text>
+                          <Text strong style={{ fontSize: 16, color: "#16a34a" }}>
+                            {cashChange.toLocaleString("vi-VN")} đ
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Divider style={{ margin: "8px 0" }} />
 
               {/* Price breakdown */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -912,12 +1081,19 @@ export function StaffPos() {
                   <Text strong>{comboTotalPrice.toLocaleString("vi-VN")} đ</Text>
                 </div>
 
+                {discountAmount > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <Text type="secondary">Voucher giảm giá:</Text>
+                    <Text type="danger" strong>-{discountAmount.toLocaleString("vi-VN")} đ</Text>
+                  </div>
+                )}
+
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginTop: 10,
+                    marginTop: 6,
                     padding: "12px",
                     background: "#fff2f2ff",
                     borderRadius: 8,
@@ -933,9 +1109,11 @@ export function StaffPos() {
                 </div>
               </div>
 
+              {/* Confirmation Buttons */}
               {(() => {
                 const hasSeats = selectedSeats.length > 0;
                 const hasCombos = Object.values(selectedCombos).some((q) => q > 0);
+                const isCashInsufficient = paymentMethod === "cash" && (cashGiven !== null && cashGiven < grandTotal);
 
                 if (posMode === "combo" || (!hasSeats && hasCombos)) {
                   return (
@@ -944,7 +1122,7 @@ export function StaffPos() {
                       size="large"
                       block
                       loading={submitting}
-                      disabled={!hasCombos}
+                      disabled={!hasCombos || isCashInsufficient}
                       icon={<CheckCircleOutlined />}
                       style={{
                         height: 52,
@@ -969,7 +1147,7 @@ export function StaffPos() {
                     size="large"
                     block
                     loading={submitting}
-                    disabled={!hasSeats}
+                    disabled={!hasSeats || isCashInsufficient}
                     icon={<CheckCircleOutlined />}
                     style={{
                       height: 52,
@@ -992,7 +1170,7 @@ export function StaffPos() {
         </Col>
       </Row>
 
-      {/* Ticket Print Receipt Modal */}
+      {/* Ticket Print Receipt Modal (80mm Thermal Receipt Format) */}
       <Modal
         open={printModalVisible}
         onCancel={() => setPrintModalVisible(false)}
@@ -1007,52 +1185,52 @@ export function StaffPos() {
             style={{ background: "#10b981", borderColor: "#10b981" }}
             onClick={() => window.print()}
           >
-            In Vé Giấy
+            In Hóa Đơn Vé (80mm)
           </Button>,
         ]}
-        width={420}
+        width={440}
         title={null}
       >
         <div
           id="printable-ticket"
           style={{
-            padding: "20px 10px",
+            padding: "16px 12px",
             textAlign: "center",
             background: "#ffffff",
-            fontFamily: "monospace",
+            fontFamily: "monospace, 'Courier New', sans-serif",
+            color: "#000000",
           }}
         >
-          <Title level={3} style={{ margin: 0, color: "#0f172a" }}>
+          <Title level={3} style={{ margin: 0, color: "#0f172a", letterSpacing: 1 }}>
             LUMORA CINEMA
           </Title>
-          <Text style={{ fontSize: 12 }}>
-            {createdComboOrder ? "HÓA ĐƠN BẮP NƯỚC" : "HÓA ĐƠN XÁC NHẬN VÉ XEM PHIM"}
+          <Text style={{ fontSize: 12, fontWeight: "bold" }}>
+            {createdComboOrder ? "HÓA ĐƠN BẮP NƯỚC QUẦY" : "HÓA ĐƠN XÁC NHẬN VÉ XEM PHIM"}
           </Text>
-          <Divider style={{ margin: "12px 0", borderColor: "#000" }} />
+          <Divider style={{ margin: "10px 0", borderColor: "#000", borderStyle: "dashed" }} />
 
-          <div style={{ textAlign: "left", fontSize: 13, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ textAlign: "left", fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}>
             <div>Mã đơn: <strong>{createdComboOrder?.orderCode || createdBooking?.bookingCode || "LUMORA-POS"}</strong></div>
-            <div>Ngày tạo: {dayjs().format("DD/MM/YYYY HH:mm")}</div>
-            <div>Khách hàng: {customerName} {customerPhone ? `(${customerPhone})` : ""}</div>
-            <div>Thu ngân: {staffUser?.fullName}</div>
-            <Divider style={{ margin: "8px 0", borderColor: "#ccc" }} />
+            <div>Thời gian: {dayjs().format("DD/MM/YYYY HH:mm")}</div>
+            <div>Khách hàng: <strong>{customerName}</strong> {customerPhone ? `(${customerPhone})` : ""}</div>
+            <div>Thu ngân lập vé: {staffUser?.fullName || "Nhân viên quầy"}</div>
+            <Divider style={{ margin: "6px 0", borderColor: "#aaa", borderStyle: "dashed" }} />
 
-            {/* Ticket info — chỉ hiển thị khi mode vé */}
             {!createdComboOrder && (
               <>
                 <div>Phim: <strong>{selectedShowtime?.movie?.title}</strong></div>
-                <div>Phòng: <strong>{selectedShowtime?.room?.name}</strong></div>
+                <div>Phòng chiếu: <strong>{selectedShowtime?.room?.name}</strong></div>
                 <div>Suất chiếu: <strong>{dayjs(selectedShowtime?.startTime).format("DD/MM/YYYY - HH:mm")}</strong></div>
                 <div>
-                  Ghế: <strong>{selectedSeats.map((s) => s.code).join(", ")}</strong>
+                  Vị trí ghế: <strong>{selectedSeats.map((s) => s.code).join(", ")}</strong> ({selectedSeats.length} ghế)
                 </div>
+                <Divider style={{ margin: "6px 0", borderColor: "#aaa", borderStyle: "dashed" }} />
               </>
             )}
 
-            {/* Combo items */}
             {createdComboOrder ? (
               <div>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>Bắp nước:</div>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Bắp nước đã mua:</div>
                 {createdComboOrder.items?.map((item: any, idx: number) => (
                   <div key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>{item.combo?.name || "Combo"} x{item.quantity}</span>
@@ -1062,36 +1240,96 @@ export function StaffPos() {
               </div>
             ) : Object.keys(selectedCombos).some((k) => selectedCombos[k] > 0) && (
               <div>
-                Combo:{" "}
-                <strong>
-                  {Object.entries(selectedCombos)
-                    .filter(([_, qty]) => qty > 0)
-                    .map(([cId, qty]) => {
-                      const cb = combos.find((c) => c._id === cId);
-                      return `${cb?.name || "Combo"} x${qty}`;
-                    })
-                    .join(", ")}
-                </strong>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>Bắp nước kèm theo:</div>
+                {Object.entries(selectedCombos)
+                  .filter(([_, qty]) => qty > 0)
+                  .map(([cId, qty]) => {
+                    const cb = combos.find((c) => c._id === cId);
+                    return (
+                      <div key={cId} style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>{cb?.name || "Combo"} x{qty}</span>
+                        <span>{((cb?.price || 0) * qty).toLocaleString("vi-VN")} đ</span>
+                      </div>
+                    );
+                  })}
+                <Divider style={{ margin: "6px 0", borderColor: "#aaa", borderStyle: "dashed" }} />
               </div>
             )}
 
-            <Divider style={{ margin: "8px 0", borderColor: "#ccc" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: "bold" }}>
-              <span>TỔNG TIỀN:</span>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Tổng tiền ghế:</span>
+              <span>{seatTotalPrice.toLocaleString("vi-VN")} đ</span>
+            </div>
+            {comboTotalPrice > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Tổng bắp nước:</span>
+                <span>{comboTotalPrice.toLocaleString("vi-VN")} đ</span>
+              </div>
+            )}
+            {discountAmount > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Voucher giảm giá ({appliedVoucher?.code}):</span>
+                <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
+              </div>
+            )}
+            <Divider style={{ margin: "6px 0", borderColor: "#000", borderStyle: "solid" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: "bold" }}>
+              <span>TỔNG TIỀN THANH TOÁN:</span>
               <span>{(createdComboOrder?.totalAmount ?? grandTotal).toLocaleString("vi-VN")} đ</span>
             </div>
-            <div>Hình thức: {paymentMethod === "cash" ? "Tiền mặt" : "Chuyển khoản / QR"}</div>
+
+            <div style={{ marginTop: 4 }}>Hình thức: {paymentMethod === "cash" ? "Tiền mặt" : "Chuyển khoản / QR"}</div>
+
+            {paymentMethod === "cash" && cashGiven !== null && cashGiven !== undefined && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Tiền khách đưa:</span>
+                  <span>{cashGiven.toLocaleString("vi-VN")} đ</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+                  <span>Tiền thừa trả lại:</span>
+                  <span>{Math.max(0, cashGiven - grandTotal).toLocaleString("vi-VN")} đ</span>
+                </div>
+              </>
+            )}
           </div>
 
           {qrCodeDataUrl && (
-            <div style={{ marginTop: 16 }}>
-              <img src={qrCodeDataUrl} alt="QR Code Vé" style={{ width: 140, height: 140 }} />
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Quét mã QR tại cổng soát vé</div>
+            <div style={{ marginTop: 14 }}>
+              <img src={qrCodeDataUrl} alt="QR Code Vé" style={{ width: 130, height: 130 }} />
+              <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>Quét mã QR tại cổng kiểm soát để vào phòng chiếu</div>
             </div>
           )}
+
+          <div style={{ marginTop: 12, fontSize: 10, fontStyle: "italic", color: "#64748b" }}>
+            Cảm ơn quý khách đã chọn Lumora Cinema!
+          </div>
         </div>
+
+        <style>{`
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
+            #printable-ticket, #printable-ticket * {
+              visibility: visible !important;
+            }
+            #printable-ticket {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 80mm !important;
+              padding: 4mm !important;
+              background: #fff !important;
+              color: #000 !important;
+            }
+            .ant-modal-footer, .ant-modal-close {
+              display: none !important;
+            }
+          }
+        `}</style>
       </Modal>
-    </div >
+    </div>
   );
 }
 
