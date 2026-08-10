@@ -20,6 +20,19 @@ const fail = (res, status, message) =>
     message,
   });
 
+const validateVoucherDates = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "Ngày bắt đầu hoặc ngày kết thúc không hợp lệ";
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (end < today) return "Ngày kết thúc không được nằm trong quá khứ";
+  if (end < start) return "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu";
+  return null;
+};
+
 export const getAllVouchers = asyncHandler(
   async (req, res) => {
     const vouchers = await Voucher.find()
@@ -98,21 +111,12 @@ export const createVoucher = asyncHandler(
       );
     }
 
-    if (discountType === "percent" && discountValue > 100) {
-      return fail(
-        res,
-        400,
-        "Giá trị giảm theo phần trăm không được vượt quá 100%"
-      );
+    if (discountType === "percent" && (discountValue < 0 || discountValue > 100)) {
+      return fail(res, 400, "Phần trăm giảm giá phải nằm trong khoảng 0 đến 100%");
     }
 
-    if (new Date(endDate) < new Date(startDate)) {
-      return fail(
-        res,
-        400,
-        "Ngày kết thúc không được trước ngày bắt đầu"
-      );
-    }
+    const dateError = validateVoucherDates(startDate, endDate);
+    if (dateError) return fail(res, 400, dateError);
 
     const voucher = await Voucher.create({
       code,
@@ -178,27 +182,16 @@ export const updateVoucher = asyncHandler(
       );
     }
 
-    const newDiscountType = req.body.discountType !== undefined ? req.body.discountType : voucher.discountType;
-    const newDiscountValue = req.body.discountValue !== undefined ? req.body.discountValue : voucher.discountValue;
-
-    if (newDiscountType === "percent" && newDiscountValue > 100) {
-      return fail(
-        res,
-        400,
-        "Giá trị giảm theo phần trăm không được vượt quá 100%"
-      );
+    const nextDiscountType = req.body.discountType ?? voucher.discountType;
+    const nextDiscountValue = req.body.discountValue ?? voucher.discountValue;
+    if (nextDiscountType === "percent" && (nextDiscountValue < 0 || nextDiscountValue > 100)) {
+      return fail(res, 400, "Phần trăm giảm giá phải nằm trong khoảng 0 đến 100%");
     }
 
-    const newStartDate = req.body.startDate !== undefined ? new Date(req.body.startDate) : new Date(voucher.startDate);
-    const newEndDate = req.body.endDate !== undefined ? new Date(req.body.endDate) : new Date(voucher.endDate);
-
-    if (newEndDate < newStartDate) {
-      return fail(
-        res,
-        400,
-        "Ngày kết thúc không được trước ngày bắt đầu"
-      );
-    }
+    const nextStartDate = req.body.startDate ?? voucher.startDate;
+    const nextEndDate = req.body.endDate ?? voucher.endDate;
+    const dateErr = validateVoucherDates(nextStartDate, nextEndDate);
+    if (dateErr) return fail(res, 400, dateErr);
 
     Object.assign(voucher, req.body);
 

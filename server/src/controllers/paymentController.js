@@ -199,16 +199,19 @@ export const mockMomoFail = async (req, res) => {
 
   const booking = await Booking.findById(payment.booking);
 
-  booking.status = "cancelled";
-  await booking.save();
+  if (booking && booking.expiresAt && new Date(booking.expiresAt) < new Date()) {
+    booking.status = "expired";
+    booking.cancelledAt = new Date();
+    await booking.save();
 
-  await BookingSeat.updateMany(
-    { booking: booking._id },
-    { status: "cancelled" }
-  );
+    await BookingSeat.updateMany(
+      { booking: booking._id },
+      { status: "cancelled" }
+    );
+  }
 
   return res.redirect(
-    `http://localhost:5173/payment-success?status=fail&bookingId=${booking._id}`
+    `http://localhost:5173/payment-success?status=fail&bookingId=${booking?._id}`
   );
 };
 

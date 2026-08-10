@@ -160,6 +160,21 @@ interface RoomOccupancyRow {
   occupancy: number;
 }
 
+interface ShowtimeStatistics {
+  peakHours: { hour: number; count: number }[];
+  peakRooms: { roomId: string; roomName: string; count: number }[];
+  peakDates: { date: string; count: number }[];
+  peakWeekdays: { dayOfWeek: number; count: number }[];
+}
+
+interface MovieRanking {
+  movieId: string;
+  title: string;
+  revenue: number;
+  tickets: number;
+  bookings: number;
+}
+
 
 const formatVND = (value: number) => {
   return new Intl.NumberFormat("vi-VN", {
@@ -191,6 +206,8 @@ function Dashboard() {
   const [selectedMovie, setSelectedMovie] = useState<string>("all");
   const [revenueTimeframe, setRevenueTimeframe] = useState<"day" | "week" | "month">("day");
   const [tableSearchText, setTableSearchText] = useState<string>("");
+  const [showtimeStatistics, setShowtimeStatistics] = useState<ShowtimeStatistics | null>(null);
+  const [movieRankings, setMovieRankings] = useState<{ topRevenue: MovieRanking[]; hotMovies: MovieRanking[] }>({ topRevenue: [], hotMovies: [] });
 
 
   const fetchDashboardData = useCallback(async () => {
@@ -203,6 +220,8 @@ function Dashboard() {
         showtimesRes,
         roomsRes,
         bookingSeatsRes,
+        showtimeStatisticsRes,
+        movieRankingsRes,
       ] = await Promise.allSettled([
         api.get("/bookings"),
         api.get("/movies"),
@@ -210,6 +229,8 @@ function Dashboard() {
         api.get("/showtimes?includePast=true"),
         api.get("/rooms"),
         api.get("/booking-seats"),
+        api.get("/statistics/showtimes"),
+        api.get("/statistics/movies"),
       ]);
 
       if (bookingsRes.status === "fulfilled" && bookingsRes.value.data?.data) {
@@ -236,6 +257,12 @@ function Dashboard() {
         const raw = bookingSeatsRes.value.data.data;
         setBookingSeats(Array.isArray(raw) ? raw : Array.isArray(raw.bookingSeats) ? raw.bookingSeats : []);
       }
+      if (showtimeStatisticsRes.status === "fulfilled" && showtimeStatisticsRes.value.data?.data) {
+        setShowtimeStatistics(showtimeStatisticsRes.value.data.data);
+      }
+      if (movieRankingsRes.status === "fulfilled" && movieRankingsRes.value.data?.data) {
+        setMovieRankings(movieRankingsRes.value.data.data);
+      }
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu từ server API:", error);
       message.error("Không thể kết nối đến server API để lấy dữ liệu");
@@ -247,6 +274,23 @@ function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (dateRange?.[0]) params.startDate = dateRange[0].startOf("day").toISOString();
+    if (dateRange?.[1]) params.endDate = dateRange[1].endOf("day").toISOString();
+    if (selectedMovie !== "all") params.movie = selectedMovie;
+
+    void Promise.all([
+      api.get("/statistics/showtimes", { params }),
+      api.get("/statistics/movies", { params }),
+    ]).then(([showtimeResponse, movieResponse]) => {
+      setShowtimeStatistics(showtimeResponse.data?.data || null);
+      setMovieRankings(movieResponse.data?.data || { topRevenue: [], hotMovies: [] });
+    }).catch((error) => {
+      console.error("Không thể cập nhật thống kê theo bộ lọc:", error);
+    });
+  }, [dateRange, selectedMovie]);
 
 
   const handleReset = () => {
@@ -538,6 +582,12 @@ function Dashboard() {
   }, [filteredBookings]);
 
   const topMoviesData = useMemo(() => {
+    if (movieRankings.topRevenue.length > 0) {
+      return movieRankings.topRevenue.map((movie) => ({
+        name: movie.title,
+        revenue: Math.round(movie.revenue / 1000000),
+      }));
+    }
     const map = new Map<string, number>();
 
     filteredBookings.forEach((b) => {
@@ -555,7 +605,7 @@ function Dashboard() {
 
     list.sort((a, b) => b.revenue - a.revenue);
     return list.slice(0, 5);
-  }, [filteredBookings]);
+  }, [filteredBookings, movieRankings.topRevenue]);
 
   const bookingStatusData = useMemo(() => {
     let pendingCount = 0;
@@ -878,7 +928,7 @@ function Dashboard() {
     const list = Array.isArray(movies) ? movies : [];
     return [
       { label: "Tất cả phim", value: "all" },
-      ...list.map((m) => ({ label: m.title, value: m.title })),
+      ...list.map((m) => ({ label: m.title, value: m._id })),
     ];
   }, [movies]);
 
@@ -1052,6 +1102,26 @@ function Dashboard() {
         </div>
 
 
+        <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="cinema-card" title={<span><ClockCircleOutlined className="card-title-icon" /> Khung giờ chiếu nhiều nhất</span>}>
+              <Title level={3} style={{ margin: 0 }}>{showtimeStatistics?.peakHours[0] ? `${String(showtimeStatistics.peakHours[0].hour).padStart(2, "0")}:00 - ${String((showtimeStatistics.peakHours[0].hour + 1) % 24).padStart(2, "0")}:00` : "Chưa có dữ liệu"}</Title>
+              <Text type="secondary">{showtimeStatistics?.peakHours[0]?.count || 0} suất chiếu</Text>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="cinema-card" title={<span><VideoCameraOutlined className="card-title-icon" /> Phòng chiếu nhiều nhất</span>}>
+              <Title level={3} style={{ margin: 0 }}>{showtimeStatistics?.peakRooms[0]?.roomName || "Chưa có dữ liệu"}</Title>
+              <Text type="secondary">{showtimeStatistics?.peakRooms[0]?.count || 0} suất chiếu</Text>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="cinema-card" title={<span><CalendarOutlined className="card-title-icon" /> Ngày chiếu nhiều nhất</span>}>
+              <Title level={3} style={{ margin: 0 }}>{showtimeStatistics?.peakDates[0] ? dayjs(showtimeStatistics.peakDates[0].date).format("DD/MM/YYYY") : "Chưa có dữ liệu"}</Title>
+              <Text type="secondary">{showtimeStatistics?.peakDates[0]?.count || 0} suất chiếu</Text>
+            </Card>
+          </Col>
+        </Row>
         <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
           {kpiData.map((item) => (
             <Col xs={24} sm={12} lg={6} key={item.id}>
@@ -1393,8 +1463,22 @@ function Dashboard() {
 
 
         <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
-
-          <Col xs={24}>
+          <Col xs={24} lg={8}>
+            <Card
+              className="cinema-card"
+              title={<span><FireOutlined className="card-title-icon" /> Top phim hot theo vé bán</span>}
+            >
+              <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                {movieRankings.hotMovies.length > 0 ? movieRankings.hotMovies.map((movie, index) => (
+                  <div key={movie.movieId} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <Text strong ellipsis style={{ maxWidth: 190 }}>{index + 1}. {movie.title}</Text>
+                    <Tag color={index === 0 ? "error" : "blue"}>{formatNumber(movie.tickets)} vé</Tag>
+                  </div>
+                )) : <Text type="secondary">Chưa có dữ liệu vé đã bán</Text>}
+              </Space>
+            </Card>
+          </Col>
+          <Col xs={24} lg={16}>
             <Card
               className="cinema-card"
               title={

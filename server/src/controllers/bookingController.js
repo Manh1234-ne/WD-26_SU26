@@ -37,9 +37,23 @@ const fail = (res, status, message) =>
 
 export const createBooking = asyncHandler(
   async (req, res) => {
-    const { user, showtime, seatIds, voucherCode, comboIds = [], customExpiresAt } = req.body;
+    const {
+      user,
+      showtime,
+      seatIds,
+      voucherCode,
+      comboIds = [],
+      combos = [],
+      customExpiresAt,
+      isCounterSale,
+      customerName,
+      customerPhone,
+      paymentMethod,
+    } = req.body;
 
-    if (!user || !showtime || !seatIds?.length) {
+    const targetUser = user || req.user?._id || null;
+
+    if ((!targetUser && !isCounterSale) || !showtime || !seatIds?.length) {
       return fail(
         res,
         400,
@@ -47,12 +61,18 @@ export const createBooking = asyncHandler(
       );
     }
     const booking = await createBookingService({
-      user,
+      user: targetUser,
       showtime,
       seatIds,
       voucherCode,
       comboIds,
-      customExpiresAt
+      combos,
+      customExpiresAt,
+      isCounterSale: Boolean(isCounterSale),
+      customerName: customerName || "Khách vãng lai",
+      customerPhone: customerPhone || "",
+      paymentMethod: paymentMethod || "cash",
+      createdByStaff: req.user?._id || null,
     });
 
     return created(res, booking);
@@ -67,6 +87,8 @@ export const getBookingById = asyncHandler(async (req, res) => {
 
   const booking = await Booking.findById(id)
     .populate("user")
+    .populate("printedBy", "fullName email")
+    .populate("createdByStaff", "fullName email phone")
     .populate("voucher")
     .populate({
       path: "showtime",
@@ -98,6 +120,8 @@ export const getBookingById = asyncHandler(async (req, res) => {
 export const getAllBookings = asyncHandler(async (req, res) => {
   const bookings = await Booking.find()
     .populate("user")
+    .populate("createdByStaff", "fullName email phone")
+    .populate("printedBy", "fullName email")
     .populate("voucher")
     .populate({
       path: "showtime",
@@ -128,25 +152,59 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
 });
 
 export const completeBooking = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
+  const booking = await Booking.findOneAndUpdate(
+    { _id: req.params.id, status: "confirmed" },
+    {
+      $set: {
+        status: "completed",
+        checkedInAt: new Date(),
+        ...(req.user?._id ? { checkedInBy: req.user._id } : {}),
+      },
+    },
+    { new: true, runValidators: true }
+  );
 
-  if (!booking) {
-    return fail(res, 404, "Không tìm thấy booking");
+  if (booking) return ok(res, booking);
+
+  const existing = await Booking.findById(req.params.id);
+  if (!existing) return fail(res, 404, "Không tìm thấy booking");
+  if (existing.status === "completed") {
+    return fail(res, 409, "Vé này đã được soát trước đó");
+  }
+  return fail(res, 400, "Chỉ vé đã thanh toán mới được soát");
+});
+
+export const markBookingPrinted = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
   }
 
-  if (booking.status !== "confirmed") {
-    return fail(
-      res,
-      400,
-      "Chỉ booking đã thanh toán mới được hoàn thành"
-    );
+  const booking = await Booking.findOneAndUpdate(
+    {
+      _id: id,
+      status: { $in: ["confirmed", "completed"] },
+      printStatus: { $ne: "printed" },
+    },
+    {
+      $set: {
+        printStatus: "printed",
+        printedAt: new Date(),
+        printedBy: req.user._id,
+      },
+    },
+    { new: true, runValidators: true }
+  ).populate("printedBy", "fullName email");
+
+  if (booking) return ok(res, booking);
+
+  const existing = await Booking.findById(id);
+  if (!existing) return fail(res, 404, "Không tìm thấy booking");
+  if (!["confirmed", "completed"].includes(existing.status)) {
+    return fail(res, 400, "Chỉ vé đã thanh toán mới được in");
   }
-
-  booking.status = "completed";
-
-  await booking.save();
-
-  return ok(res, booking);
+  return fail(res, 409, "Vé này đã được in trước đó");
 });
 
 export const cancelBooking = asyncHandler(async (req, res) => {
@@ -158,6 +216,10 @@ export const cancelBooking = asyncHandler(async (req, res) => {
 
   if (booking.status === "cancelled") {
     return fail(res, 400, "Booking đã bị hủy");
+  }
+
+  if (booking.status !== "pending") {
+    return fail(res, 400, "Chỉ có thể hủy booking đang chờ thanh toán");
   }
 
   booking.status = "cancelled";

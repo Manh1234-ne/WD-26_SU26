@@ -18,6 +18,7 @@ import ManageVoucher from "./pages/admin/ManageVoucher";
 import ManagePricing from "./pages/admin/ManagePricing";
 
 import Home from "./pages/client/Home";
+import Movies from "./pages/client/Movies";
 import MovieDetail from "./pages/client/MovieDetail";
 import Showtime from "./pages/client/Showtime";
 import SeatSelection from "./pages/client/SeatSelection";
@@ -34,6 +35,12 @@ import { AdminRoute } from "./routes/AdminRoute";
 import Profile from "./pages/client/Profile";
 import ManageCombo from "./pages/admin/ManageCombo";
 import ManageInventory from "./pages/admin/ManageInventory";
+import StaffLayout from "./layouts/StaffLayout";
+import StaffRoute from "./routes/StaffRoute";
+import StaffPos from "./pages/staff/StaffPos";
+import StaffBookings from "./pages/staff/StaffBookings";
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import StaffCheckIn from "./pages/staff/StaffCheckIn";
 
 function App() {
   return (
@@ -60,6 +67,7 @@ function App() {
             {/* Client */}
             <Route element={<ClientLayout />}>
               <Route index element={<Home />} />
+              <Route path="movies" element={<Movies />} />
               <Route path="movies/:id" element={<MovieDetail />} />
               <Route path="movies/:movieId/showtimes" element={<Showtime />} />
               <Route path="booking/:showtimeId" element={<AuthGuard><SeatSelection /></AuthGuard>} />
@@ -68,6 +76,15 @@ function App() {
               <Route path="booking-history" element={<AuthGuard><BookingHistory /></AuthGuard>} />
               <Route path="history" element={<AuthGuard><Navigate to="/booking-history" replace /></AuthGuard>} />
               <Route path="profile/:id" element={<AuthGuard><Profile /></AuthGuard>}></Route>
+            </Route>
+
+            {/* Staff */}
+            <Route path="staff" element={
+              <StaffRoute><StaffLayout /></StaffRoute>}>
+              <Route index element={<StaffDashboard />} />
+              <Route path='pos' element={<StaffPos />} />
+              <Route path='bookings' element={<StaffBookings />} />
+              <Route path='checkin' element={<StaffCheckIn />} />
             </Route>
 
             {/* Admin */}
@@ -90,7 +107,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </AntdApp>
-    </ConfigProvider>
+    </ConfigProvider >
   );
 }
 

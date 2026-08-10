@@ -245,7 +245,7 @@ function ManageShowtime() {
             setIsLoading(true)
             try {
                 const [moviesData, roomsData, showtimesData] = await Promise.all([
-                    getMovies(),
+                    getMovies({ isActive: 'true', limit: '1000' }),
                     getRooms(),
                     getAllShowtimes({ includePast: true }),
                 ])
@@ -578,8 +578,8 @@ function ManageShowtime() {
                                                     showSearch
                                                     size="large"
                                                     optionFilterProp="label"
-                                                    style={{ width: '100%' }}
-                                                    options={movies.map((m) => ({ label: m.title, value: m._id }))}
+                                                    options={movies.filter(m => dayjs(m.endDate).endOf('day').valueOf() >= dayjs().startOf('day').valueOf()).map((m) => ({ label: m.title, value: m._id }))}
+                                                    disabled={!!editingId}
                                                 />
                                             )}
                                         />
@@ -604,7 +604,7 @@ function ManageShowtime() {
                                                     loading={isLoading}
                                                     size="large"
                                                     style={{ width: '100%' }}
-                                                    options={rooms.map((r) => {
+                                                    options={rooms.filter(r => r.isActive !== false).map((r) => {
                                                         let typeName: string = r.roomType;
                                                         if (r.roomType === '2D') typeName = 'Tiêu chuẩn';
                                                         if (r.roomType === 'VIP') typeName = 'VIP';
@@ -614,6 +614,7 @@ function ManageShowtime() {
                                                             value: r._id,
                                                         }
                                                     })}
+                                                    disabled={!!editingId}
                                                 />
                                             )}
                                         />
@@ -625,7 +626,7 @@ function ManageShowtime() {
                                             name="format"
                                             control={control}
                                             render={({ field }) => (
-                                                <Select {...field} size="large" style={{ width: '100%' }}>
+                                                <Select {...field} size="large" style={{ width: '100%' }} disabled={!!editingId}>
                                                     {availableFormats.length === 0 ? (
                                                         <Option value="" disabled>Không có định dạng phù hợp</Option>
                                                     ) : (
@@ -703,6 +704,7 @@ function ManageShowtime() {
                                                     }}
                                                     value={field.value ? field.value.slice(0, 16) : ''}
                                                     onChange={(e) => field.onChange(e.target.value)}
+                                                    disabled={!!editingId}
                                                 />
                                             )}
                                         />
@@ -754,6 +756,7 @@ function ManageShowtime() {
                                                     }}
                                                     value={field.value ? field.value.slice(0, 16) : ''}
                                                     readOnly
+                                                    disabled={!!editingId}
                                                 />
                                             )}
                                         />
@@ -792,6 +795,7 @@ function ManageShowtime() {
                                                         min={0}
                                                         step={5000}
                                                         formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                                        disabled={!!editingId}
                                                     />
                                                     <Button size="large" style={{ backgroundColor: '#fafafa', color: 'rgba(0,0,0,0.65)', cursor: 'default', borderLeft: 0 }}>VNĐ</Button>
                                                 </Space.Compact>
@@ -805,7 +809,7 @@ function ManageShowtime() {
                                             name="language"
                                             control={control}
                                             render={({ field }) => (
-                                                <Input {...field} size="large" placeholder="VD: Tiếng Việt" />
+                                                <Input {...field} size="large" placeholder="VD: Tiếng Việt" disabled={!!editingId} />
                                             )}
                                         />
                                     </Form.Item>
@@ -815,7 +819,7 @@ function ManageShowtime() {
                                         <Controller
                                             name="subtitle"
                                             control={control}
-                                            render={({ field }) => <Input {...field} size="large" placeholder="VD: Tiếng Anh" />}
+                                            render={({ field }) => <Input {...field} size="large" placeholder="VD: Tiếng Anh" disabled={!!editingId} />}
                                         />
                                     </Form.Item>
                                 </Col>

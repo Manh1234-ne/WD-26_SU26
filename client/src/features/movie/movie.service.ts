@@ -1,17 +1,11 @@
 
 import { api } from '../../services/api'
-import type { ApiResponse, Movie, MoviePayload, MovieStatus } from './movie.types'
-
-type MovieQuery = {
-  status?: MovieStatus | 'all'
-  search?: string
-  isActive?: string
-  limit?: string
-}
+import type { ApiResponse, Movie, MoviePayload, MovieQuery } from './movie.types'
 
 export async function getMovies(query: MovieQuery = {}) {
   const params = {
     ...(query.status && query.status !== 'all' ? { status: query.status } : {}),
+    ...(query.genre && query.genre !== 'all' ? { genre: query.genre } : {}),
     ...(query.search ? { search: query.search } : {}),
     ...(query.isActive ? { isActive: query.isActive } : {}),
     ...(query.limit ? { limit: query.limit } : {}),

@@ -20,6 +20,7 @@ function LoginForm() {
 
     try {
       const data = await login({ email, password })
+      if (!data.token) throw new Error('Phản hồi đăng nhập không có token')
       setAuth(data.token, data.user)
       navigate(data.user.role === 'admin' ? '/admin' : '/')
       toast.success('đăng nhập thành công');
@@ -65,6 +66,7 @@ function LoginForm() {
             onSuccess={async (credentialResponse) => {
               try {
                 const data = await googleSignIn({ token: credentialResponse.credential })
+                if (!data.token) throw new Error('Phản hồi đăng nhập không có token')
                 setAuth(data.token, data.user)
                 navigate(data.user.role === 'admin' ? '/admin' : '/')
                 toast.success('đăng nhập thành công');

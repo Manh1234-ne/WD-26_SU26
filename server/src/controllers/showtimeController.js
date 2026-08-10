@@ -50,7 +50,7 @@ const calculateDynamicPrice = async (basePrice, startTime) => {
         }
       }
     }
-    
+
     if (applied) {
       maxSurchargePercentage = Math.max(maxSurchargePercentage, rule.surchargePercentage);
     }
@@ -90,10 +90,10 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
   if (date) {
     const parsedDate = new Date(date);
     if (!isNaN(parsedDate.getTime())) {
-      const startOfDay = new Date(parsedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(parsedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+
+      const [year, month, day] = date.split("-").map(Number);
+      const startOfDay = new Date(Date.UTC(year, month - 1, day, 0 - 7, 0, 0, 0));
+      const endOfDay = new Date(Date.UTC(year, month - 1, day, 23 - 7, 59, 59, 999));
       query.startTime = { $gte: startOfDay, $lte: endOfDay };
     }
   }
@@ -220,10 +220,10 @@ export const massDeleteShowtimes = asyncHandler(async (req, res) => {
   }
 
   const now = new Date();
-  
+
   // Lấy thông tin các suất chiếu
   const showtimes = await Showtime.find({ _id: { $in: ids } });
-  
+
   if (showtimes.length !== ids.length) {
     return fail(res, 404, "Một số suất chiếu không tồn tại.");
   }
@@ -303,9 +303,6 @@ export const updateShowtime = asyncHandler(async (req, res) => {
   }
 
   const reqBody = { ...req.body };
-  if (reqBody.basePrice && newStart) {
-    reqBody.basePrice = await calculateDynamicPrice(reqBody.basePrice, newStart);
-  }
 
   const showtime = await Showtime.findByIdAndUpdate(
     id,

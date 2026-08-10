@@ -30,8 +30,17 @@ export type MoviePayload = Omit<Movie, '_id' | 'createdAt' | 'updatedAt'> & {
   formats: string[]
 }
 
+export type MovieQuery = {
+  status?: MovieStatus | 'all'
+  genre?: string
+  search?: string
+  isActive?: string
+  limit?: string
+}
+
 export type ApiResponse<T> = {
   success: boolean
   data: T
   message?: string
 }
+

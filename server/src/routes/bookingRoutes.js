@@ -8,16 +8,19 @@ import {
   cancelBooking,
   cancelBookingBeacon,
   completeBooking,
+  markBookingPrinted,
   applyVoucherToBooking,
   updateBookingSeats,
   updateBookingCombos,
   incrementPrintCount
 } from "../controllers/bookingController.js";
+import { protect, optionalProtect } from "../middlewares/authMiddleware.js";
+import { isAdmin, isStaffOrAdmin } from "../middlewares/adminMiddleware.js";
 
 const routerBooking = express.Router();
 
 routerBooking.get("/", getAllBookings);
-routerBooking.post("/", createBooking);
+routerBooking.post("/", optionalProtect, createBooking);
 
 routerBooking.get("/user/:userId", getBookingsByUser);
 
@@ -29,9 +32,13 @@ routerBooking.patch("/:id/cancel", cancelBooking);
 
 routerBooking.post("/:id/cancel-beacon", cancelBookingBeacon);
 
+routerBooking.patch("/:id/print", protect, isStaffOrAdmin, markBookingPrinted);
+
 
 routerBooking.patch(
   "/:id/complete",
+  protect,
+  isStaffOrAdmin,
   completeBooking
 );
 

@@ -92,3 +92,12 @@ export const deleteUser = asyncHandler(async (req, res) => {
   await User.findByIdAndDelete(req.params.id);
   return ok(res, { _id: user._id }, { message: "Đã xoá người dùng" });
 });
+
+export const getUserByPhone = asyncHandler(async (req, res) => {
+  const { phone } = req.params;
+  if (!phone) return fail(res, 400, "Vui lòng cung cấp số điện thoại");
+  const user = await User.findOne({ phone: phone.trim() }).select("-password");
+  if (!user) return fail(res, 404, "Không tìm thấy thành viên với số điện thoại này");
+  return ok(res, user);
+});
+

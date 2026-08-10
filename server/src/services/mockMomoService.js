@@ -172,25 +172,27 @@ export const failMockMomoPayment = async (paymentId) => {
   payment.status = "failed";
   payment.note = "Mock payment failed";
 
-  booking.status = "cancelled";
+  if (booking.expiresAt && new Date(booking.expiresAt) < new Date()) {
+    booking.status = "expired";
+    booking.cancelledAt = new Date();
+    const bookingCombos = await BookingCombo.find({
+      booking: booking._id,
+    });
 
-  const bookingCombos = await BookingCombo.find({
-  booking: booking._id,
-});
+    if (bookingCombos.length > 0) {
+      const comboIds = bookingCombos.map((item) => ({
+        combo: item.combo,
+        quantity: item.quantity,
+      }));
 
-if (bookingCombos.length > 0) {
-  const comboIds = bookingCombos.map((item) => ({
-    combo: item.combo,
-    quantity: item.quantity,
-  }));
+      await releaseReservedStock(comboIds);
+    }
 
-  await releaseReservedStock(comboIds);
-}
-
-  await BookingSeat.updateMany(
-    { booking: booking._id },
-    { status: "cancelled" }
-  );
+    await BookingSeat.updateMany(
+      { booking: booking._id },
+      { status: "cancelled" }
+    );
+  }
 
   await payment.save();
   await booking.save();
