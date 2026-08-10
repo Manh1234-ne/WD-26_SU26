@@ -8,6 +8,8 @@ import {
   cancelBooking,
   cancelBookingBeacon,
   completeBooking,
+  claimBookingCombo,
+  markBookingComboPrinted,
   markBookingPrinted,
   applyVoucherToBooking,
   updateBookingSeats,
@@ -40,6 +42,20 @@ routerBooking.patch(
   protect,
   isStaffOrAdmin,
   completeBooking
+);
+
+routerBooking.patch(
+  "/:id/claim-combo",
+  protect,
+  isStaffOrAdmin,
+  claimBookingCombo
+);
+
+routerBooking.patch(
+  "/:id/print-combo",
+  protect,
+  isStaffOrAdmin,
+  markBookingComboPrinted
 );
 
 routerBooking.patch(

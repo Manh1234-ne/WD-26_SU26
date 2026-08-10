@@ -86,6 +86,35 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    comboStatus: {
+      type: String,
+      enum: ["pending", "claimed"],
+      default: "pending",
+    },
+    comboClaimedAt: {
+      type: Date,
+    },
+    comboClaimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    comboPrintStatus: {
+      type: String,
+      enum: ["not_printed", "printed"],
+      default: "not_printed",
+    },
+    comboPrintedAt: {
+      type: Date,
+    },
+    comboPrintedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    comboPrintCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     checkedInAt: {
       type: Date,
     },
