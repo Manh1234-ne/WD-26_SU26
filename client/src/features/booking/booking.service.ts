@@ -70,6 +70,13 @@ export const incrementPrintCount = async (id: string) => {
   return response.data;
 };
 
+export const markBookingComboPrinted = async (id: string) => {
+  const response = await api.patch<ApiResponse<Booking>>(
+    `/bookings/${id}/print-combo`
+  );
+  return response.data;
+};
+
 export const cancelActiveHoldingSessions = async (exceptBookingId?: string | null) => {
   const keys: string[] = [];
   for (let i = 0; i < sessionStorage.length; i++) {

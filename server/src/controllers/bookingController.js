@@ -174,6 +174,76 @@ export const completeBooking = asyncHandler(async (req, res) => {
   return fail(res, 400, "Chỉ vé đã thanh toán mới được soát");
 });
 
+export const claimBookingCombo = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (booking.status !== "completed") {
+    if (booking.status === "confirmed") {
+      return fail(res, 400, "Khách hàng cần soát vé vào rạp trước khi nhận combo");
+    }
+    return fail(res, 400, "Chỉ vé đã thanh toán và đã soát vé mới được nhận combo");
+  }
+
+  if (booking.comboStatus === "claimed") {
+    return fail(res, 409, "Combo của đơn hàng này đã được nhận trước đó");
+  }
+
+  booking.comboStatus = "claimed";
+  booking.comboClaimedAt = new Date();
+  if (req.user?._id) {
+    booking.comboClaimedBy = req.user._id;
+  }
+
+  await booking.save();
+
+  return ok(res, booking);
+});
+
+export const markBookingComboPrinted = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (!["confirmed", "completed"].includes(booking.status)) {
+    return fail(res, 400, "Chỉ vé đã thanh toán mới được in");
+  }
+
+  if (booking.comboStatus !== "claimed") {
+    return fail(res, 400, "Chỉ combo đã nhận mới được in");
+  }
+
+  booking.comboPrintStatus = "printed";
+  booking.comboPrintedAt = new Date();
+  if (req.user?._id) {
+    booking.comboPrintedBy = req.user._id;
+  }
+  booking.comboPrintCount = (booking.comboPrintCount || 0) + 1;
+
+  await booking.save();
+
+  const populated = await Booking.findById(id).populate("comboPrintedBy", "fullName email");
+
+  return ok(res, populated);
+});
+
 export const markBookingPrinted = asyncHandler(async (req, res) => {
   const { id } = req.params;
 

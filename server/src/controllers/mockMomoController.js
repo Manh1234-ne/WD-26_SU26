@@ -7,9 +7,10 @@ import {
 
 import Booking from "../models/Booking.js";
 import BookingSeat from "../models/BookingSeat.js";
+import BookingCombo from "../models/BookingCombo.js";
 import QRCode from "qrcode";
 
-import { generateQR } from "../utils/qrCode.js";
+import { generateQR, generatePlainQR } from "../utils/qrCode.js";
 import { sendMail } from "../utils/sendMail.js";
 import User from "../models/User.js";
 
@@ -125,9 +126,40 @@ export const mockMomoSuccess = async (req, res) => {
       ""
     );
 
+    const comboData = {
+      bookingId: fullBooking._id,
+      bookingCode: fullBooking.bookingCode,
+      movie: fullBooking.showtime?.movie?.title,
+      cinema: fullBooking.showtime?.cinema?.name,
+      room: fullBooking.showtime?.room?.name,
+      time: fullBooking.showtime?.startTime,
+      type: "combo",
+    };
+
+    const qrCombo = await generateQR(comboData);
+    const qrComboBase64 = qrCombo.replace(
+      /^data:image\/png;base64,/,
+      ""
+    );
+
     const user = fullBooking.user;
 
     if (user) {
+      // include combo list (if any) in the email body
+      const bookingCombos = await BookingCombo.find({ booking: fullBooking._id }).populate("combo");
+      let comboHtml = "";
+      if (bookingCombos && bookingCombos.length > 0) {
+        const combosList = bookingCombos
+          .map((c) => `<li>${c.combo?.name || ""} (x${c.quantity})</li>`)
+          .join("");
+        comboHtml = `
+          <h3 style="margin-top: 15px; margin-bottom: 8px;">🍿 Combo đã đặt:</h3>
+          <ul style="margin-top: 0; padding-left: 20px; color: #374151;">
+            ${combosList}
+          </ul>
+        `;
+      }
+
       await sendMail({
         to: user.email,
         subject: "🎬 Vé xem phim của bạn đã được xác nhận",
@@ -138,6 +170,12 @@ export const mockMomoSuccess = async (req, res) => {
             content: qrBase64,
             encoding: "base64",
             cid: "ticketqr",
+          },
+          {
+            filename: "combo-qr.png",
+            content: qrComboBase64,
+            encoding: "base64",
+            cid: "comboqr",
           },
         ],
 
@@ -166,11 +204,20 @@ export const mockMomoSuccess = async (req, res) => {
             .map((s) => s.seatCode)
             .join(", ")}</p>
 
-  <h3>📌 QR Code vé:</h3>
+  ${comboHtml}
 
-  <img src="cid:ticketqr" width="220"/>
-
-  <p>Vui lòng đưa QR này khi vào rạp</p>
+  <div style="margin-top: 20px;">
+    <div style="display: inline-block; text-align: center; margin-right: 30px; vertical-align: top;">
+      <h3 style="margin-bottom: 8px;">🎫 Vé xem phim (Vào cổng)</h3>
+      <img src="cid:ticketqr" width="180"/>
+      <p style="font-size: 12px; color: #64748b; margin-top: 4px; max-width: 180px;">Dùng để quét soát vé vào phòng chiếu</p>
+    </div>
+    <div style="display: inline-block; text-align: center; vertical-align: top;">
+      <h3 style="margin-bottom: 8px;">🍿 QR Combo (Nhận đồ ăn)</h3>
+      <img src="cid:comboqr" width="180"/>
+      <p style="font-size: 12px; color: #64748b; margin-top: 4px; max-width: 180px;">Dùng để quét nhận đồ ăn nước uống tại quầy</p>
+    </div>
+  </div>
 </div>
 `,
       });

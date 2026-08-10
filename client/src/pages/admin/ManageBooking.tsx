@@ -54,6 +54,7 @@ import {
   completeBooking,
   getBookingById,
   incrementPrintCount,
+  markBookingComboPrinted,
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
 import QRCode from "qrcode";
@@ -145,7 +146,12 @@ function ManageBooking() {
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<BookingWithSeats | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [qrComboUrl, setQrComboUrl] = useState<string>("");
   const [scannerModalOpen, setScannerModalOpen] = useState(false);
+
+  const [comboDrawerOpen, setComboDrawerOpen] = useState(false);
+  const [selectedComboBookingDetails, setSelectedComboBookingDetails] = useState<any>(null);
+  const [loadingComboDetails, setLoadingComboDetails] = useState(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
   const handleOpenDetailsById = async (bookingId: string) => {
@@ -154,6 +160,7 @@ function ManageBooking() {
     setLoadingDetails(true);
     setSelectedBookingDetails(null);
     setQrCodeUrl("");
+    setQrComboUrl("");
 
     try {
       const res = await getBookingById(bookingId);
@@ -173,6 +180,18 @@ function ManageBooking() {
           };
           const url = await QRCode.toDataURL(JSON.stringify(ticketData));
           setQrCodeUrl(url);
+
+          const comboData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            type: "combo",
+          };
+          const comboUrl = await QRCode.toDataURL(JSON.stringify(comboData));
+          setQrComboUrl(comboUrl);
         }
       } else {
         void message.error("Không thể tải chi tiết vé");
@@ -269,6 +288,49 @@ function ManageBooking() {
     }
   };
 
+  const processScannedCombo = async (bookingId: string) => {
+    try {
+      const res = await getBookingById(bookingId);
+      if (!res?.success || !res?.data?.booking) {
+        void message.error("Không tìm thấy thông tin đơn hàng trên hệ thống.");
+        return;
+      }
+
+      const booking = res.data.booking;
+
+      if (booking.status !== "completed") {
+        void message.warning("Khách hàng cần soát vé vào rạp trước khi nhận combo!");
+        void handleOpenComboDetails(bookingId);
+        return;
+      }
+
+      if (booking.comboStatus === "claimed") {
+        void message.warning("Combo này đã được nhận trước đó!");
+        void handleOpenComboDetails(bookingId);
+        return;
+      }
+
+      try {
+        const claimRes = await api.patch(`/bookings/${bookingId}/claim-combo`);
+        if (claimRes.data?.success) {
+          void message.success("Quét QR: Đã tự động nhận combo thành công!");
+          void fetchAllBookings();
+        } else {
+          void message.error(claimRes.data?.message || "Không thể tự động nhận combo");
+        }
+      } catch (claimErr: any) {
+        console.error("Lỗi khi tự động nhận combo:", claimErr);
+        void message.error(claimErr?.response?.data?.message || "Lỗi khi tự động nhận combo");
+      }
+
+      void handleOpenComboDetails(bookingId);
+
+    } catch (err) {
+      console.error("Lỗi xử lý quét combo:", err);
+      void message.error("Lỗi khi kết nối với máy chủ soát vé.");
+    }
+  };
+
   const handleScanSuccess = async (text: string) => {
     await stopScanner();
     setScannerModalOpen(false);
@@ -277,11 +339,15 @@ function ManageBooking() {
       const data = JSON.parse(text);
       if (data && (data.bookingId || data.bookingCode)) {
         const id = data.bookingId || data.bookingCode;
-        void processScannedTicket(id);
+        if (data.type === "combo") {
+          void processScannedCombo(id);
+        } else {
+          void processScannedTicket(id);
+        }
       } else {
         void message.error("Mã QR không đúng định dạng vé.");
       }
-    } catch {
+    } catch (err) {
       if (text && text.length === 24) {
         void processScannedTicket(text);
       } else {
@@ -683,6 +749,7 @@ function ManageBooking() {
     setLoadingDetails(true);
     setSelectedBookingDetails(null);
     setQrCodeUrl("");
+    setQrComboUrl("");
 
     try {
       const res = await getBookingById(booking._id);
@@ -701,6 +768,18 @@ function ManageBooking() {
           };
           const url = await QRCode.toDataURL(JSON.stringify(ticketData));
           setQrCodeUrl(url);
+
+          const comboData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            type: "combo",
+          };
+          const comboUrl = await QRCode.toDataURL(JSON.stringify(comboData));
+          setQrComboUrl(comboUrl);
         }
       } else {
         void message.error("Không thể tải chi tiết ghế ngồi");
@@ -713,6 +792,248 @@ function ManageBooking() {
     }
   };
 
+  const handleOpenComboDetails = async (bookingId: string) => {
+    setComboDrawerOpen(true);
+    setLoadingComboDetails(true);
+    setSelectedComboBookingDetails(null);
+    setQrComboUrl("");
+    try {
+      const res = await getBookingById(bookingId);
+      if (res?.success && res?.data) {
+        const data = res.data;
+        setSelectedComboBookingDetails(data);
+        if (data.booking?.status !== "completed") {
+          void message.warning("Cần soát vé mới có thể nhận combo");
+        }
+        if (data.booking && (data.booking.status === "confirmed" || data.booking.status === "completed")) {
+          const comboData = {
+            bookingId: data.booking._id,
+            bookingCode: data.booking.bookingCode,
+            movie: data.booking.showtime?.movie?.title,
+            cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+            room: data.booking.showtime?.room?.name,
+            time: data.booking.showtime?.startTime,
+            type: "combo",
+          };
+          const comboUrl = await QRCode.toDataURL(JSON.stringify(comboData));
+          setQrComboUrl(comboUrl);
+        }
+      } else {
+        void message.error("Không thể tải chi tiết combo");
+        setComboDrawerOpen(false);
+      }
+    } catch (err) {
+      console.error(err);
+      void message.error("Lỗi khi tải chi tiết combo");
+      setComboDrawerOpen(false);
+    } finally {
+      setLoadingComboDetails(false);
+    }
+  };
+
+  const handleConfirmClaimCombo = async (bookingId: string) => {
+    try {
+      const res = await api.patch(`/bookings/${bookingId}/claim-combo`);
+      if (res.data?.success) {
+        void message.success("Xác nhận nhận combo thành công!");
+        void handleOpenComboDetails(bookingId);
+        void fetchAllBookings();
+      } else {
+        void message.error(res.data?.message || "Không thể xác nhận nhận combo");
+      }
+    } catch (err: any) {
+      console.error(err);
+      void message.error(err?.response?.data?.message || "Lỗi khi xác nhận nhận combo");
+    }
+  };
+
+  const handlePrintComboConfirm = (bookingId: string) => {
+    if (!selectedComboBookingDetails) return;
+    const { booking } = selectedComboBookingDetails;
+    const printCount = booking.comboPrintCount || 0;
+
+    if (printCount > 0) {
+      Modal.confirm({
+        title: "Xác nhận in lại phiếu combo?",
+        content: `Phiếu combo này đã được in ${printCount} lần trước đó. Bạn có chắc chắn muốn in lại?`,
+        okText: "Đồng ý",
+        cancelText: "Hủy bỏ",
+        onOk: () => {
+          void doPrintCombo(bookingId);
+        },
+      });
+    } else {
+      void doPrintCombo(bookingId);
+    }
+  };
+
+  const doPrintCombo = async (bookingId: string) => {
+    executePrintCombo(bookingId);
+
+    try {
+      const res = await markBookingComboPrinted(bookingId);
+      if (res?.success) {
+        setSelectedComboBookingDetails((prev: any) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            booking: {
+              ...prev.booking,
+              comboPrintStatus: "printed",
+              comboPrintCount: (prev.booking.comboPrintCount || 0) + 1,
+            },
+          };
+        });
+        void fetchAllBookings();
+        void message.success("Đã ghi nhận in phiếu combo!");
+      }
+    } catch (err) {
+      console.error("Lỗi khi cập nhật số lần in combo:", err);
+    }
+  };
+
+  const executePrintCombo = (bookingId: string) => {
+    if (!selectedComboBookingDetails) return;
+    const { booking, combos } = selectedComboBookingDetails;
+    if (!combos || combos.length === 0) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      void message.error("Vui lòng cho phép trình duyệt mở popup để in.");
+      return;
+    }
+
+    const comboCode = `BC${booking.bookingCode ? booking.bookingCode.substring(2) : booking._id.substring(0, 13)}`;
+    const bookingCode = booking.bookingCode || booking._id;
+    const customerName = booking.user?.fullName || booking.customerName || "Khách vãng lai";
+    const claimTime = booking.comboClaimedAt ? dayjs(booking.comboClaimedAt).format("DD/MM/YYYY HH:mm") : dayjs().format("DD/MM/YYYY HH:mm");
+
+    const comboRows = combos.map((c: any) => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px;">
+        <span><strong>${c.combo?.name || "Combo"}</strong> x${c.quantity}</span>
+        <span>${(c.totalPrice || (c.unitPrice * c.quantity) || 0).toLocaleString('vi-VN')} đ</span>
+      </div>
+    `).join("");
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Phiếu Nhận Combo - ${comboCode}</title>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+          }
+          .ticket-container {
+            width: 320px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+          }
+          .ticket-header {
+            text-align: center;
+            border-bottom: 2px solid #e11d48;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+          }
+          .ticket-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #e11d48;
+            letter-spacing: 0.5px;
+            margin: 0 0 4px 0;
+          }
+          .ticket-subtitle {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+          }
+          .info-label {
+            color: #666;
+          }
+          .info-val {
+            font-weight: 600;
+          }
+          .divider {
+            border-top: 1px dashed #ccc;
+            margin: 12px 0;
+          }
+          .status-badge {
+            text-align: center;
+            background: #d1fae5;
+            color: #065f46;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 6px;
+            border-radius: 4px;
+            margin-top: 12px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="ticket-container">
+          <div class="ticket-header">
+            <h1 class="ticket-title">PHIẾU NHẬN COMBO</h1>
+            <p class="ticket-subtitle">RẠP CHIẾU PHIM LUMORA</p>
+          </div>
+          
+          <div class="info-row">
+            <span class="info-label">Mã Combo:</span>
+            <span class="info-val" style="font-family: monospace;">${comboCode}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Mã Booking:</span>
+            <span class="info-val" style="font-family: monospace;">${bookingCode}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Khách hàng:</span>
+            <span class="info-val">${customerName}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Thời gian nhận:</span>
+            <span class="info-val">${claimTime}</span>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #111;">CHI TIẾT PHẦN ĂN:</h4>
+          ${comboRows}
+          
+          <div class="info-row" style="margin-top: 10px; font-size: 14px;">
+            <span class="info-label" style="font-weight: 700; color: #111;">Tổng cộng:</span>
+            <span class="info-val" style="color: #e11d48; font-size: 16px; font-weight: 800;">${(booking.totalComboPrice || 0).toLocaleString('vi-VN')} đ</span>
+          </div>
+          
+          <div class="status-badge">🟢 ĐÃ NHẬN</div>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() {
+              window.close();
+            }, 1000);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+  };
+
   const filteredBookings = useMemo(() => {
     return bookings
       .filter((booking) => {
@@ -720,6 +1041,7 @@ function ManageBooking() {
         let matchesSearch = true;
         if (searchLower) {
           matchesSearch = [
+            booking._id,
             booking.bookingCode,
             booking.user?.fullName,
             booking.user?.email,
@@ -957,6 +1279,16 @@ function ManageBooking() {
                 onClick={() => void handleOpenDetails(record)}
               />
             </Tooltip>
+
+            {record.totalComboPrice > 0 && (
+              <Tooltip title="Xem chi tiết combo">
+                <Button
+                  shape="circle"
+                  icon={<span style={{ fontSize: "16px" }}>🥤</span>}
+                  onClick={() => void handleOpenComboDetails(record._id)}
+                />
+              </Tooltip>
+            )}
 
             {record.status === "confirmed" && (
               <Popconfirm
@@ -1506,9 +1838,14 @@ function ManageBooking() {
                     {selectedBookingDetails.combos && selectedBookingDetails.combos.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {selectedBookingDetails.combos.map((item: any) => (
-                          <div key={item._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div style={{ fontWeight: 700 }}>{item.combo?.name || (item.combo && item.combo.name) || "Không xác định"} x{item.quantity}</div>
-                            <div style={{ fontWeight: 700 }}>{formatCurrency(item.totalPrice || (item.unitPrice || 0) * (item.quantity || 0))}</div>
+                          <div key={item._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px" }}>
+                            <div>
+                              <strong>{item.combo?.name || (item.combo && item.combo.name) || "Không xác định"}</strong>
+                              <span style={{ marginLeft: 8, color: "#64748b", fontWeight: 400 }}>x{item.quantity}</span>
+                            </div>
+                            <div style={{ fontWeight: 700, color: "#e11d48", whiteSpace: "nowrap" }}>
+                              {formatCurrency(item.totalPrice || (item.unitPrice || 0) * (item.quantity || 0))}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1539,8 +1876,15 @@ function ManageBooking() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 16px", backgroundColor: "#f8fafc", borderRadius: "8px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <Text type="secondary">Tiền ghế gốc</Text>
-                    <Text strong>{formatCurrency(selectedBookingDetails.booking.totalSeatPrice || selectedBookingDetails.booking.finalAmount)}</Text>
+                    <Text strong>{formatCurrency(selectedBookingDetails.booking.totalSeatPrice || 0)}</Text>
                   </div>
+
+                  {selectedBookingDetails.booking.totalComboPrice > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <Text type="secondary">Tiền combo</Text>
+                      <Text strong>{formatCurrency(selectedBookingDetails.booking.totalComboPrice)}</Text>
+                    </div>
+                  )}
 
                   {selectedBookingDetails.booking.voucher && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1740,6 +2084,235 @@ function ManageBooking() {
             <Result
               status="warning"
               title="Không tìm thấy chi tiết vé"
+              subTitle="Vui lòng thử lại hoặc liên hệ quản trị hệ thống."
+            />
+          </div>
+        )}
+      </Drawer>
+
+      {/* Combo Details Drawer */}
+      <Drawer
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "20px" }}>🥤</span>
+            <span style={{ fontWeight: 800, fontSize: 16 }}>CHI TIẾT COMBO</span>
+          </div>
+        }
+        width={540}
+        onClose={() => setComboDrawerOpen(false)}
+        open={comboDrawerOpen}
+        styles={{
+          body: { padding: "20px 24px", backgroundColor: "#f1f5f9" },
+          header: { borderBottom: "1px solid #e2e8f0", backgroundColor: "#ffffff" }
+        }}
+      >
+        {loadingComboDetails ? (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "350px" }}>
+            <Space direction="vertical" align="center" size="middle">
+              <Spin size="large" />
+              <Text type="secondary" style={{ fontWeight: 500 }}>Đang tải thông tin combo từ quầy...</Text>
+            </Space>
+          </div>
+        ) : selectedComboBookingDetails ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Physical ticket mockup card for combo */}
+            <div className="ticket-stub">
+              {/* Combo header */}
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #be123c 0%, #e11d48 100%)",
+                  padding: "24px 20px",
+                  color: "#ffffff",
+                  position: "relative",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                  <div>
+                    <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", opacity: 0.8, fontWeight: 700 }}>
+                      Phần Ăn & Nước Uống
+                    </span>
+                    <h3 style={{ margin: "4px 0 0 0", color: "#ffffff", fontWeight: 900, fontSize: 18, lineHeight: 1.3 }}>
+                      {selectedComboBookingDetails.combos?.map((c: any) => c.combo?.name).join(" & ") || "COMBO BẮP & PEPSI"}
+                    </h3>
+                  </div>
+                  {selectedComboBookingDetails.booking.comboStatus === "claimed" ? (
+                    <Tag color="green" style={{ fontWeight: 700, borderRadius: "4px", padding: "2px 8px", marginRight: 0 }}>
+                      ĐÃ NHẬN
+                    </Tag>
+                  ) : (
+                    <Tag color="orange" style={{ fontWeight: 700, borderRadius: "4px", padding: "2px 8px", marginRight: 0 }}>
+                      CHƯA NHẬN
+                    </Tag>
+                  )}
+                </div>
+
+                {/* Left & Right ticket notches */}
+                <div className="ticket-notch-left" />
+                <div className="ticket-notch-right" />
+              </div>
+
+              {/* Dotted separator line */}
+              <div
+                style={{
+                  borderTop: "2px dashed #cbd5e1",
+                  padding: "0 20px",
+                  backgroundColor: "#ffffff",
+                  height: 0,
+                  position: "relative",
+                  zIndex: 2,
+                }}
+              />
+
+              {/* Ticket body */}
+              <div style={{ padding: "24px 20px", backgroundColor: "#ffffff" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <InboxOutlined style={{ color: "#e11d48" }} />
+                  <span style={{ fontWeight: 800, fontSize: 14, color: "#1e293b" }}>THÔNG TIN CHI TIẾT COMBO</span>
+                </div>
+
+                <Descriptions column={1} size="small" labelStyle={{ color: "#64748b", fontWeight: 500 }} contentStyle={{ color: "#0f172a", fontWeight: 600 }}>
+                  <Descriptions.Item label="Mã combo">
+                    <span style={{ fontWeight: 800, fontFamily: "monospace", fontSize: 13, color: "#be123c" }}>
+                      BC{selectedComboBookingDetails.booking.bookingCode ? selectedComboBookingDetails.booking.bookingCode.substring(2) : selectedComboBookingDetails.booking._id.substring(0, 13)}
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Mã booking">
+                    <span style={{ fontWeight: 800, fontFamily: "monospace", fontSize: 13, color: "#be123c" }}>
+                      {selectedComboBookingDetails.booking.bookingCode}
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Khách hàng">
+                    {selectedComboBookingDetails.booking.user?.fullName || selectedComboBookingDetails.booking.customerName || "Khách vãng lai"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Combo">
+                    {selectedComboBookingDetails.combos?.map((c: any) => `${c.combo?.name || "Combo"} x${c.quantity}`).join(", ")}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Tổng số lượng">
+                    {selectedComboBookingDetails.combos?.reduce((acc: number, c: any) => acc + c.quantity, 0)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Thành tiền">
+                    <span style={{ color: "#e11d48", fontWeight: 800, fontSize: 14 }}>
+                      {(selectedComboBookingDetails.booking.totalComboPrice || 0).toLocaleString("vi-VN")} đ
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái in combo">
+                    {selectedComboBookingDetails.booking.comboPrintCount && selectedComboBookingDetails.booking.comboPrintCount > 0 ? (
+                      <Tag color="cyan" style={{ fontWeight: 700, borderRadius: "4px" }}>
+                        Đã in vé combo {selectedComboBookingDetails.booking.comboPrintCount} lần
+                      </Tag>
+                    ) : (
+                      <Tag color="default" style={{ fontWeight: 700, borderRadius: "4px" }}>
+                        Chưa in vé combo
+                      </Tag>
+                    )}
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+
+              {/* Bottom ticket stub with Barcode / QR simulator */}
+              <div
+                style={{
+                  backgroundColor: "#fafafa",
+                  padding: "24px 20px",
+                  borderTop: "1px solid #f1f5f9",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <BarcodeOutlined style={{ fontSize: 48, color: "#475569" }} />
+                    <span style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", letterSpacing: "1px", marginTop: 4 }}>
+                      *BC{selectedComboBookingDetails.booking.bookingCode ? selectedComboBookingDetails.booking.bookingCode.substring(2) : selectedComboBookingDetails.booking._id.substring(0, 13)}*
+                    </span>
+                  </div>
+                  <div style={{ width: "1px", height: "50px", backgroundColor: "#e2e8f0" }} />
+                  {qrComboUrl ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <img
+                        src={qrComboUrl}
+                        alt="Combo QR Code"
+                        style={{ width: "80px", height: "80px", border: "2px solid #fff", borderRadius: "4px", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+                      />
+                      <span style={{ fontSize: "8px", color: "#64748b", marginTop: 2, fontWeight: 700 }}>QR COMBO</span>
+                    </div>
+                  ) : (
+                    <QrcodeOutlined style={{ fontSize: 44, color: "#94a3b8" }} />
+                  )}
+                </div>
+                <span style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", maxWidth: "280px" }}>
+                  Nhân viên quầy bắp nước quét mã QR combo để đối soát và phát phần ăn uống cho khách hàng.
+                </span>
+              </div>
+            </div>
+
+            {/* Warning block if not checked-in */}
+            {selectedComboBookingDetails.booking.status !== "completed" && (
+              <Card bordered={false} style={{ borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)", borderLeft: "5px solid #ef4444" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <CloseCircleOutlined style={{ color: "#ef4444", fontSize: "16px" }} />
+                  <span style={{ fontSize: "13px", color: "#b91c1c", fontWeight: 600 }}>
+                    Cần soát vé vào phòng chiếu trước khi nhận combo!
+                  </span>
+                </div>
+              </Card>
+            )}
+
+            {/* Status claim information */}
+            {selectedComboBookingDetails.booking.comboStatus === "claimed" && (
+              <Card bordered={false} style={{ borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <ClockCircleOutlined style={{ color: "#10b981" }} />
+                  <span style={{ fontSize: "13px", color: "#475569" }}>
+                    <strong>Thời gian nhận combo: </strong>
+                    {dayjs(selectedComboBookingDetails.booking.comboClaimedAt).format("DD/MM/YYYY HH:mm:ss")}
+                  </span>
+                </div>
+              </Card>
+            )}
+
+            {/* Quick Actions Panel */}
+            <Card bordered={false} style={{ borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, color: "#475569" }}>Thao tác quản lý</span>
+                <Space>
+                  {selectedComboBookingDetails.booking.comboStatus !== "claimed" ? (
+                    <Button
+                      type="primary"
+                      disabled={selectedComboBookingDetails.booking.status !== "completed"}
+                      style={{
+                        backgroundColor: selectedComboBookingDetails.booking.status === "completed" ? "#10b981" : "#d1d5db",
+                        borderColor: selectedComboBookingDetails.booking.status === "completed" ? "#10b981" : "#d1d5db",
+                        fontWeight: 700,
+                        color: selectedComboBookingDetails.booking.status === "completed" ? "#ffffff" : "#9ca3af"
+                      }}
+                      onClick={() => void handleConfirmClaimCombo(selectedComboBookingDetails.booking._id)}
+                    >
+                      Xác nhận nhận combo
+                    </Button>
+                  ) : (
+                    <Button
+                      type="primary"
+                      icon={<PrinterOutlined />}
+                      style={{ backgroundColor: "#4f46e5", borderColor: "#4f46e5", fontWeight: 700 }}
+                      onClick={() => handlePrintComboConfirm(selectedComboBookingDetails.booking._id)}
+                    >
+                      In phiếu combo
+                    </Button>
+                  )}
+                  <Button onClick={() => setComboDrawerOpen(false)}>Đóng</Button>
+                </Space>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "350px" }}>
+            <Result
+              status="warning"
+              title="Không tìm thấy chi tiết combo"
               subTitle="Vui lòng thử lại hoặc liên hệ quản trị hệ thống."
             />
           </div>
