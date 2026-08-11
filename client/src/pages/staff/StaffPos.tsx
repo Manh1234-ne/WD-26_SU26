@@ -38,6 +38,7 @@ import { toast } from "react-toastify";
 import QRCode from "qrcode";
 import { useAuthStore } from "../../features/auth/auth.store";
 import Swal from "sweetalert2";
+import { printCinemaTicket } from "../../utils/ticketPrinter";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -129,7 +130,7 @@ export function StaffPos() {
   const fetchShowtimesByDate = async (date: dayjs.Dayjs) => {
     try {
       const dateStr = date.format("YYYY-MM-DD");
-      const showtimesRes = await api.get(`/showtimes?date=${dateStr}&includePast=true`);
+      const showtimesRes = await api.get(`/showtimes?date=${dateStr}`);
       const sList: Showtime[] = showtimesRes.data?.data || showtimesRes.data || [];
       setShowtimes(sList);
       setSelectedShowtimeId("");
@@ -148,7 +149,7 @@ export function StaffPos() {
         const dateStr = today.format("YYYY-MM-DD");
         const [moviesRes, showtimesRes, combosRes] = await Promise.all([
           api.get("/movies"),
-          api.get(`/showtimes?date=${dateStr}&includePast=true`),
+          api.get(`/showtimes?date=${dateStr}`),
           api.get("/combos"),
         ]);
 
@@ -543,6 +544,45 @@ export function StaffPos() {
       </div>
     );
   }
+
+  const handleTriggerPrintTicket = async () => {
+    const combosFormatted = createdComboOrder
+      ? createdComboOrder.items?.map((item: any) => ({
+          name: item.combo?.name || "Combo",
+          quantity: item.quantity,
+          price: item.totalPrice,
+        }))
+      : Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([cId, qty]) => {
+            const cb = combos.find((c) => c._id === cId);
+            return {
+              name: cb?.name || "Combo",
+              quantity: qty,
+              price: (cb?.price || 0) * qty,
+            };
+          });
+
+    await printCinemaTicket({
+      bookingId: createdBooking?._id,
+      bookingCode: createdComboOrder?.orderCode || createdBooking?.bookingCode || "LUMORA-POS",
+      movieTitle: selectedShowtime?.movie?.title || "Phim Rạp Lumora",
+      roomName: selectedShowtime?.room?.name || "Phòng chiếu",
+      startTime: selectedShowtime?.startTime,
+      seats: selectedSeats,
+      combos: combosFormatted,
+      customerName: customerName || "Khách tại quầy",
+      customerPhone: customerPhone,
+      staffName: staffUser?.fullName || "Nhân viên quầy",
+      paymentMethod: paymentMethod,
+      seatTotalPrice: seatTotalPrice,
+      comboTotalPrice: comboTotalPrice,
+      discountAmount: discountAmount,
+      voucherCode: appliedVoucher?.code,
+      finalAmount: createdComboOrder?.totalAmount ?? grandTotal,
+      cashGiven: paymentMethod === "cash" && cashGiven ? cashGiven : undefined,
+    });
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -1170,7 +1210,7 @@ export function StaffPos() {
         </Col>
       </Row>
 
-      {/* Ticket Print Receipt Modal (80mm Thermal Receipt Format) */}
+      {/* Ticket Print Receipt Modal */}
       <Modal
         open={printModalVisible}
         onCancel={() => setPrintModalVisible(false)}
@@ -1183,9 +1223,9 @@ export function StaffPos() {
             type="primary"
             icon={<PrinterOutlined />}
             style={{ background: "#10b981", borderColor: "#10b981" }}
-            onClick={() => window.print()}
+            onClick={handleTriggerPrintTicket}
           >
-            In Hóa Đơn Vé (80mm)
+            In Hóa Đơn Vé
           </Button>,
         ]}
         width={440}

@@ -35,6 +35,12 @@ const fail = (res, status, message) =>
     message,
   });
 
+const canAccessBooking = (user, booking) => {
+  if (!user || !booking) return false;
+  if (["admin", "staff"].includes(user.role)) return true;
+  return booking.user?.toString() === user._id.toString();
+};
+
 export const createBooking = asyncHandler(
   async (req, res) => {
     const {
@@ -51,7 +57,12 @@ export const createBooking = asyncHandler(
       paymentMethod,
     } = req.body;
 
-    const targetUser = user || req.user?._id || null;
+    const isStaff = ["admin", "staff"].includes(req.user?.role);
+    const targetUser = isStaff && user ? user : req.user?._id || null;
+
+    if (isCounterSale && !isStaff) {
+      return fail(res, 403, "Chỉ nhân viên mới có thể tạo vé bán tại quầy");
+    }
 
     if ((!targetUser && !isCounterSale) || !showtime || !seatIds?.length) {
       return fail(
@@ -102,6 +113,10 @@ export const getBookingById = asyncHandler(async (req, res) => {
     return fail(res, 404, "Không tìm thấy booking");
   }
 
+  if (!canAccessBooking(req.user, booking)) {
+    return fail(res, 403, "Bạn không có quyền xem booking này");
+  }
+
   const seats = await BookingSeat.find({
     booking: booking._id,
   });
@@ -136,6 +151,11 @@ export const getAllBookings = asyncHandler(async (req, res) => {
 });
 
 export const getBookingsByUser = asyncHandler(async (req, res) => {
+  const isStaff = ["admin", "staff"].includes(req.user.role);
+  if (!isStaff && req.user._id.toString() !== req.params.userId) {
+    return fail(res, 403, "Bạn không có quyền xem lịch sử đặt vé này");
+  }
+
   const bookings = await Booking.find({
     user: req.params.userId,
   })
@@ -152,6 +172,20 @@ export const getBookingsByUser = asyncHandler(async (req, res) => {
 });
 
 export const completeBooking = asyncHandler(async (req, res) => {
+  const currentBooking = await Booking.findById(req.params.id).populate("showtime");
+  if (!currentBooking) return fail(res, 404, "Không tìm thấy booking");
+
+  const startTime = currentBooking.showtime?.startTime
+    ? new Date(currentBooking.showtime.startTime)
+    : null;
+  const checkInOpensAt = startTime
+    ? new Date(startTime.getTime() - 30 * 60 * 1000)
+    : null;
+
+  if (checkInOpensAt && new Date() < checkInOpensAt) {
+    return fail(res, 400, "Chỉ có thể soát vé trong vòng 30 phút trước giờ chiếu");
+  }
+
   const booking = await Booking.findOneAndUpdate(
     { _id: req.params.id, status: "confirmed" },
     {
@@ -185,7 +219,6 @@ export const markBookingPrinted = asyncHandler(async (req, res) => {
     {
       _id: id,
       status: { $in: ["confirmed", "completed"] },
-      printStatus: { $ne: "printed" },
     },
     {
       $set: {
@@ -193,6 +226,7 @@ export const markBookingPrinted = asyncHandler(async (req, res) => {
         printedAt: new Date(),
         printedBy: req.user._id,
       },
+      $inc: { printCount: 1 },
     },
     { new: true, runValidators: true }
   ).populate("printedBy", "fullName email");

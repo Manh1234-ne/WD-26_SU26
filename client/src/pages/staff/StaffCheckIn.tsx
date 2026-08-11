@@ -22,11 +22,13 @@ import {
   ClockCircleOutlined,
   ReloadOutlined,
   ScanOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
 import QRCode from "qrcode";
+import { printCinemaTicket } from "../../utils/ticketPrinter";
 
 const { Title, Text } = Typography;
 
@@ -67,18 +69,25 @@ export function StaffCheckIn() {
       const list: any[] = res.data?.data || res.data || [];
 
       const cleanCode = code.toUpperCase();
-      const found = list.find(
+      const matches = list.filter(
         (b) =>
           b.bookingCode?.toUpperCase() === cleanCode ||
           b._id === cleanCode ||
           b._id?.toLowerCase() === code.toLowerCase() ||
-          b.customerPhone?.includes(code) ||
-          b.user?.phone?.includes(code) ||
-          b.customerName?.toLowerCase().includes(code.toLowerCase())
+          b.customerPhone === code ||
+          b.user?.phone === code ||
+          b.customerName?.toLowerCase() === code.toLowerCase()
       );
+      const found = matches[0];
 
       if (!found) {
         toast.error("Không tìm thấy mã vé / đơn hàng này!");
+        setSearching(false);
+        return;
+      }
+
+      if (matches.length > 1) {
+        toast.warning("Tìm thấy nhiều booking. Vui lòng quét hoặc nhập chính xác mã booking.");
         setSearching(false);
         return;
       }
@@ -145,6 +154,39 @@ export function StaffCheckIn() {
     setBookingCombos([]);
     setCheckInSuccess(false);
     if (inputRef.current) inputRef.current.focus();
+  };
+
+  const handlePrintTicket = async () => {
+    if (!booking) return;
+
+    const combosFormatted = bookingCombos.map((bc: any) => ({
+      name: bc.combo?.name || "Combo",
+      quantity: bc.quantity || 1,
+      price: bc.price || (bc.combo?.price ? bc.combo.price * bc.quantity : 0),
+    }));
+
+    const printed = await printCinemaTicket({
+      bookingId: booking._id,
+      bookingCode: booking.bookingCode || booking._id,
+      movieTitle: booking.showtime?.movie?.title || "Phim Rạp Lumora",
+      roomName: booking.showtime?.room?.name || "Phòng chiếu",
+      startTime: booking.showtime?.startTime,
+      seats: bookingSeats,
+      combos: combosFormatted,
+      customerName: booking.user?.fullName || booking.customerName || "Khách hàng",
+      customerPhone: booking.user?.phone || booking.customerPhone,
+      paymentMethod: booking.paymentMethod,
+      finalAmount: booking.finalAmount,
+      discountAmount: booking.discountAmount,
+    });
+
+    if (printed) {
+      setBooking((prev: any) => ({
+        ...prev,
+        printStatus: "printed",
+        printCount: (prev?.printCount || 0) + 1,
+      }));
+    }
   };
 
   return (
@@ -330,11 +372,20 @@ export function StaffCheckIn() {
                   </Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Trạng thái in">
-                  {booking.printStatus === "printed" ? (
-                    <Tag color="green">Đã in vé giấy</Tag>
-                  ) : (
-                    <Tag color="default">Chưa in vé</Tag>
-                  )}
+                  <Space>
+                    {booking.printStatus === "printed" ? (
+                      <Tag color="green">Đã in vé giấy ({booking.printCount || 1} lần)</Tag>
+                    ) : (
+                      <Tag color="default">Chưa in vé</Tag>
+                    )}
+                    <Button
+                      size="small"
+                      icon={<PrinterOutlined />}
+                      onClick={handlePrintTicket}
+                    >
+                      In vé
+                    </Button>
+                  </Space>
                 </Descriptions.Item>
               </Descriptions>
             </Card>
@@ -387,6 +438,25 @@ export function StaffCheckIn() {
                   XÁC NHẬN CHO VÀO PHÒNG
                 </Button>
               )}
+
+              <Divider style={{ margin: "16px 0" }} />
+
+              <Button
+                type="default"
+                size="large"
+                block
+                icon={<PrinterOutlined style={{ fontSize: 18, color: "#2563eb" }} />}
+                onClick={handlePrintTicket}
+                style={{
+                  height: 44,
+                  fontWeight: "bold",
+                  borderRadius: 8,
+                  borderColor: "#3b82f6",
+                  color: "#2563eb",
+                }}
+              >
+                IN VÉ GIẤY GIẤY (IN MẪU CHUẨN)
+              </Button>
             </Card>
           </Col>
         </Row>

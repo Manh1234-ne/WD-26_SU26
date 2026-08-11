@@ -314,9 +314,9 @@ export function StaffBookings() {
       key: "customer",
       render: (_: any, record: any) => (
         <div>
-          <div>{record.user?.fullName || "Khách tại quầy"}</div>
-          {record.user?.phone && (
-            <Text type="secondary" style={{ fontSize: 12 }}>{record.user.phone}</Text>
+          <div>{record.user?.fullName || record.customerName || "Khách tại quầy"}</div>
+          {(record.user?.phone || record.customerPhone) && (
+            <Text type="secondary" style={{ fontSize: 12 }}>{record.user?.phone || record.customerPhone}</Text>
           )}
         </div>
       ),

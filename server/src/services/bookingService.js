@@ -34,6 +34,10 @@ export const createBookingService = async ({
     throw new Error("Không tìm thấy suất chiếu");
   }
 
+  if (new Date(showtimeExists.startTime) <= new Date()) {
+    throw new Error("Không thể tạo vé cho suất chiếu đã bắt đầu hoặc đã kết thúc");
+  }
+
   const seats = await Seat.find({
     _id: { $in: seatIds },
     room: showtimeExists.room,
@@ -194,9 +198,7 @@ export const createBookingService = async ({
     paymentMethod: paymentMethod || "cash",
     paymentStatus: isAutoConfirmed ? "paid" : "unpaid",
     createdByStaff: createdByStaff || undefined,
-    printedBy: isAutoConfirmed ? createdByStaff || undefined : undefined,
-    printedAt: isAutoConfirmed ? new Date() : undefined,
-    printStatus: isAutoConfirmed ? "printed" : "not_printed",
+    printStatus: "not_printed",
     showtime,
     voucher: voucher?._id,
     totalSeatPrice,
