@@ -251,30 +251,28 @@ export const markBookingPrinted = asyncHandler(async (req, res) => {
     return fail(res, 400, "ID booking không hợp lệ");
   }
 
-  const booking = await Booking.findOneAndUpdate(
-    {
-      _id: id,
-      status: { $in: ["confirmed", "completed"] },
-      printStatus: { $ne: "printed" },
-    },
-    {
-      $set: {
-        printStatus: "printed",
-        printedAt: new Date(),
-        printedBy: req.user._id,
-      },
-    },
-    { new: true, runValidators: true }
-  ).populate("printedBy", "fullName email");
+  const booking = await Booking.findById(id);
 
-  if (booking) return ok(res, booking);
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
 
-  const existing = await Booking.findById(id);
-  if (!existing) return fail(res, 404, "Không tìm thấy booking");
-  if (!["confirmed", "completed"].includes(existing.status)) {
+  if (!["confirmed", "completed"].includes(booking.status)) {
     return fail(res, 400, "Chỉ vé đã thanh toán mới được in");
   }
-  return fail(res, 409, "Vé này đã được in trước đó");
+
+  booking.printStatus = "printed";
+  booking.printedAt = new Date();
+  if (req.user?._id) {
+    booking.printedBy = req.user._id;
+  }
+  booking.printCount = (booking.printCount || 0) + 1;
+
+  await booking.save();
+
+  const populated = await Booking.findById(id).populate("printedBy", "fullName email");
+
+  return ok(res, populated);
 });
 
 export const cancelBooking = asyncHandler(async (req, res) => {
@@ -553,24 +551,7 @@ export const updateBookingSeats = asyncHandler(async (req, res) => {
   return ok(res, updatedBooking);
 });
 
-export const incrementPrintCount = asyncHandler(async (req, res) => {
-  const { id } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return fail(res, 400, "ID booking không hợp lệ");
-  }
-
-  const booking = await Booking.findById(id);
-
-  if (!booking) {
-    return fail(res, 404, "Không tìm thấy booking");
-  }
-
-  booking.printCount = (booking.printCount || 0) + 1;
-  await booking.save();
-
-  return ok(res, booking);
-});
 
 export const updateBookingCombos = asyncHandler(async (req, res) => {
   const { id } = req.params;

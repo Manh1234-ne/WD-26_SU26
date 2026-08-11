@@ -13,8 +13,7 @@ import {
   markBookingPrinted,
   applyVoucherToBooking,
   updateBookingSeats,
-  updateBookingCombos,
-  incrementPrintCount
+  updateBookingCombos
 } from "../controllers/bookingController.js";
 import { protect, optionalProtect } from "../middlewares/authMiddleware.js";
 import { isAdmin, isStaffOrAdmin } from "../middlewares/adminMiddleware.js";
@@ -61,11 +60,6 @@ routerBooking.patch(
 routerBooking.patch(
   "/:id/apply-voucher",
   applyVoucherToBooking
-);
-
-routerBooking.patch(
-  "/:id/print",
-  incrementPrintCount
 );
 
 
