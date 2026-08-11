@@ -58,7 +58,7 @@ import {
 } from "../../features/booking/booking.service";
 import type { Booking, BookingWithSeats } from "../../features/booking/booking.types";
 import QRCode from "qrcode";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 dayjs.extend(isBetween);
 
@@ -214,14 +214,20 @@ function ManageBooking() {
           console.error("Không tìm thấy phần tử reader");
           return;
         }
-        const scanner = new Html5Qrcode("reader");
+        const scanner = new Html5Qrcode("reader", {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
         qrScannerRef.current = scanner;
 
         await scanner.start(
           { facingMode: "environment" },
           {
-            fps: 10,
+            fps: 15,
             qrbox: { width: 250, height: 250 },
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true,
+            },
           },
           (decodedText) => {
             void handleScanSuccess(decodedText);
