@@ -208,6 +208,76 @@ export const completeBooking = asyncHandler(async (req, res) => {
   return fail(res, 400, "Chỉ vé đã thanh toán mới được soát");
 });
 
+export const claimBookingCombo = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (booking.status !== "completed") {
+    if (booking.status === "confirmed") {
+      return fail(res, 400, "Khách hàng cần soát vé vào rạp trước khi nhận combo");
+    }
+    return fail(res, 400, "Chỉ vé đã thanh toán và đã soát vé mới được nhận combo");
+  }
+
+  if (booking.comboStatus === "claimed") {
+    return fail(res, 409, "Combo của đơn hàng này đã được nhận trước đó");
+  }
+
+  booking.comboStatus = "claimed";
+  booking.comboClaimedAt = new Date();
+  if (req.user?._id) {
+    booking.comboClaimedBy = req.user._id;
+  }
+
+  await booking.save();
+
+  return ok(res, booking);
+});
+
+export const markBookingComboPrinted = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return fail(res, 400, "ID booking không hợp lệ");
+  }
+
+  const booking = await Booking.findById(id);
+
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
+
+  if (!["confirmed", "completed"].includes(booking.status)) {
+    return fail(res, 400, "Chỉ vé đã thanh toán mới được in");
+  }
+
+  if (booking.comboStatus !== "claimed") {
+    return fail(res, 400, "Chỉ combo đã nhận mới được in");
+  }
+
+  booking.comboPrintStatus = "printed";
+  booking.comboPrintedAt = new Date();
+  if (req.user?._id) {
+    booking.comboPrintedBy = req.user._id;
+  }
+  booking.comboPrintCount = (booking.comboPrintCount || 0) + 1;
+
+  await booking.save();
+
+  const populated = await Booking.findById(id).populate("comboPrintedBy", "fullName email");
+
+  return ok(res, populated);
+});
+
 export const markBookingPrinted = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -215,30 +285,28 @@ export const markBookingPrinted = asyncHandler(async (req, res) => {
     return fail(res, 400, "ID booking không hợp lệ");
   }
 
-  const booking = await Booking.findOneAndUpdate(
-    {
-      _id: id,
-      status: { $in: ["confirmed", "completed"] },
-    },
-    {
-      $set: {
-        printStatus: "printed",
-        printedAt: new Date(),
-        printedBy: req.user._id,
-      },
-      $inc: { printCount: 1 },
-    },
-    { new: true, runValidators: true }
-  ).populate("printedBy", "fullName email");
+  const booking = await Booking.findById(id);
 
-  if (booking) return ok(res, booking);
+  if (!booking) {
+    return fail(res, 404, "Không tìm thấy booking");
+  }
 
-  const existing = await Booking.findById(id);
-  if (!existing) return fail(res, 404, "Không tìm thấy booking");
-  if (!["confirmed", "completed"].includes(existing.status)) {
+  if (!["confirmed", "completed"].includes(booking.status)) {
     return fail(res, 400, "Chỉ vé đã thanh toán mới được in");
   }
-  return fail(res, 409, "Vé này đã được in trước đó");
+
+  booking.printStatus = "printed";
+  booking.printedAt = new Date();
+  if (req.user?._id) {
+    booking.printedBy = req.user._id;
+  }
+  booking.printCount = (booking.printCount || 0) + 1;
+
+  await booking.save();
+
+  const populated = await Booking.findById(id).populate("printedBy", "fullName email");
+
+  return ok(res, populated);
 });
 
 export const cancelBooking = asyncHandler(async (req, res) => {
@@ -517,24 +585,7 @@ export const updateBookingSeats = asyncHandler(async (req, res) => {
   return ok(res, updatedBooking);
 });
 
-export const incrementPrintCount = asyncHandler(async (req, res) => {
-  const { id } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return fail(res, 400, "ID booking không hợp lệ");
-  }
-
-  const booking = await Booking.findById(id);
-
-  if (!booking) {
-    return fail(res, 404, "Không tìm thấy booking");
-  }
-
-  booking.printCount = (booking.printCount || 0) + 1;
-  await booking.save();
-
-  return ok(res, booking);
-});
 
 export const updateBookingCombos = asyncHandler(async (req, res) => {
   const { id } = req.params;
