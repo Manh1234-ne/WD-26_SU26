@@ -71,22 +71,26 @@ export const createBooking = asyncHandler(
         "Vui lòng cung cấp đầy đủ thông tin"
       );
     }
-    const booking = await createBookingService({
-      user: targetUser,
-      showtime,
-      seatIds,
-      voucherCode,
-      comboIds,
-      combos,
-      customExpiresAt,
-      isCounterSale: Boolean(isCounterSale),
-      customerName: customerName || "Khách vãng lai",
-      customerPhone: customerPhone || "",
-      paymentMethod: paymentMethod || "cash",
-      createdByStaff: req.user?._id || null,
-    });
+    try {
+      const booking = await createBookingService({
+        user: targetUser,
+        showtime,
+        seatIds,
+        voucherCode,
+        comboIds,
+        combos,
+        customExpiresAt,
+        isCounterSale: Boolean(isCounterSale),
+        customerName: customerName || "Khách vãng lai",
+        customerPhone: customerPhone || "",
+        paymentMethod: paymentMethod || "cash",
+        createdByStaff: req.user?._id || null,
+      });
 
-    return created(res, booking);
+      return created(res, booking);
+    } catch (error) {
+      return fail(res, 400, error.message || "Không thể tạo booking");
+    }
   });
 
 export const getBookingById = asyncHandler(async (req, res) => {
