@@ -29,6 +29,7 @@ function SeatSelection() {
     const { message } = AntdApp.useApp()
     const [selectedSeats, setSelectedSeats] = useState<Seat[]>([])
     const [isSubmitting] = useState(false)
+    const isProcessingRef = useRef(false)
 
     const SESSION_KEY = `cinema_holding_${showtimeId}`;
     const [holdingSession, setHoldingSession] = useState<{ bookingId: string; expiresAt: number } | null>(null);
@@ -266,7 +267,7 @@ function SeatSelection() {
     }
 
     const toggleSeat = async (seat: Seat) => {
-        if (occupiedSet.has(seat._id)) return
+        if (occupiedSet.has(seat._id) || isProcessingRef.current) return
 
         const isAlreadySelected = selectedSeats.some((s) => s._id === seat._id)
         const newSelected = isAlreadySelected
@@ -292,6 +293,8 @@ function SeatSelection() {
             })
             return
         }
+
+        isProcessingRef.current = true
 
         try {
             console.log("HOLDING SESSION:", holdingSession);
@@ -368,6 +371,8 @@ function SeatSelection() {
             });
 
             await refetchOccupied();
+        } finally {
+            isProcessingRef.current = false
         }
     }
 

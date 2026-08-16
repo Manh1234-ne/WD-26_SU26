@@ -58,7 +58,7 @@ export const createBooking = asyncHandler(
     } = req.body;
 
     const isStaff = ["admin", "staff"].includes(req.user?.role);
-    const targetUser = isStaff && user ? user : req.user?._id || null;
+    const targetUser = isStaff && user ? user : req.user?._id || user || null;
 
     if (isCounterSale && !isStaff) {
       return fail(res, 403, "Chỉ nhân viên mới có thể tạo vé bán tại quầy");

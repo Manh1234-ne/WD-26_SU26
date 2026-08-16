@@ -38,6 +38,47 @@ export const createBookingService = async ({
     throw new Error("Không thể tạo vé cho suất chiếu đã bắt đầu hoặc đã kết thúc");
   }
 
+  // 1. Tự động dọn dẹp các booking pending đã hết hạn của suất chiếu này để giải phóng ghế
+  const expiredBookings = await Booking.find({
+    showtime,
+    status: "pending",
+    expiresAt: { $lte: new Date() },
+  }).select("_id");
+
+  if (expiredBookings.length > 0) {
+    const expiredIds = expiredBookings.map((b) => b._id);
+    await Booking.updateMany(
+      { _id: { $in: expiredIds } },
+      { $set: { status: "expired" } }
+    );
+    await BookingSeat.updateMany(
+      { booking: { $in: expiredIds }, status: "held" },
+      { $set: { status: "cancelled" } }
+    );
+  }
+
+  // 2. Nếu khách hàng (customer) đã có booking pending trước đó cho cùng suất chiếu,
+  // tự động hủy session cũ để người dùng có thể giữ ghế mới mà không bị xung đột với chính mình.
+  if (user && !isCounterSale) {
+    const userPendingBookings = await Booking.find({
+      user,
+      showtime,
+      status: "pending",
+    }).select("_id");
+
+    if (userPendingBookings.length > 0) {
+      const userPendingIds = userPendingBookings.map((b) => b._id);
+      await Booking.updateMany(
+        { _id: { $in: userPendingIds } },
+        { $set: { status: "cancelled", cancelledAt: new Date() } }
+      );
+      await BookingSeat.updateMany(
+        { booking: { $in: userPendingIds }, status: "held" },
+        { $set: { status: "cancelled" } }
+      );
+    }
+  }
+
   const seats = await Seat.find({
     _id: { $in: seatIds },
     room: showtimeExists.room,
@@ -45,7 +86,7 @@ export const createBookingService = async ({
   });
 
   if (seats.length !== seatIds.length) {
-    throw new Error("Ghế không hợp lệ");
+    throw new Error("Ghế không hợp lệ hoặc không thuộc phòng chiếu này");
   }
 
   const activeBookings = await Booking.find({
@@ -189,60 +230,70 @@ export const createBookingService = async ({
   const bookingStatus = isAutoConfirmed ? "confirmed" : "pending";
   const seatStatus = isAutoConfirmed ? "booked" : "held";
 
-  const booking = await Booking.create({
-    bookingCode: `BK${Date.now()}`,
-    user: user || undefined,
-    isCounterSale,
-    customerName: customerName || "Khách vãng lai",
-    customerPhone: customerPhone || "",
-    paymentMethod: paymentMethod || "cash",
-    paymentStatus: isAutoConfirmed ? "paid" : "unpaid",
-    createdByStaff: createdByStaff || undefined,
-    printStatus: "not_printed",
-    showtime,
-    voucher: voucher?._id,
-    totalSeatPrice,
-    totalComboPrice,
-    discountAmount,
-    finalAmount,
-    status: bookingStatus,
-    expiresAt: resolvedExpiresAt,
-  });
+  let booking;
+  try {
+    booking = await Booking.create({
+      bookingCode: `BK${Date.now()}`,
+      user: user || undefined,
+      isCounterSale,
+      customerName: customerName || "Khách vãng lai",
+      customerPhone: customerPhone || "",
+      paymentMethod: paymentMethod || "cash",
+      paymentStatus: isAutoConfirmed ? "paid" : "unpaid",
+      createdByStaff: createdByStaff || undefined,
+      printStatus: "not_printed",
+      showtime,
+      voucher: voucher?._id,
+      totalSeatPrice,
+      totalComboPrice,
+      discountAmount,
+      finalAmount,
+      status: bookingStatus,
+      expiresAt: resolvedExpiresAt,
+    });
 
-  if (isAutoConfirmed && voucher) {
-    await Voucher.findByIdAndUpdate(voucher._id, { $inc: { usedCount: 1 } });
-  }
+    if (isAutoConfirmed && voucher) {
+      await Voucher.findByIdAndUpdate(voucher._id, { $inc: { usedCount: 1 } });
+    }
 
-  const bookingSeats = seats.map((seat) => ({
-    booking: booking._id,
-    showtime,
-    seat: seat._id,
-    seatCode: seat.code,
-    seatType: seat.type,
-    price: showtimeExists.basePrice * seat.priceMultiplier,
-    status: seatStatus,
-  }));
-
-  await BookingSeat.insertMany(bookingSeats);
-
-  if (resolvedCombos.length > 0) {
-    const bookingCombos = resolvedCombos.map((combo) => ({
+    const bookingSeats = seats.map((seat) => ({
       booking: booking._id,
-      combo: combo.combo,
-      quantity: combo.quantity,
-      unitPrice: combo.price,
-      totalPrice: combo.price * combo.quantity,
+      showtime,
+      seat: seat._id,
+      seatCode: seat.code,
+      seatType: seat.type,
+      price: showtimeExists.basePrice * seat.priceMultiplier,
+      status: seatStatus,
     }));
 
-    await BookingCombo.insertMany(bookingCombos);
+    await BookingSeat.insertMany(bookingSeats);
 
-    if (isAutoConfirmed) {
-      try {
-        await deductReservedStock(normalizedComboItems);
-      } catch (err) {
-        console.error("[createBookingService] deductReservedStock error:", err.message);
+    if (resolvedCombos.length > 0) {
+      const bookingCombos = resolvedCombos.map((combo) => ({
+        booking: booking._id,
+        combo: combo.combo,
+        quantity: combo.quantity,
+        unitPrice: combo.price,
+        totalPrice: combo.price * combo.quantity,
+      }));
+
+      await BookingCombo.insertMany(bookingCombos);
+
+      if (isAutoConfirmed) {
+        try {
+          await deductReservedStock(normalizedComboItems);
+        } catch (err) {
+          console.error("[createBookingService] deductReservedStock error:", err.message);
+        }
       }
     }
+  } catch (err) {
+    if (booking?._id) {
+      await Booking.findByIdAndDelete(booking._id).catch(() => {});
+      await BookingSeat.deleteMany({ booking: booking._id }).catch(() => {});
+      await BookingCombo.deleteMany({ booking: booking._id }).catch(() => {});
+    }
+    throw err;
   }
 
   return booking;
@@ -251,7 +302,7 @@ export const updateBookingSeatsService = async ({
   booking,
   seatIds,
 }) => {
-    console.log("UPDATE SEATS CALLED", seatIds);
+  console.log("UPDATE SEATS CALLED", seatIds);
   const showtime = await Showtime.findById(booking.showtime);
 
   if (!showtime) {
@@ -335,39 +386,39 @@ export const updateBookingSeatsService = async ({
    * Huỷ các ghế bỏ chọn
    */
   if (removeSeatIds.length > 0) {
-  console.log("REMOVE SEATS:", removeSeatIds);
+    console.log("REMOVE SEATS:", removeSeatIds);
 
-  await BookingSeat.deleteMany({
-    booking: booking._id,
-    seat: {
-      $in: removeSeatIds
-    }
-  });
-}
+    await BookingSeat.deleteMany({
+      booking: booking._id,
+      seat: {
+        $in: removeSeatIds
+      }
+    });
+  }
 
   /**
    * Thêm ghế mới
    */
   // Thêm ghế mới
-// Thêm ghế mới
-if (addSeatIds.length > 0) {
-  const addSeats = seats.filter((s) =>
-    addSeatIds.includes(s._id.toString())
-  );
+  // Thêm ghế mới
+  if (addSeatIds.length > 0) {
+    const addSeats = seats.filter((s) =>
+      addSeatIds.includes(s._id.toString())
+    );
 
 
-  const newBookingSeats = addSeats.map((seat) => ({
-    booking: booking._id,
-    showtime: booking.showtime,
-    seat: seat._id,
-    seatCode: seat.code,
-    seatType: seat.type,
-    price: showtime.basePrice * seat.priceMultiplier,
-    status: "held",
-  }));
+    const newBookingSeats = addSeats.map((seat) => ({
+      booking: booking._id,
+      showtime: booking.showtime,
+      seat: seat._id,
+      seatCode: seat.code,
+      seatType: seat.type,
+      price: showtime.basePrice * seat.priceMultiplier,
+      status: "held",
+    }));
 
-  await BookingSeat.insertMany(newBookingSeats);
-}
+    await BookingSeat.insertMany(newBookingSeats);
+  }
   /**
    * Tính lại tiền ghế
    */
