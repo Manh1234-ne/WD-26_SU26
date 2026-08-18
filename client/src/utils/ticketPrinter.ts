@@ -54,7 +54,7 @@ export const printCinemaTicket = async (data: PrintableTicketData): Promise<bool
     const combosList = (data.combos || []).map((c: any) => {
       const name = c.name || c.comboName || c.combo?.name || "Combo";
       const qty = c.quantity || c.qty || 1;
-      const price = c.price || (c.combo?.price ? c.combo.price * qty : 0);
+      const price = c.totalPrice || c.price || (c.combo?.price ? c.combo.price * qty : 0);
       return { name, qty, price };
     });
 
