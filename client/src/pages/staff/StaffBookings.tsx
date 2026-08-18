@@ -312,14 +312,22 @@ export function StaffBookings() {
     {
       title: "Khách Hàng",
       key: "customer",
-      render: (_: any, record: any) => (
-        <div>
-          <div>{record.user?.fullName || record.customerName || "Khách tại quầy"}</div>
-          {(record.user?.phone || record.customerPhone) && (
-            <Text type="secondary" style={{ fontSize: 12 }}>{record.user?.phone || record.customerPhone}</Text>
-          )}
-        </div>
-      ),
+      render: (_: any, record: any) => {
+        const name = record.isCounterSale
+          ? (record.customerName || record.user?.fullName || "Khách tại quầy")
+          : (record.user?.fullName || record.customerName || "Khách tại quầy");
+        const phone = record.isCounterSale
+          ? (record.customerPhone || record.user?.phone)
+          : (record.user?.phone || record.customerPhone);
+        return (
+          <div>
+            <div>{name}</div>
+            {phone && (
+              <Text type="secondary" style={{ fontSize: 12 }}>{phone}</Text>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Phim & Suất Chiếu",
@@ -583,11 +591,15 @@ export function StaffBookings() {
                   <Descriptions.Item label="Khách hàng">
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                       <UserOutlined style={{ fontSize: 12, color: "#e11d48" }} />
-                      {getBooking()?.user?.fullName || "Khách vãng lai"}
+                      {getBooking()?.isCounterSale
+                        ? (getBooking()?.customerName || getBooking()?.user?.fullName || "Khách tại quầy")
+                        : (getBooking()?.user?.fullName || getBooking()?.customerName || "Khách vãng lai")}
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="Liên hệ">
-                    {getBooking()?.user?.email}{getBooking()?.user?.phone && ` · ${getBooking()?.user?.phone}`}
+                    {getBooking()?.isCounterSale
+                      ? (getBooking()?.customerPhone || getBooking()?.user?.phone || getBooking()?.user?.email || "Khách tại quầy")
+                      : `${getBooking()?.user?.email || ""}${getBooking()?.user?.phone ? ` · ${getBooking()?.user?.phone}` : ""}`}
                   </Descriptions.Item>
                   <Descriptions.Item label="Lịch bắt đầu phim">
                     <span style={{ color: "#e11d48", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -731,8 +743,11 @@ export function StaffBookings() {
                       <div>
                         <strong>Khởi tạo yêu cầu đặt vé</strong>
                         <p style={{ fontSize: 11, color: "#64748b", margin: "4px 0 0 0" }}>
-                          Đơn vé được lập bởi {getBooking()?.user?.fullName || "Khách vãng lai"} lúc{" "}
-                          {dayjs(getBooking()?.createdAt).format("DD/MM/YYYY HH:mm:ss")}
+                          Đơn vé được lập bởi{" "}
+                          {getBooking()?.isCounterSale
+                            ? (getBooking()?.customerName || "Khách tại quầy")
+                            : (getBooking()?.user?.fullName || "Khách vãng lai")}{" "}
+                          lúc {dayjs(getBooking()?.createdAt).format("DD/MM/YYYY HH:mm:ss")}
                         </p>
                       </div>
                     ),

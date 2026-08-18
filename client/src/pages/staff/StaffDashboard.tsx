@@ -44,6 +44,9 @@ interface BookingRecord {
   status: string;
   printStatus: string;
   createdAt: string;
+  isCounterSale?: boolean;
+  customerName?: string;
+  customerPhone?: string;
   user?: { fullName: string; phone?: string };
   showtime?: {
     movie?: { title: string };
@@ -128,7 +131,11 @@ export function StaffDashboard() {
       title: "Khách Hàng",
       key: "user",
       render: (_: any, record: BookingRecord) => (
-        <span>{record.user?.fullName || "Khách vãng lai"}</span>
+        <span>
+          {record.isCounterSale
+            ? (record.customerName || record.user?.fullName || "Khách tại quầy")
+            : (record.user?.fullName || record.customerName || "Khách vãng lai")}
+        </span>
       ),
     },
     {

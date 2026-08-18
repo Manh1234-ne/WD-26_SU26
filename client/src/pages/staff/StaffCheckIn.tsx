@@ -220,7 +220,8 @@ export function StaffCheckIn() {
           b._id?.toLowerCase() === code.toLowerCase() ||
           b.customerPhone === code ||
           b.user?.phone === code ||
-          b.customerName?.toLowerCase() === code.toLowerCase()
+          b.customerName?.toLowerCase().includes(code.toLowerCase()) ||
+          b.user?.fullName?.toLowerCase().includes(code.toLowerCase())
       );
       const found = matches[0];
 
@@ -317,8 +318,12 @@ export function StaffCheckIn() {
       startTime: booking.showtime?.startTime,
       seats: bookingSeats,
       combos: combosFormatted,
-      customerName: booking.user?.fullName || booking.customerName || "Khách hàng",
-      customerPhone: booking.user?.phone || booking.customerPhone,
+      customerName: booking.isCounterSale
+        ? (booking.customerName || booking.user?.fullName || "Khách hàng")
+        : (booking.user?.fullName || booking.customerName || "Khách hàng"),
+      customerPhone: booking.isCounterSale
+        ? (booking.customerPhone || booking.user?.phone)
+        : (booking.user?.phone || booking.customerPhone),
       paymentMethod: booking.paymentMethod,
       finalAmount: booking.finalAmount,
       discountAmount: booking.discountAmount,
@@ -548,10 +553,14 @@ export function StaffCheckIn() {
 
               <Descriptions title="Thông Tin Khách Hàng & Thanh Toán" column={{ xs: 1, sm: 2 }}>
                 <Descriptions.Item label="Họ tên">
-                  {booking.user?.fullName || "Khách vãng lai"}
+                  {booking.isCounterSale
+                    ? (booking.customerName || booking.user?.fullName || "Khách tại quầy")
+                    : (booking.user?.fullName || booking.customerName || "Khách vãng lai")}
                 </Descriptions.Item>
                 <Descriptions.Item label="SĐT">
-                  {booking.user?.phone || "Khách tại quầy"}
+                  {booking.isCounterSale
+                    ? (booking.customerPhone || booking.user?.phone || "Khách tại quầy")
+                    : (booking.user?.phone || booking.customerPhone || "Chưa có SĐT")}
                 </Descriptions.Item>
                 <Descriptions.Item label="Tổng giá trị">
                   <Text type="success" strong style={{ fontSize: 16 }}>

@@ -217,6 +217,9 @@ function ManageBooking() {
         const scanner = new Html5Qrcode("reader", {
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
           verbose: false,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
         });
         qrScannerRef.current = scanner;
 
@@ -225,9 +228,6 @@ function ManageBooking() {
           {
             fps: 15,
             qrbox: { width: 250, height: 250 },
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true,
-            },
           },
           (decodedText) => {
             void handleScanSuccess(decodedText);
@@ -1188,29 +1188,37 @@ function ManageBooking() {
       title: "Khách hàng",
       key: "customer",
       width: 200,
-      render: (_, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Avatar
-            style={{ backgroundColor: "#ffe4e6", color: "#e11d48" }}
-            icon={<UserOutlined />}
-          >
-            {record.user?.fullName?.charAt(0).toUpperCase()}
-          </Avatar>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontWeight: 600, color: "#0f172a", fontSize: 13 }}>
-              {record.user?.fullName || "Khách vãng lai"}
-            </span>
-            <span style={{ fontSize: 11, color: "#64748b" }}>
-              {record.user?.email || "Chưa cập nhật email"}
-            </span>
-            {record.user?.phone && (
-              <span style={{ fontSize: 10, color: "#94a3b8" }}>
-                SĐT: {record.user.phone}
+      render: (_, record) => {
+        const name = record.isCounterSale
+          ? (record.customerName || record.user?.fullName || "Khách tại quầy")
+          : (record.user?.fullName || record.customerName || "Khách vãng lai");
+        const contact = record.isCounterSale
+          ? (record.customerPhone ? `SĐT: ${record.customerPhone}` : (record.user?.email || "Khách tại quầy"))
+          : (record.user?.email || "Chưa cập nhật email");
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar
+              style={{ backgroundColor: "#ffe4e6", color: "#e11d48" }}
+              icon={<UserOutlined />}
+            >
+              {name.charAt(0).toUpperCase()}
+            </Avatar>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontWeight: 600, color: "#0f172a", fontSize: 13 }}>
+                {name}
               </span>
-            )}
+              <span style={{ fontSize: 11, color: "#64748b" }}>
+                {contact}
+              </span>
+              {!record.isCounterSale && record.user?.phone && (
+                <span style={{ fontSize: 10, color: "#94a3b8" }}>
+                  SĐT: {record.user.phone}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: "Phim & Suất chiếu",
@@ -1809,11 +1817,15 @@ function ManageBooking() {
                   <Descriptions.Item label="Khách hàng">
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                       <UserOutlined style={{ fontSize: 12, color: "#e11d48" }} />
-                      {selectedBookingDetails.booking.user?.fullName}
+                      {selectedBookingDetails.booking.isCounterSale
+                        ? (selectedBookingDetails.booking.customerName || selectedBookingDetails.booking.user?.fullName || "Khách tại quầy")
+                        : (selectedBookingDetails.booking.user?.fullName || selectedBookingDetails.booking.customerName || "Khách vãng lai")}
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="Liên hệ">
-                    {selectedBookingDetails.booking.user?.email} {selectedBookingDetails.booking.user?.phone && `· ${selectedBookingDetails.booking.user?.phone}`}
+                    {selectedBookingDetails.booking.isCounterSale
+                      ? (selectedBookingDetails.booking.customerPhone || selectedBookingDetails.booking.user?.phone || selectedBookingDetails.booking.user?.email || "Khách tại quầy")
+                      : `${selectedBookingDetails.booking.user?.email || ""}${selectedBookingDetails.booking.user?.phone ? ` · ${selectedBookingDetails.booking.user?.phone}` : ""}`}
                   </Descriptions.Item>
                   <Descriptions.Item label="Lịch bắt đầu phim">
                     <span style={{ color: "#e11d48", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -1969,8 +1981,11 @@ function ManageBooking() {
                       <div>
                         <strong>Khởi tạo yêu cầu đặt vé</strong>
                         <p style={{ fontSize: 11, color: "#64748b", margin: "4px 0 0 0" }}>
-                          Đơn vé được lập bởi {selectedBookingDetails.booking.user?.fullName || "Khách vãng lai"} lúc{" "}
-                          {dayjs(selectedBookingDetails.booking.createdAt).format("DD/MM/YYYY HH:mm:ss")}
+                          Đơn vé được lập bởi{" "}
+                          {selectedBookingDetails.booking.isCounterSale
+                            ? (selectedBookingDetails.booking.customerName || "Khách tại quầy")
+                            : (selectedBookingDetails.booking.user?.fullName || "Khách vãng lai")}{" "}
+                          lúc {dayjs(selectedBookingDetails.booking.createdAt).format("DD/MM/YYYY HH:mm:ss")}
                         </p>
                       </div>
                     ),
