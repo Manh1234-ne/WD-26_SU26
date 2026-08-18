@@ -16,6 +16,7 @@ import {
   Divider,
   Result,
   DatePicker,
+  Alert,
 } from "antd";
 import { ClapperboardIcon, PopcornIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -179,6 +180,14 @@ export function StaffPos() {
     fetchInitialData();
   }, [queryShowtimeId]);
 
+  // Helper to check if showtime has already started or passed
+  const isShowtimePast = (st: Showtime | null | undefined) => {
+    if (!st || !st.startTime) return false;
+    return dayjs(st.startTime).isBefore(dayjs());
+  };
+
+  const isCurrentShowtimePast = isShowtimePast(selectedShowtime);
+
   // Filter showtimes by selected movie
   const filteredShowtimes = useMemo(() => {
     if (!selectedMovieId) return [];
@@ -239,6 +248,16 @@ export function StaffPos() {
 
   // Handle seat click
   const handleToggleSeat = (seat: Seat) => {
+    if (isCurrentShowtimePast) {
+      Swal.fire({
+        title: "Suất chiếu đã bắt đầu!",
+        text: `Suất chiếu này đã bắt đầu lúc ${dayjs(selectedShowtime?.startTime).format("HH:mm - DD/MM/YYYY")}. Không thể chọn ghế hoặc đặt vé cho phim đã chiếu!`,
+        icon: "warning",
+        confirmButtonColor: "#e11d48",
+      });
+      return;
+    }
+
     if (occupiedSeatIds.includes(seat._id)) {
       toast.warning(`Ghế ${seat.code} đã được đặt trước!`);
       return;
@@ -427,7 +446,6 @@ export function StaffPos() {
     return cashGiven - grandTotal;
   }, [cashGiven, grandTotal]);
 
-  // Handle Combo-Only Order
   const handleCreateComboOnlyOrder = async () => {
     const hasItems = Object.values(selectedCombos).some((qty) => qty > 0);
     if (!hasItems) {
@@ -436,6 +454,35 @@ export function StaffPos() {
     }
     if (paymentMethod === "cash" && (cashGiven === null || cashGiven < grandTotal)) {
       toast.error("Số tiền khách đưa chưa đủ để hoàn tất thanh toán!");
+      return;
+    }
+
+    const confirmResult = await Swal.fire({
+      title: "Xác nhận bán bắp nước?",
+      html: `
+        <div style="text-align: left; font-size: 14px; line-height: 1.6; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <p style="margin-bottom: 6px;"><b>Bắp nước:</b> ${Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([cId, qty]) => {
+            const c = combos.find((cb) => cb._id === cId);
+            return `${c?.name || "Combo"} x${qty}`;
+          })
+          .join(", ")}</p>
+          <p style="margin-bottom: 6px;"><b>Khách:</b> ${customerName} ${customerPhone ? `(${customerPhone})` : ""}</p>
+          <p style="margin-bottom: 6px;"><b>Hình thức:</b> ${paymentMethod === "cash" ? "Tiền mặt" : "QR Chuyển khoản"}</p>
+          <hr style="margin: 8px 0; border: none; border-top: 1px dashed #cbd5e1;" />
+          <p style="margin: 0; font-size: 16px;"><b>Tổng thanh toán:</b> <span style="color: #e11d48; font-weight: 800;">${grandTotal.toLocaleString("vi-VN")} đ</span></p>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Xác nhận & In hóa đơn",
+      cancelButtonText: "Hủy",
+      confirmButtonColor: "#d97706",
+      cancelButtonColor: "#64748b",
+    });
+
+    if (!confirmResult.isConfirmed) {
       return;
     }
 
@@ -472,16 +519,63 @@ export function StaffPos() {
 
   // Handle Complete Booking
   const handleCreateCounterBooking = async () => {
-    if (!selectedShowtimeId) {
+    if (!selectedShowtimeId || !selectedShowtime) {
       toast.error("Vui lòng chọn suất chiếu!");
       return;
     }
+
+    if (dayjs(selectedShowtime.startTime).isBefore(dayjs())) {
+      Swal.fire({
+        title: "Không thể đặt vé!",
+        html: `Suất chiếu này đã bắt đầu vào lúc <b>${dayjs(selectedShowtime.startTime).format("HH:mm - DD/MM/YYYY")}</b>.<br/><br/>Hệ thống không cho phép bán vé tại quầy cho phim đã chiếu!`,
+        icon: "error",
+        confirmButtonColor: "#e11d48",
+      });
+      return;
+    }
+
     if (selectedSeats.length === 0) {
       toast.error("Vui lòng chọn ít nhất 1 ghế!");
       return;
     }
     if (paymentMethod === "cash" && (cashGiven === null || cashGiven < grandTotal)) {
       toast.error("Số tiền khách đưa chưa đủ để hoàn tất thanh toán!");
+      return;
+    }
+
+    const confirmResult = await Swal.fire({
+      title: "Xác nhận bán vé tại quầy?",
+      html: `
+        <div style="text-align: left; font-size: 14px; line-height: 1.6; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <p style="margin-bottom: 6px;"><b>Phim:</b> ${selectedShowtime?.movie?.title}</p>
+          <p style="margin-bottom: 6px;"><b>Suất chiếu:</b> ${dayjs(selectedShowtime?.startTime).format("HH:mm")} - ${dayjs(selectedShowtime?.endTime).format("HH:mm")} (${dayjs(selectedShowtime?.startTime).format("DD/MM/YYYY")})</p>
+          <p style="margin-bottom: 6px;"><b>Phòng:</b> ${selectedShowtime?.room?.name}</p>
+          <p style="margin-bottom: 6px;"><b>Ghế đã chọn:</b> <span style="color: #2563eb; font-weight: bold;">${selectedSeats.map((s) => s.code).join(", ")}</span></p>
+          ${Object.entries(selectedCombos).filter(([_, qty]) => qty > 0).length > 0
+          ? `<p style="margin-bottom: 6px;"><b>bắp nước:</b> ${Object.entries(selectedCombos)
+            .filter(([_, qty]) => qty > 0)
+            .map(([cId, qty]) => {
+              const c = combos.find((cb) => cb._id === cId);
+              return `${c?.name || "Combo"} x${qty}`;
+            })
+            .join(", ")}</p>`
+          : ""
+        }
+          <p style="margin-bottom: 6px;"><b>Khách:</b> ${customerName} ${customerPhone ? `(${customerPhone})` : ""}</p>
+          <p style="margin-bottom: 6px;"><b>Hình thức:</b> ${paymentMethod === "cash" ? "Tiền mặt" : "QR Chuyển khoản"}</p>
+          <hr style="margin: 8px 0; border: none; border-top: 1px dashed #cbd5e1;" />
+          <p style="margin: 0; font-size: 16px;"><b>Tổng thanh toán:</b> <span style="color: #e11d48; font-weight: 800;">${grandTotal.toLocaleString("vi-VN")} đ</span></p>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Xác nhận & In vé",
+      cancelButtonText: "Hủy",
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#64748b",
+    });
+
+    if (!confirmResult.isConfirmed) {
       return;
     }
 
@@ -548,20 +642,20 @@ export function StaffPos() {
   const handleTriggerPrintTicket = async () => {
     const combosFormatted = createdComboOrder
       ? createdComboOrder.items?.map((item: any) => ({
-          name: item.combo?.name || "Combo",
-          quantity: item.quantity,
-          price: item.totalPrice,
-        }))
+        name: item.combo?.name || "Combo",
+        quantity: item.quantity,
+        price: item.totalPrice,
+      }))
       : Object.entries(selectedCombos)
-          .filter(([_, qty]) => qty > 0)
-          .map(([cId, qty]) => {
-            const cb = combos.find((c) => c._id === cId);
-            return {
-              name: cb?.name || "Combo",
-              quantity: qty,
-              price: (cb?.price || 0) * qty,
-            };
-          });
+        .filter(([_, qty]) => qty > 0)
+        .map(([cId, qty]) => {
+          const cb = combos.find((c) => c._id === cId);
+          return {
+            name: cb?.name || "Combo",
+            quantity: qty,
+            price: (cb?.price || 0) * qty,
+          };
+        });
 
     await printCinemaTicket({
       bookingId: createdBooking?._id,
@@ -731,14 +825,38 @@ export function StaffPos() {
                       : null
                   }
                 >
-                  {filteredShowtimes.map((st) => (
-                    <Option key={st._id} value={st._id}>
-                      [{dayjs(st.startTime).format("HH:mm")} - {dayjs(st.endTime).format("HH:mm")}] Phòng {st.room?.name} —{" "}
-                      {st.basePrice?.toLocaleString("vi-VN")}đ
-                    </Option>
-                  ))}
+                  {filteredShowtimes.map((st) => {
+                    const isPast = isShowtimePast(st);
+                    return (
+                      <Option key={st._id} value={st._id} disabled={isPast}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ textDecoration: isPast ? "line-through" : "none", color: isPast ? "#94a3b8" : "inherit" }}>
+                            [{dayjs(st.startTime).format("HH:mm")} - {dayjs(st.endTime).format("HH:mm")}] Phòng {st.room?.name} —{" "}
+                            {st.basePrice?.toLocaleString("vi-VN")}đ
+                          </span>
+                          {isPast && (
+                            <Tag color="error" style={{ fontSize: 10, marginLeft: 6, fontWeight: "bold" }}>
+                              Đã chiếu
+                            </Tag>
+                          )}
+                        </div>
+                      </Option>
+                    );
+                  })}
                 </Select>
               </Col>
+
+              {selectedShowtime && isCurrentShowtimePast && (
+                <Col xs={24}>
+                  <Alert
+                    message="Suất chiếu đã bắt đầu (Đã chiếu)"
+                    description={`Suất chiếu này đã bắt đầu vào lúc ${dayjs(selectedShowtime.startTime).format("HH:mm, DD/MM/YYYY")}. Theo quy định hệ thống, không thể đặt vé hoặc xuất vé tại quầy cho phim đã chiếu.`}
+                    type="error"
+                    showIcon
+                    style={{ borderRadius: 8 }}
+                  />
+                </Col>
+              )}
             </Row>
           </Card>
 
@@ -748,10 +866,17 @@ export function StaffPos() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>2.Sơ Đồ Chọn Ghế ({selectedSeats.length} ghế đã chọn)</span>
                 {selectedShowtime && (
-                  <Tag color="purple">
-                    Phòng: {selectedShowtime.room?.name} | Giá gốc:{" "}
-                    {selectedShowtime.basePrice?.toLocaleString("vi-VN")}đ
-                  </Tag>
+                  <Space>
+                    {isCurrentShowtimePast && (
+                      <Tag color="error" style={{ fontWeight: 600 }}>
+                        ĐÃ CHIẾU / QUÁ GIỜ
+                      </Tag>
+                    )}
+                    <Tag color="purple">
+                      Phòng: {selectedShowtime.room?.name} | Giá gốc:{" "}
+                      {selectedShowtime.basePrice?.toLocaleString("vi-VN")}đ
+                    </Tag>
+                  </Space>
                 )}
               </div>
             }
@@ -857,10 +982,12 @@ export function StaffPos() {
                             textColor = "#ffffff";
                           }
 
+                          const isSeatDisabled = isOccupied || isCurrentShowtimePast;
+
                           return (
                             <button
                               key={seat._id}
-                              disabled={isOccupied}
+                              disabled={isSeatDisabled}
                               onClick={() => handleToggleSeat(seat)}
                               style={{
                                 width: seat.type === "couple" ? 64 : 34,
@@ -871,8 +998,8 @@ export function StaffPos() {
                                 color: textColor,
                                 fontWeight: "bold",
                                 fontSize: 11,
-                                cursor: isOccupied ? "not-allowed" : "pointer",
-                                opacity: isOccupied ? 0.6 : 1,
+                                cursor: isSeatDisabled ? "not-allowed" : "pointer",
+                                opacity: isSeatDisabled ? 0.5 : 1,
                                 transition: "all 0.15s ease",
                               }}
                             >
@@ -1093,7 +1220,7 @@ export function StaffPos() {
                     <div style={{ marginTop: 4 }}>
                       {cashGiven < grandTotal ? (
                         <Text type="danger" strong style={{ fontSize: 12 }}>
-                          ⚠️ Tiền khách đưa chưa đủ! (Còn thiếu {(grandTotal - (cashGiven || 0)).toLocaleString("vi-VN")} đ)
+                          Tiền khách đưa chưa đủ! (Còn thiếu {(grandTotal - (cashGiven || 0)).toLocaleString("vi-VN")} đ)
                         </Text>
                       ) : (
                         <div style={{ padding: "6px 10px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1107,6 +1234,7 @@ export function StaffPos() {
                   )}
                 </div>
               )}
+
 
               <Divider style={{ margin: "8px 0" }} />
 
@@ -1181,18 +1309,20 @@ export function StaffPos() {
                   );
                 }
 
+                const isTicketDisabled = !hasSeats || isCashInsufficient || isCurrentShowtimePast;
+
                 return (
                   <Button
                     type="primary"
                     size="large"
                     block
                     loading={submitting}
-                    disabled={!hasSeats || isCashInsufficient}
+                    disabled={isTicketDisabled}
                     icon={<CheckCircleOutlined />}
                     style={{
                       height: 52,
-                      background: "#ff0000ff",
-                      borderColor: "#a44242ff",
+                      background: isCurrentShowtimePast ? "#94a3b8" : "#ff0000ff",
+                      borderColor: isCurrentShowtimePast ? "#64748b" : "#a44242ff",
                       fontSize: 16,
                       fontWeight: "bold",
                       borderRadius: 10,
@@ -1201,7 +1331,9 @@ export function StaffPos() {
                     }}
                     onClick={handleCreateCounterBooking}
                   >
-                    XÁC NHẬN THANH TOÁN & IN VÉ
+                    {isCurrentShowtimePast
+                      ? "SUẤT CHIẾU ĐÃ BẮT ĐẦU (KHÔNG THỂ BÁN VÉ)"
+                      : "XÁC NHẬN THANH TOÁN & IN VÉ"}
                   </Button>
                 );
               })()}

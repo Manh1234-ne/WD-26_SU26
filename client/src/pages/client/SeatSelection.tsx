@@ -72,6 +72,19 @@ function SeatSelection() {
     }, [isAuthenticated, navigate, message])
 
     useEffect(() => {
+        if (showtime?.startTime && new Date(showtime.startTime) <= new Date()) {
+            Swal.fire({
+                title: 'Suất chiếu đã bắt đầu!',
+                text: 'Suất chiếu này đã bắt đầu hoặc đã kết thúc. Bạn không thể đặt vé cho suất chiếu này.',
+                icon: 'error',
+                confirmButtonColor: '#e11d48',
+            }).then(() => {
+                navigate(-1);
+            });
+        }
+    }, [showtime, navigate]);
+
+    useEffect(() => {
         if (!showtimeId) return;
         void cancelOtherHoldingSessions(showtimeId);
         const raw = sessionStorage.getItem(SESSION_KEY);
