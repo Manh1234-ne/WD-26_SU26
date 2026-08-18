@@ -297,7 +297,7 @@ export function StaffDashboard() {
                   <Title level={5} style={{ margin: 0, color: "#065f46" }}>
                     Bán Vé Tại Quầy (POS)
                   </Title>
-                  <Text style={{ fontSize: 12, color: "#b91c1c" }}>
+                  <Text style={{ fontSize: 12, color: "#065f46" }}>
                     Chọn phim, sơ đồ ghế, combo & xuất vé cho khách
                   </Text>
                 </div>

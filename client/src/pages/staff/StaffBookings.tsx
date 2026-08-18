@@ -231,8 +231,8 @@ export function StaffBookings() {
     `;
 
     seats.forEach((seat: any, index: number) => {
-      const seatCode = seat.seatCode || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : "-");
-      const seatTypeLabel = (seat.seatType || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.type) === "couple" ? "Đôi" : "Thường";
+      const seatCode = seat.seatCode || seat.seat?.code || seat.code || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : (seat.row && seat.number ? `${seat.row}${seat.number}` : "-"));
+      const seatTypeLabel = (seat.seatType || seat.seat?.type || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.seat?.type || seat.type) === "couple" ? "Đôi" : "Thường";
       const seatPrice = seat.price || (basePrice * (seat.priceMultiplier || 1));
 
       ticketHTML += `
@@ -606,7 +606,7 @@ export function StaffBookings() {
                             key={seat._id}
                             style={{ fontWeight: 700, borderRadius: "4px" }}
                           >
-                            {seat.seatCode || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : "-")} ({(seat.seatType || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.type) === "couple" ? "Đôi" : "Thường"})
+                            {seat.seatCode || seat.seat?.code || seat.code || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : (seat.row && seat.number ? `${seat.row}${seat.number}` : "-"))} ({(seat.seatType || seat.seat?.type || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.seat?.type || seat.type) === "couple" ? "Đôi" : "Thường"})
                           </Tag>
                         ))
                       ) : (

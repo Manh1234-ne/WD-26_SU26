@@ -123,7 +123,7 @@ export const getBookingById = asyncHandler(async (req, res) => {
 
   const seats = await BookingSeat.find({
     booking: booking._id,
-  });
+  }).populate("seat");
 
   const combos = await BookingCombo.find({
     booking: booking._id,

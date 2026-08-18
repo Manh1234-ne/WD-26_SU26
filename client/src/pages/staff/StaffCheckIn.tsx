@@ -495,13 +495,39 @@ export function StaffCheckIn() {
 
                 <Descriptions.Item label="Danh Sách Ghế" span={2}>
                   <Space wrap size={[8, 8]}>
-                    {bookingSeats.length > 0
-                      ? bookingSeats.map((bs) => (
-                        <Tag key={bs._id || bs.seat?._id} color="volcano" style={{ fontSize: 15, padding: "4px 10px" }}>
-                          Ghế {bs.seat?.code || bs.code}
-                        </Tag>
-                      ))
-                      : "Chưa cập nhật thông tin ghế"}
+                    {bookingSeats.length > 0 ? (
+                      bookingSeats.map((bs, index) => {
+                        const seatCode =
+                          bs.seatCode ||
+                          bs.seat?.code ||
+                          bs.code ||
+                          bs.label ||
+                          (bs.row && bs.number ? `${bs.row}${bs.number}` : "") ||
+                          (bs.seat?.row && bs.seat?.number ? `${bs.seat.row}${bs.seat.number}` : "") ||
+                          `Ghế #${index + 1}`;
+                        const rawType = (bs.seatType || bs.seat?.type || bs.type || "").toLowerCase();
+                        const isVip = rawType === "vip";
+                        const isCouple = rawType === "couple";
+                        const tagColor = isVip ? "gold" : isCouple ? "magenta" : "volcano";
+
+                        return (
+                          <Tag
+                            key={bs._id || bs.seat?._id || index}
+                            color={tagColor}
+                            style={{
+                              fontSize: 15,
+                              padding: "4px 12px",
+                              fontWeight: 700,
+                              borderRadius: 6,
+                            }}
+                          >
+                            Ghế {seatCode} {isVip ? "(VIP)" : isCouple ? "(Đôi)" : ""}
+                          </Tag>
+                        );
+                      })
+                    ) : (
+                      <Text type="secondary">Chưa cập nhật thông tin ghế</Text>
+                    )}
                   </Space>
                 </Descriptions.Item>
 
