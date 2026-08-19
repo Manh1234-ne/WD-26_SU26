@@ -1177,6 +1177,22 @@ export function StaffPos() {
                   </Row>
                 </Radio.Group>
               </div>
+              {paymentMethod == "vnpay" && (
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  padding: "8px",
+                  backgroundColor: "#f8fafc",
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8
+                }}>
+                  <Text strong style={{ fontSize: 13, textAlign: "center", display: "block" }}>Mã QR</Text>
+                  <div style={{ display: "flex", justifyContent: "center", margin: "auto", padding: "12px" }}>
+                    <img width={200} src="../public/image/QR.jpg" alt="" />
+                  </div>
+                </div>
+              )}
 
               {/* Cash Given & Change Calculator */}
               {paymentMethod === "cash" && (
