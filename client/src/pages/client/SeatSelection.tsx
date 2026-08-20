@@ -531,7 +531,7 @@ function SeatSelection() {
                                                     : parsedAisles.includes(seat.number)
 
                                                 return (
-                                                    <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                    <div key={seat._id} style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
                                                         <button
                                                             className={`seat-unit ${seat.type} ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
                                                             onClick={() => toggleSeat(seat)}
