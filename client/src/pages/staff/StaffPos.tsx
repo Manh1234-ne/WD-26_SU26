@@ -1189,7 +1189,7 @@ export function StaffPos() {
                 }}>
                   <Text strong style={{ fontSize: 13, textAlign: "center", display: "block" }}>Mã QR</Text>
                   <div style={{ display: "flex", justifyContent: "center", margin: "auto", padding: "12px" }}>
-                    <img width={200} src="../public/image/QR.jpg" alt="" />
+                    <img width={200} src="../public/image/MB.jpg" alt="" />
                   </div>
                 </div>
               )}
