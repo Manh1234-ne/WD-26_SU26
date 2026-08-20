@@ -142,14 +142,14 @@ function ManageShowtime() {
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
     const [seats, setSeats] = useState<Seat[]>([])
-    const [occupiedSeatIds, setOccupiedSeatIds] = useState<Set<string>>(new Set())
+    const [seatStatusMap, setSeatStatusMap] = useState<Map<string, string>>(new Map())
     const [isLoadingSeats, setIsLoadingSeats] = useState(false)
 
     const handleViewSeats = async (showtime: Showtime) => {
         setViewingShowtime(showtime)
         setIsLoadingSeats(true)
         setSeats([])
-        setOccupiedSeatIds(new Set())
+        setSeatStatusMap(new Map())
         try {
             const seatRes = await getSeatsByRoom(showtime.room._id)
             const seatsList = seatRes?.seats || []
@@ -157,8 +157,12 @@ function ManageShowtime() {
 
             const occupiedRes = await api.get(`/booking-seats/showtime/${showtime._id}/occupied`)
             const occupiedData = occupiedRes.data?.data || []
-            const occupiedIds = new Set<string>(occupiedData.map((os: any) => os.seat?._id || os.seat))
-            setOccupiedSeatIds(occupiedIds)
+            const newSeatMap = new Map<string, string>()
+            occupiedData.forEach((os: any) => {
+                const seatId = os.seat?._id || os.seat;
+                newSeatMap.set(seatId, os.status);
+            })
+            setSeatStatusMap(newSeatMap)
         } catch (error) {
             console.error(error)
             void message.error('Không thể tải sơ đồ ghế cho lịch chiếu này')
@@ -1041,18 +1045,33 @@ function ManageShowtime() {
                                                         return <div style={{ color: '#64748b', padding: '20px 0' }}>Không có sơ đồ ghế hoặc phòng chiếu chưa có ghế</div>
                                                     }
 
-                                                    return sortedRows.map(row => (
-                                                        <div key={row} className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                            <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
-                                                            {grouped[row].map(seat => {
-                                                                const isOccupied = occupiedSeatIds.has(seat._id)
+                                                    return sortedRows.map(row => {
+                                                        const rowSeats = grouped[row];
+                                                        const maxSeatNum = Math.max(...rowSeats.map(s => s.number), 0);
+                                                        const elements = [];
+
+                                                        for (let num = 1; num <= maxSeatNum; num++) {
+                                                            const seat = rowSeats.find(s => s.number === num);
+                                                            if (seat) {
+                                                                const seatStatus = seatStatusMap.get(seat._id);
+                                                                const isBooked = seatStatus === 'booked';
+                                                                const isHeld = seatStatus === 'held';
                                                                 let seatStyle: React.CSSProperties = {}
-                                                                if (isOccupied) {
+                                                                if (isBooked) {
                                                                     // Ghế đã đặt: Chữ V màu xanh lá
                                                                     seatStyle = {
                                                                         background: '#dcfce7',
                                                                         borderColor: '#bbf7d0',
                                                                         color: '#16a34a',
+                                                                        opacity: 1,
+                                                                        textDecoration: 'none',
+                                                                    }
+                                                                } else if (isHeld) {
+                                                                    // Ghế đang giữ: Chữ ⏳ màu cam
+                                                                    seatStyle = {
+                                                                        background: '#fef3c7',
+                                                                        borderColor: '#fde68a',
+                                                                        color: '#d97706',
                                                                         opacity: 1,
                                                                         textDecoration: 'none',
                                                                     }
@@ -1065,24 +1084,44 @@ function ManageShowtime() {
                                                                     }
                                                                 }
 
-                                                                return (
-                                                                    <Tooltip
-                                                                        key={seat._id}
-                                                                        title={`${seat.code} (${seat.type.toUpperCase()}) - ${isOccupied ? 'Đã đặt' : 'Còn trống'}`}
-                                                                    >
-                                                                        <button
-                                                                            className={`seat-unit ${seat.type}`}
-                                                                            style={{ cursor: 'default', ...seatStyle }}
-                                                                            type="button"
+                                                                const isCouple = seat.type === 'couple';
+
+                                                                elements.push(
+                                                                    <div key={seat._id} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                        <Tooltip
+                                                                            title={`${seat.code} (${seat.type.toUpperCase()}) - ${isBooked ? 'Đã đặt' : isHeld ? 'Đang giữ' : 'Còn trống'}`}
                                                                         >
-                                                                            {isOccupied ? 'V' : seat.type === 'disabled' ? '♿' : seat.number}
-                                                                        </button>
-                                                                    </Tooltip>
+                                                                            <button
+                                                                                className={`seat-unit ${seat.type}`}
+                                                                                style={{ cursor: 'default', ...seatStyle }}
+                                                                                type="button"
+                                                                            >
+                                                                                {isBooked ? 'V' : isHeld ? '⏳' : seat.type === 'disabled' ? '♿' : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                                            </button>
+                                                                        </Tooltip>
+                                                                    </div>
                                                                 )
-                                                            })}
-                                                            <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
-                                                        </div>
-                                                    ))
+
+                                                                if (isCouple) num++;
+                                                            } else {
+                                                                elements.push(
+                                                                    <div key={`gap-${num}`} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                        <div style={{ width: '32px', height: '32px' }} />
+                                                                    </div>
+                                                                )
+                                                            }
+                                                        }
+
+                                                        return (
+                                                            <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', width: '100%' }}>
+                                                                <div className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                    <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
+                                                                    {elements}
+                                                                    <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })
                                                 })()}
                                             </div>
                                         </div>
@@ -1095,6 +1134,10 @@ function ManageShowtime() {
                                             <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <div className="seat-unit occupied" style={{ cursor: 'default', background: '#16a34a', borderColor: '#bbf7d0', color: '#16a34a', opacity: 1 }}>V</div>
                                                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Đã đặt (V)</span>
+                                            </div>
+                                            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div className="seat-unit occupied" style={{ cursor: 'default', background: '#fef3c7', borderColor: '#fde68a', color: '#d97706', opacity: 1 }}>⏳</div>
+                                                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Đang giữ (⏳)</span>
                                             </div>
                                         </div>
                                     </div>
