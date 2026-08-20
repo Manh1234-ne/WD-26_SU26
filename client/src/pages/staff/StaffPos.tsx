@@ -246,6 +246,103 @@ export function StaffPos() {
     }
   }, [selectedShowtimeId, showtimes]);
 
+  // Group seats by row
+  const seatRows = useMemo(() => {
+    const map: { [row: string]: Seat[] } = {};
+    seats.forEach((seat) => {
+      if (seat.isActive === false) return;
+      if (!map[seat.row]) map[seat.row] = [];
+      map[seat.row].push(seat);
+    });
+    Object.keys(map).forEach((r) => {
+      map[r].sort((a, b) => a.number - b.number);
+    });
+    return map;
+  }, [seats]);
+
+  const hasIsolatedSeatHorizontally = (rowSeats: Seat[], occupied: Set<string>, selected: Set<string>) => {
+    const states = rowSeats.map((s) => {
+      if (occupied.has(s._id)) return 'used';
+      if (selected.has(s._id)) return 'used';
+      return 'empty';
+    });
+    for (let i = 1; i < states.length - 1; i++) {
+      if (
+        states[i] === 'empty' &&
+        states[i - 1] === 'used' &&
+        states[i + 1] === 'used'
+      ) {
+        const prevOccupied = occupied.has(rowSeats[i - 1]._id);
+        const nextOccupied = occupied.has(rowSeats[i + 1]._id);
+        if (!(prevOccupied && nextOccupied)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const checkAllRowsForIsolation = (selected: Seat[]) => {
+    const selectedSet = new Set<string>(selected.map((s) => s._id));
+    const occupiedSet = new Set<string>(occupiedSeatIds);
+    return Object.values(seatRows).some((rowSeats) =>
+      hasIsolatedSeatHorizontally(rowSeats, occupiedSet, selectedSet)
+    );
+  };
+
+  const checkAllColumnsForIsolation = (selected: Seat[]) => {
+    const selectedSet = new Set<string>(selected.map((s) => s._id));
+    const occupiedSet = new Set<string>(occupiedSeatIds);
+    const sortedRowNames = Object.keys(seatRows).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+    const rowIndexMap = new Map<string, number>();
+    sortedRowNames.forEach((r, idx) => rowIndexMap.set(r, idx));
+
+    const colMap = new Map<number, { rIdx: number; seat: Seat }[]>();
+
+    seats.forEach((seat) => {
+      if (seat.isActive === false) return;
+      const rIdx = rowIndexMap.get(seat.row);
+      if (rIdx === undefined) return;
+
+      const cols = seat.type === 'couple' ? [seat.number, seat.number + 1] : [seat.number];
+      cols.forEach((col) => {
+        if (!colMap.has(col)) {
+          colMap.set(col, []);
+        }
+        colMap.get(col)!.push({ rIdx, seat });
+      });
+    });
+
+    for (const [_, colSeats] of colMap.entries()) {
+      colSeats.sort((a, b) => a.rIdx - b.rIdx);
+
+      for (let i = 1; i < colSeats.length - 1; i++) {
+        const prev = colSeats[i - 1];
+        const curr = colSeats[i];
+        const next = colSeats[i + 1];
+
+        if (curr.rIdx - prev.rIdx !== 1 || next.rIdx - curr.rIdx !== 1) {
+          continue;
+        }
+
+        const prevUsed = occupiedSet.has(prev.seat._id) || selectedSet.has(prev.seat._id);
+        const currUsed = occupiedSet.has(curr.seat._id) || selectedSet.has(curr.seat._id);
+        const nextUsed = occupiedSet.has(next.seat._id) || selectedSet.has(next.seat._id);
+
+        if (!currUsed && prevUsed && nextUsed) {
+          const prevOccupied = occupiedSet.has(prev.seat._id);
+          const nextOccupied = occupiedSet.has(next.seat._id);
+          if (!(prevOccupied && nextOccupied)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
   // Handle seat click
   const handleToggleSeat = (seat: Seat) => {
     if (isCurrentShowtimePast) {
@@ -288,45 +385,17 @@ export function StaffPos() {
       return;
     }
 
-    setSelectedSeats(newSelected);
-  };
-
-  // Group seats by row
-  const seatRows = useMemo(() => {
-    const map: { [row: string]: Seat[] } = {};
-    seats.forEach((seat) => {
-      if (!map[seat.row]) map[seat.row] = [];
-      map[seat.row].push(seat);
-    });
-    Object.keys(map).forEach((r) => {
-      map[r].sort((a, b) => a.number - b.number);
-    });
-    return map;
-  }, [seats]);
-
-  const hasIsolatedSeat = (rowSeats: Seat[], occupied: Set<string>, selected: Set<string>) => {
-    const states = rowSeats.map((s) => {
-      if (occupied.has(s._id)) return 'used';
-      if (selected.has(s._id)) return 'used';
-      return 'empty';
-    });
-    for (let i = 1; i < states.length - 1; i++) {
-      if (
-        states[i] === 'empty' &&
-        states[i - 1] === 'used' &&
-        states[i + 1] === 'used'
-      ) {
-        return true;
-      }
+    if (checkAllColumnsForIsolation(newSelected)) {
+      Swal.fire({
+        title: "Thông báo",
+        text: "Việc chọn vị trí ghế của bạn không được để trống 1 ghế theo hàng dọc (cột ghế) giữa các ghế đã chọn hoặc đã bán.",
+        icon: "warning",
+        confirmButtonColor: "#e11d48",
+      });
+      return;
     }
-    return false;
-  };
 
-  const checkAllRowsForIsolation = (selected: Seat[]) => {
-    const selectedSet = new Set<string>(selected.map((s) => s._id));
-    return Object.values(seatRows).some((rowSeats) =>
-      hasIsolatedSeat(rowSeats, new Set(occupiedSeatIds), selectedSet)
-    );
+    setSelectedSeats(newSelected);
   };
 
   // Price calculations
@@ -538,6 +607,12 @@ export function StaffPos() {
       toast.error("Vui lòng chọn ít nhất 1 ghế!");
       return;
     }
+
+    if (checkAllRowsForIsolation(selectedSeats) || checkAllColumnsForIsolation(selectedSeats)) {
+      toast.error("Vị trí ghế đã chọn vi phạm quy định không để trống 1 ghế!");
+      return;
+    }
+
     if (paymentMethod === "cash" && (cashGiven === null || cashGiven < grandTotal)) {
       toast.error("Số tiền khách đưa chưa đủ để hoàn tất thanh toán!");
       return;

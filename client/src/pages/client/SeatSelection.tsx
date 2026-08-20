@@ -250,23 +250,27 @@ function SeatSelection() {
     })
 
 
-    const sortedRows = Object.keys(groupedSeats).sort()
+    const sortedRows = Object.keys(groupedSeats).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true })
+    )
 
-    const hasIsolatedSeat = (rowSeats: Seat[], occupied: Set<string>, selected: Set<string>) => {
+    const hasIsolatedSeatHorizontally = (rowSeats: Seat[], occupied: Set<string>, selected: Set<string>) => {
         const states = rowSeats.map((s) => {
             if (occupied.has(s._id)) return 'used'
             if (selected.has(s._id)) return 'used'
             return 'empty'
         })
-        for (let i = 0; i < states.length; i++) {
+        for (let i = 1; i < states.length - 1; i++) {
             if (
                 states[i] === 'empty' &&
-                i > 0 &&
-                i < states.length - 1 &&
                 states[i - 1] === 'used' &&
                 states[i + 1] === 'used'
             ) {
-                return true
+                const prevOccupied = occupied.has(rowSeats[i - 1]._id)
+                const nextOccupied = occupied.has(rowSeats[i + 1]._id)
+                if (!(prevOccupied && nextOccupied)) {
+                    return true
+                }
             }
         }
         return false
@@ -275,8 +279,57 @@ function SeatSelection() {
     const checkAllRowsForIsolation = (selected: Seat[]) => {
         const selectedSet = new Set<string>(selected.map((s) => s._id))
         return Object.values(groupedSeats).some((rowSeats) =>
-            hasIsolatedSeat(rowSeats, occupiedSet, selectedSet)
+            hasIsolatedSeatHorizontally(rowSeats, occupiedSet, selectedSet)
         )
+    }
+
+    const checkAllColumnsForIsolation = (selected: Seat[]) => {
+        const selectedSet = new Set<string>(selected.map((s) => s._id))
+        const rowIndexMap = new Map<string, number>()
+        sortedRows.forEach((r, idx) => rowIndexMap.set(r, idx))
+
+        const colMap = new Map<number, { rIdx: number; seat: Seat }[]>()
+
+        seats.forEach((seat) => {
+            if (!seat.isActive) return
+            const rIdx = rowIndexMap.get(seat.row)
+            if (rIdx === undefined) return
+
+            const cols = seat.type === 'couple' ? [seat.number, seat.number + 1] : [seat.number]
+            cols.forEach((col) => {
+                if (!colMap.has(col)) {
+                    colMap.set(col, [])
+                }
+                colMap.get(col)!.push({ rIdx, seat })
+            })
+        })
+
+        for (const [_, colSeats] of colMap.entries()) {
+            colSeats.sort((a, b) => a.rIdx - b.rIdx)
+
+            for (let i = 1; i < colSeats.length - 1; i++) {
+                const prev = colSeats[i - 1]
+                const curr = colSeats[i]
+                const next = colSeats[i + 1]
+
+                if (curr.rIdx - prev.rIdx !== 1 || next.rIdx - curr.rIdx !== 1) {
+                    continue
+                }
+
+                const prevUsed = occupiedSet.has(prev.seat._id) || selectedSet.has(prev.seat._id)
+                const currUsed = occupiedSet.has(curr.seat._id) || selectedSet.has(curr.seat._id)
+                const nextUsed = occupiedSet.has(next.seat._id) || selectedSet.has(next.seat._id)
+
+                if (!currUsed && prevUsed && nextUsed) {
+                    const prevOccupied = occupiedSet.has(prev.seat._id)
+                    const nextOccupied = occupiedSet.has(next.seat._id)
+                    if (!(prevOccupied && nextOccupied)) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
     }
 
     const toggleSeat = async (seat: Seat) => {
@@ -301,6 +354,16 @@ function SeatSelection() {
             Swal.fire({
                 title: "Thông báo",
                 text: "Việc chọn vị trí ghế của bạn không được để trống 1 ghế ở bên trái, giữa hoặc bên phải trên cùng hàng ghế mà bạn vừa chọn.",
+                icon: "warning",
+                confirmButtonColor: "#e11d48"
+            })
+            return
+        }
+
+        if (checkAllColumnsForIsolation(newSelected)) {
+            Swal.fire({
+                title: "Thông báo",
+                text: "Việc chọn vị trí ghế của bạn không được để trống 1 ghế theo cột ghế giữa các ghế đã chọn hoặc đã bán.",
                 icon: "warning",
                 confirmButtonColor: "#e11d48"
             })
@@ -393,12 +456,8 @@ function SeatSelection() {
         return sum + showtime.basePrice * seat.priceMultiplier
     }, 0)
 
-    const handleSingleSeat = (
-        seat: Seat[],
-        occupied: Set<string>,
-        selected: Set<string>
-    ) => {
-        return hasIsolatedSeat(seat, occupied, selected)
+    const hasAnyIsolation = (selected: Seat[]) => {
+        return checkAllRowsForIsolation(selected) || checkAllColumnsForIsolation(selected)
     }
 
     const formatCountdown = (seconds: number) => {
@@ -410,6 +469,11 @@ function SeatSelection() {
     const handleBookingSubmit = async () => {
         if (selectedSeats.length === 0) {
             message.error("Vui lòng chọn ghế");
+            return;
+        }
+
+        if (hasAnyIsolation(selectedSeats)) {
+            message.error("Vị trí ghế đã chọn vi phạm quy định không để trống 1 ghế (theo hàng ngang hoặc hàng dọc)!");
             return;
         }
 
@@ -534,7 +598,7 @@ function SeatSelection() {
 
                 <button
                     className="primary-button summary-checkout-btn"
-                    disabled={selectedSeats.length === 0 || handleSingleSeat(seats, occupiedSet, new Set(selectedSeats.map(s => s._id))) || isSubmitting}
+                    disabled={selectedSeats.length === 0 || hasAnyIsolation(selectedSeats) || isSubmitting}
                     onClick={handleBookingSubmit}
                     type="button"
                 >

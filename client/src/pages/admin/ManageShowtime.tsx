@@ -556,7 +556,7 @@ function ManageShowtime() {
                         {/* Section 1: Phim, Phòng chiếu & Định dạng */}
                         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
                             <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                                📌 1. THÔNG TIN PHIM & PHÒNG CHIẾU
+                                1. THÔNG TIN PHIM & PHÒNG CHIẾU
                             </Text>
                             <Row gutter={[20, 16]}>
                                 <Col xs={24} md={10}>
@@ -667,7 +667,7 @@ function ManageShowtime() {
                         {/* Section 2: Khung giờ chiếu */}
                         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
                             <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                                ⏰ 2. KHUNG GIỜ CHIẾU (HOẠT ĐỘNG TỪ 08:00 ĐẾN 23:00)
+                                2. KHUNG GIỜ CHIẾU (HOẠT ĐỘNG TỪ 08:00 ĐẾN 23:00)
                             </Text>
                             <Row gutter={[20, 16]}>
                                 <Col xs={24} sm={12}>
@@ -768,7 +768,7 @@ function ManageShowtime() {
                         {/* Section 3: Thiết lập chi tiết & Giá vé */}
                         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #f1f5f9' }}>
                             <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                                💵 3. THIẾT LẬP GIÁ VÉ & TRẠNG THÁI
+                                3. THIẾT LẬP GIÁ VÉ & TRẠNG THÁI
                             </Text>
                             <Row gutter={[20, 16]}>
                                 <Col xs={24} sm={12} md={8}>
