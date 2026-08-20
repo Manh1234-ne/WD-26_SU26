@@ -1462,9 +1462,9 @@ button:disabled {
 }
 
 .seat-unit.vip {
-  background: #fff1f2;
-  border-color: #fecdd3;
-  color: #be123c;
+  background: #fffbe5;
+  border-color: #ffd700;
+  color: #ffd700;
 }
 
 .seat-unit.couple {
@@ -1528,13 +1528,13 @@ button:disabled {
 }
 
 .legend-box.vip {
-  background: #fff1f2;
-  border-color: #fecdd3;
+  background: #fbeda0;
+  border-color: #ffd700;
 }
 
 .legend-box.couple {
-  background: #fdf2f8;
-  border-color: #fbcfe8;
+  background: #fbcfe8;
+  border-color: #ff0090;
   width: 32px;
 }
 

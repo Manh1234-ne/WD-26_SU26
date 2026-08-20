@@ -551,7 +551,7 @@ function SeatSelection() {
                                         <span className="row-label">{row}</span>
                                     </div>
                                     {isAisleRow && (
-                                        <div className="aisle-row-divider">
+                                        <div className="aisle-row-divider" style={{ fontFamily: "Arial", fontWeight: "600", letterSpacing: "1px", color: "#94a3b8", fontSize: "12px" }}>
                                             <span>LỐI ĐI NGANG</span>
                                         </div>
                                     )}
