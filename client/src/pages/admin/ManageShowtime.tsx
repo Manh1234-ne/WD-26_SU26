@@ -141,6 +141,7 @@ function ManageShowtime() {
 
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
+    const [viewingRoom, setViewingRoom] = useState<any>(null)
     const [seats, setSeats] = useState<Seat[]>([])
     const [occupiedSeatIds, setOccupiedSeatIds] = useState<Set<string>>(new Set())
     const [isLoadingSeats, setIsLoadingSeats] = useState(false)
@@ -154,6 +155,7 @@ function ManageShowtime() {
             const seatRes = await getSeatsByRoom(showtime.room._id)
             const seatsList = seatRes?.seats || []
             setSeats(seatsList)
+            setViewingRoom(seatRes?.room || (showtime as any).room || null)
 
             const occupiedRes = await api.get(`/booking-seats/showtime/${showtime._id}/occupied`)
             const occupiedData = occupiedRes.data?.data || []
@@ -1041,48 +1043,101 @@ function ManageShowtime() {
                                                         return <div style={{ color: '#64748b', padding: '20px 0' }}>Không có sơ đồ ghế hoặc phòng chiếu chưa có ghế</div>
                                                     }
 
-                                                    return sortedRows.map(row => (
-                                                        <div key={row} className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                            <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
-                                                            {grouped[row].map(seat => {
-                                                                const isOccupied = occupiedSeatIds.has(seat._id)
-                                                                let seatStyle: React.CSSProperties = {}
-                                                                if (isOccupied) {
-                                                                    // Ghế đã đặt: Chữ V màu xanh lá
-                                                                    seatStyle = {
-                                                                        background: '#dcfce7',
-                                                                        borderColor: '#bbf7d0',
-                                                                        color: '#16a34a',
-                                                                        opacity: 1,
-                                                                        textDecoration: 'none',
-                                                                    }
-                                                                } else {
-                                                                    // Ghế chưa đặt (Chung một màu xám nhẹ)
-                                                                    seatStyle = {
-                                                                        background: '#f1f5f9',
-                                                                        borderColor: '#cbd5e1',
-                                                                        color: '#475569',
-                                                                    }
-                                                                }
+                                                    const parsedAisles = (viewingRoom?.aisleColumns || (viewingShowtime?.room as any)?.aisleColumns || []) as number[]
+                                                    const parsedAisleRows = ((viewingRoom?.aisleRows || (viewingShowtime?.room as any)?.aisleRows || []) as string[]).map((r: string) => r.toUpperCase())
 
-                                                                return (
-                                                                    <Tooltip
-                                                                        key={seat._id}
-                                                                        title={`${seat.code} (${seat.type.toUpperCase()}) - ${isOccupied ? 'Đã đặt' : 'Còn trống'}`}
+                                                    return sortedRows.map(row => {
+                                                        const isAisleRow = parsedAisleRows.includes(row.toUpperCase())
+                                                        return (
+                                                            <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', width: '100%' }}>
+                                                                <div className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                    <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
+                                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                        {grouped[row].map(seat => {
+                                                                            const isOccupied = occupiedSeatIds.has(seat._id)
+                                                                            const isCouple = seat.type === 'couple'
+                                                                            const isAisle = isCouple
+                                                                                ? (parsedAisles.includes(seat.number) || parsedAisles.includes(seat.number + 1))
+                                                                                : parsedAisles.includes(seat.number)
+
+                                                                            let seatStyle: React.CSSProperties = {}
+                                                                            if (isOccupied) {
+                                                                                // Ghế đã đặt: Chữ V màu xanh lá
+                                                                                seatStyle = {
+                                                                                    background: '#dcfce7',
+                                                                                    borderColor: '#bbf7d0',
+                                                                                    color: '#16a34a',
+                                                                                    opacity: 1,
+                                                                                    textDecoration: 'none',
+                                                                                }
+                                                                            } else {
+                                                                                // Ghế chưa đặt (Chung một màu xám nhẹ)
+                                                                                seatStyle = {
+                                                                                    background: '#f1f5f9',
+                                                                                    borderColor: '#cbd5e1',
+                                                                                    color: '#475569',
+                                                                                }
+                                                                            }
+
+                                                                            return (
+                                                                                <div key={seat._id} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                                    <Tooltip
+                                                                                        title={`${seat.code} (${seat.type.toUpperCase()}) - ${isOccupied ? 'Đã đặt' : 'Còn trống'}`}
+                                                                                    >
+                                                                                        <button
+                                                                                            className={`seat-unit ${seat.type}`}
+                                                                                            style={{ cursor: 'default', ...seatStyle }}
+                                                                                            type="button"
+                                                                                        >
+                                                                                            {isOccupied ? 'V' : seat.type === 'disabled' ? '♿' : seat.type === 'couple' ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                                                        </button>
+                                                                                    </Tooltip>
+                                                                                    {isAisle && (
+                                                                                        <div
+                                                                                            style={{
+                                                                                                width: '20px',
+                                                                                                height: '28px',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                justifyContent: 'center',
+                                                                                                fontSize: '10px',
+                                                                                                color: '#cbd5e1',
+                                                                                                fontWeight: 700,
+                                                                                                userSelect: 'none',
+                                                                                            }}
+                                                                                        >
+                                                                                            |
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                    </div>
+                                                                    <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
+                                                                </div>
+                                                                {isAisleRow && (
+                                                                    <div
+                                                                        style={{
+                                                                            height: '20px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            fontSize: '9px',
+                                                                            color: '#94a3b8',
+                                                                            fontWeight: 800,
+                                                                            width: '100%',
+                                                                            borderBottom: '1px dashed #cbd5e1',
+                                                                            margin: '4px 0',
+                                                                            letterSpacing: '1.5px',
+                                                                            textTransform: 'uppercase',
+                                                                        }}
                                                                     >
-                                                                        <button
-                                                                            className={`seat-unit ${seat.type}`}
-                                                                            style={{ cursor: 'default', ...seatStyle }}
-                                                                            type="button"
-                                                                        >
-                                                                            {isOccupied ? 'V' : seat.type === 'disabled' ? '♿' : seat.number}
-                                                                        </button>
-                                                                    </Tooltip>
-                                                                )
-                                                            })}
-                                                            <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
-                                                        </div>
-                                                    ))
+                                                                        LỐI ĐI NGANG (AISLE)
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })
                                                 })()}
                                             </div>
                                         </div>

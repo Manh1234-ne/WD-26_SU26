@@ -501,6 +501,9 @@ function SeatSelection() {
         navigate(movieId ? `/movies/${movieId}/showtimes` : '/movies')
     }
 
+    const parsedAisles = ((seatData?.room as any)?.aisleColumns || (showtime?.room as any)?.aisleColumns || []) as number[]
+    const parsedAisleRows = (((seatData?.room as any)?.aisleRows || (showtime?.room as any)?.aisleRows || []) as string[]).map((r: string) => r.toUpperCase())
+
     return (
         <div className="seat-selection-page">
 
@@ -511,31 +514,50 @@ function SeatSelection() {
                 </div>
 
                 <div className="seats-area-wrapper">
-                    <div className="seats-rows-grid" >
-                        {sortedRows.map((row) => (
-                            <div key={row} className="seat-row-line">
-                                <span className="row-label">{row}</span>
-                                {groupedSeats[row].map((seat) => {
-                                    const isOccupied = occupiedSet.has(seat._id)
-                                    const isSelected = selectedSeats.some((s) => s._id === seat._id)
+                    <div className="seats-rows-grid">
+                        {sortedRows.map((row) => {
+                            const isAisleRow = parsedAisleRows.includes(row.toUpperCase())
+                            return (
+                                <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', width: '100%' }}>
+                                    <div className="seat-row-line">
+                                        <span className="row-label">{row}</span>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            {groupedSeats[row].map((seat) => {
+                                                const isOccupied = occupiedSet.has(seat._id)
+                                                const isSelected = selectedSeats.some((s) => s._id === seat._id)
+                                                const isCouple = seat.type === 'couple'
+                                                const isAisle = isCouple
+                                                    ? (parsedAisles.includes(seat.number) || parsedAisles.includes(seat.number + 1))
+                                                    : parsedAisles.includes(seat.number)
 
-                                    return (
-                                        <button
-                                            key={seat._id}
-                                            className={`seat-unit ${seat.type} ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''
-                                                }`}
-                                            onClick={() => toggleSeat(seat)}
-                                            disabled={isOccupied}
-                                            title={`${seat.code} (${seat.type}) - ${(showtime.basePrice * seat.priceMultiplier).toLocaleString()}đ`}
-                                            type="button"
-                                        >
-                                            {seat.number}
-                                        </button>
-                                    )
-                                })}
-                                <span className="row-label">{row}</span>
-                            </div>
-                        ))}
+                                                return (
+                                                    <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <button
+                                                            className={`seat-unit ${seat.type} ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
+                                                            onClick={() => toggleSeat(seat)}
+                                                            disabled={isOccupied}
+                                                            title={`${seat.code} (${seat.type}) - ${(showtime.basePrice * seat.priceMultiplier).toLocaleString()}đ`}
+                                                            type="button"
+                                                        >
+                                                            {isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                        </button>
+                                                        {isAisle && (
+                                                            <div className="aisle-column-gap" title="Lối đi" />
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        <span className="row-label">{row}</span>
+                                    </div>
+                                    {isAisleRow && (
+                                        <div className="aisle-row-divider">
+                                            <span>LỐI ĐI NGANG</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
 

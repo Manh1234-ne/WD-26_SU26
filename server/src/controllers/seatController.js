@@ -38,7 +38,7 @@ export const getAllSeats = asyncHandler(async (req, res) => {
   const seats = await Seat.find(query)
     .populate({
       path: "room",
-      select: "name roomType totalRows seatsPerRow capacity",
+      select: "name roomType totalRows seatsPerRow capacity aisleColumns aisleRows",
     })
     .sort({
       row: 1,
@@ -53,7 +53,7 @@ export const getSeatById = asyncHandler(async (req, res) => {
 
   const seat = await Seat.findById(id).populate({
     path: "room",
-    select: "name roomType totalRows seatsPerRow capacity",
+    select: "name roomType totalRows seatsPerRow capacity aisleColumns aisleRows",
   });
 
   if (!seat) {

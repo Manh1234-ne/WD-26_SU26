@@ -898,7 +898,7 @@ function ManageBooking() {
     }
   };
 
-  const executePrintCombo = (bookingId: string) => {
+  const executePrintCombo = (_bookingId: string) => {
     if (!selectedComboBookingDetails) return;
     const { booking, combos } = selectedComboBookingDetails;
     if (!combos || combos.length === 0) return;
@@ -1294,7 +1294,7 @@ function ManageBooking() {
               />
             </Tooltip>
 
-            {record.totalComboPrice > 0 && (
+            {(record.totalComboPrice ?? 0) > 0 && (
               <Tooltip title="Xem chi tiết combo">
                 <Button
                   shape="circle"
@@ -1897,10 +1897,10 @@ function ManageBooking() {
                     <Text strong>{formatCurrency(selectedBookingDetails.booking.totalSeatPrice || 0)}</Text>
                   </div>
 
-                  {selectedBookingDetails.booking.totalComboPrice > 0 && (
+                  {(selectedBookingDetails.booking.totalComboPrice ?? 0) > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <Text type="secondary">Tiền combo</Text>
-                      <Text strong>{formatCurrency(selectedBookingDetails.booking.totalComboPrice)}</Text>
+                      <Text strong>{formatCurrency(selectedBookingDetails.booking.totalComboPrice || 0)}</Text>
                     </div>
                   )}
 

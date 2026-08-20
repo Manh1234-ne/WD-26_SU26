@@ -7,7 +7,6 @@ import {
   ClearOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
-  FireOutlined,
   TagOutlined,
   SortAscendingOutlined,
 } from "@ant-design/icons";

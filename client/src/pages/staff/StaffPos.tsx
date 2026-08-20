@@ -92,6 +92,7 @@ export function StaffPos() {
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
 
   // Seat & Occupied data
+  const [roomInfo, setRoomInfo] = useState<any>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [occupiedSeatIds, setOccupiedSeatIds] = useState<string[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
@@ -223,6 +224,11 @@ export function StaffPos() {
               ? raw.seats
               : [];
           setSeats(seatArr);
+          if (raw?.room) {
+            setRoomInfo(raw.room);
+          } else {
+            setRoomInfo(st?.room || null);
+          }
         })
         .catch((err) => {
           console.error("[POS] Lỗi tải ghế:", err);
@@ -704,6 +710,7 @@ export function StaffPos() {
     setPrintModalVisible(false);
     setCreatedBooking(null);
     setCreatedComboOrder(null);
+    setRoomInfo(null);
   };
 
   if (loading && !seats.length && !movies.length) {
@@ -1014,77 +1021,137 @@ export function StaffPos() {
                 </Space>
 
                 <div style={{ overflowX: "auto", maxWidth: "100%", padding: "10px 0" }}>
-                  {Object.keys(seatRows).map((row) => (
-                    <div
-                      key={row}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        marginBottom: 8,
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span style={{ width: 24, fontWeight: "bold", textAlign: "center", color: "#64748b" }}>
-                        {row}
-                      </span>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        {seatRows[row].map((seat) => {
-                          const isOccupied = occupiedSeatIds.includes(seat._id);
-                          const isSelected = selectedSeats.some((s) => s._id === seat._id);
+                  {Object.keys(seatRows).map((row) => {
+                    const parsedAisles: number[] = roomInfo?.aisleColumns || (selectedShowtime?.room as any)?.aisleColumns || [];
+                    const parsedAisleRows: string[] = (roomInfo?.aisleRows || (selectedShowtime?.room as any)?.aisleRows || []).map((r: string) => r.toUpperCase());
+                    const isAisleRow = parsedAisleRows.includes(row.toUpperCase());
+                    return (
+                      <div
+                        key={row}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 8,
+                          width: "100%",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            justifyContent: "center",
+                          }}
+                        >
+                          <span style={{ width: 24, fontWeight: "bold", textAlign: "center", color: "#64748b" }}>
+                            {row}
+                          </span>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            {seatRows[row].map((seat) => {
+                              const isOccupied = occupiedSeatIds.includes(seat._id);
+                              const isSelected = selectedSeats.some((s) => s._id === seat._id);
+                              const isCouple = seat.type === "couple";
+                              const isAisle = isCouple
+                                ? (parsedAisles.includes(seat.number) || parsedAisles.includes(seat.number + 1))
+                                : parsedAisles.includes(seat.number);
 
-                          let bgColor = "#e2e8f0";
-                          let borderColor = "#cbd5e1";
-                          let textColor = "#1e293b";
+                              let bgColor = "#e2e8f0";
+                              let borderColor = "#cbd5e1";
+                              let textColor = "#1e293b";
 
-                          if (seat.type === "vip") {
-                            bgColor = "#fef08a";
-                            borderColor = "#eab308";
-                          } else if (seat.type === "couple") {
-                            bgColor = "#fbcfe8";
-                            borderColor = "#ec4899";
-                          }
+                              if (seat.type === "vip") {
+                                bgColor = "#fef08a";
+                                borderColor = "#eab308";
+                              } else if (seat.type === "couple") {
+                                bgColor = "#fbcfe8";
+                                borderColor = "#ec4899";
+                              }
 
-                          if (isSelected) {
-                            bgColor = "#10b981";
-                            borderColor = "#059669";
-                            textColor = "#ffffff";
-                          }
+                              if (isSelected) {
+                                bgColor = "#10b981";
+                                borderColor = "#059669";
+                                textColor = "#ffffff";
+                              }
 
-                          if (isOccupied) {
-                            bgColor = "#64748b";
-                            borderColor = "#475569";
-                            textColor = "#ffffff";
-                          }
+                              if (isOccupied) {
+                                bgColor = "#64748b";
+                                borderColor = "#475569";
+                                textColor = "#ffffff";
+                              }
 
-                          const isSeatDisabled = isOccupied || isCurrentShowtimePast;
+                              const isSeatDisabled = isOccupied || isCurrentShowtimePast;
 
-                          return (
-                            <button
-                              key={seat._id}
-                              disabled={isSeatDisabled}
-                              onClick={() => handleToggleSeat(seat)}
-                              style={{
-                                width: seat.type === "couple" ? 64 : 34,
-                                height: 34,
-                                borderRadius: 6,
-                                background: bgColor,
-                                border: `1.5px solid ${borderColor}`,
-                                color: textColor,
-                                fontWeight: "bold",
-                                fontSize: 11,
-                                cursor: isSeatDisabled ? "not-allowed" : "pointer",
-                                opacity: isSeatDisabled ? 0.5 : 1,
-                                transition: "all 0.15s ease",
-                              }}
-                            >
-                              {seat.code}
-                            </button>
-                          );
-                        })}
+                              return (
+                                <div key={seat._id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                  <button
+                                    disabled={isSeatDisabled}
+                                    onClick={() => handleToggleSeat(seat)}
+                                    style={{
+                                      width: isCouple ? 64 : 34,
+                                      height: 34,
+                                      borderRadius: 6,
+                                      background: bgColor,
+                                      border: `1.5px solid ${borderColor}`,
+                                      color: textColor,
+                                      fontWeight: "bold",
+                                      fontSize: 11,
+                                      cursor: isSeatDisabled ? "not-allowed" : "pointer",
+                                      opacity: isSeatDisabled ? 0.5 : 1,
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    {isCouple ? `${seat.number} - ${seat.number + 1}` : seat.code}
+                                  </button>
+                                  {isAisle && (
+                                    <div
+                                      style={{
+                                        width: 20,
+                                        height: 34,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: 11,
+                                        color: "#cbd5e1",
+                                        fontWeight: 700,
+                                        userSelect: "none",
+                                      }}
+                                    >
+                                      |
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <span style={{ width: 24, fontWeight: "bold", textAlign: "center", color: "#64748b" }}>
+                            {row}
+                          </span>
+                        </div>
+                        {isAisleRow && (
+                          <div
+                            style={{
+                              height: 20,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 9,
+                              color: "#94a3b8",
+                              fontWeight: 800,
+                              width: "100%",
+                              borderBottom: "1px dashed #cbd5e1",
+                              margin: "4px 0",
+                              letterSpacing: 1.5,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            LỐI ĐI NGANG (AISLE)
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
