@@ -11,38 +11,83 @@ import {
 
 import {
   reserveComboStock,
+  deductReservedStock,
 } from "./inventoryService.js";
 export const createBookingService = async ({
-  
   user,
   showtime,
   seatIds,
   voucherCode,
   comboIds = [],
+  combos = [],
   customExpiresAt,
+  isCounterSale = false,
+  customerName = "Khách vãng lai",
+  customerPhone = "",
+  paymentMethod = "cash",
+  createdByStaff = null,
 }) => {
-   console.log("CREATE BOOKING CALLED", seatIds);
-  const showtimeExists =
-    await Showtime.findById(showtime);
+  console.log("CREATE BOOKING CALLED", seatIds, "isCounterSale:", isCounterSale);
+  const showtimeExists = await Showtime.findById(showtime);
 
   if (!showtimeExists) {
-    throw new Error(
-      "Không tìm thấy suất chiếu"
+    throw new Error("Không tìm thấy suất chiếu");
+  }
+
+  if (new Date(showtimeExists.startTime) <= new Date()) {
+    throw new Error("Không thể tạo vé cho suất chiếu đã bắt đầu hoặc đã kết thúc");
+  }
+
+  // 1. Tự động dọn dẹp các booking pending đã hết hạn của suất chiếu này để giải phóng ghế
+  const expiredBookings = await Booking.find({
+    showtime,
+    status: "pending",
+    expiresAt: { $lte: new Date() },
+  }).select("_id");
+
+  if (expiredBookings.length > 0) {
+    const expiredIds = expiredBookings.map((b) => b._id);
+    await Booking.updateMany(
+      { _id: { $in: expiredIds } },
+      { $set: { status: "expired" } }
+    );
+    await BookingSeat.updateMany(
+      { booking: { $in: expiredIds }, status: "held" },
+      { $set: { status: "cancelled" } }
     );
   }
 
+  // 2. Nếu khách hàng (customer) đã có booking pending trước đó cho cùng suất chiếu,
+  // tự động hủy session cũ để người dùng có thể giữ ghế mới mà không bị xung đột với chính mình.
+  if (user && !isCounterSale) {
+    const userPendingBookings = await Booking.find({
+      user,
+      showtime,
+      status: "pending",
+    }).select("_id");
+
+    if (userPendingBookings.length > 0) {
+      const userPendingIds = userPendingBookings.map((b) => b._id);
+      await Booking.updateMany(
+        { _id: { $in: userPendingIds } },
+        { $set: { status: "cancelled", cancelledAt: new Date() } }
+      );
+      await BookingSeat.updateMany(
+        { booking: { $in: userPendingIds }, status: "held" },
+        { $set: { status: "cancelled" } }
+      );
+    }
+  }
+
   const seats = await Seat.find({
-    _id: {
-      $in: seatIds,
-    },
+    _id: { $in: seatIds },
     room: showtimeExists.room,
     isActive: true,
   });
 
   if (seats.length !== seatIds.length) {
-    throw new Error("Ghế không hợp lệ");
+    throw new Error("Ghế không hợp lệ hoặc không thuộc phòng chiếu này");
   }
-
 
   const activeBookings = await Booking.find({
     showtime,
@@ -65,24 +110,28 @@ export const createBookingService = async ({
 
   const totalSeatPrice = seats.reduce(
     (sum, seat) =>
-      sum +
-      showtimeExists.basePrice *
-      seat.priceMultiplier,
+      sum + showtimeExists.basePrice * seat.priceMultiplier,
     0
   );
 
-  const {
-    combos,
-    totalComboPrice,
-  } = await getComboPrice(comboIds);
+  // Normalize combos parameter (could be [{combo, quantity}] or [comboId])
+  const rawComboList = combos.length > 0 ? combos : comboIds;
+  const normalizedComboItems = rawComboList.map((item) =>
+    typeof item === "object" && item?.combo
+      ? { combo: item.combo, quantity: item.quantity || 1 }
+      : { combo: item, quantity: 1 }
+  );
 
-  if (comboIds.length > 0) {
-    await reserveComboStock(comboIds);
+  const {
+    combos: resolvedCombos,
+    totalComboPrice,
+  } = await getComboPrice(normalizedComboItems);
+
+  if (normalizedComboItems.length > 0) {
+    await reserveComboStock(normalizedComboItems);
   }
 
-  const orderAmount =
-    totalSeatPrice +
-    totalComboPrice;
+  const orderAmount = totalSeatPrice + totalComboPrice;
 
   let voucher = null;
   let discountAmount = 0;
@@ -95,136 +144,77 @@ export const createBookingService = async ({
     });
 
     if (!voucher) {
-      throw new Error(
-        "Voucher không tồn tại hoặc đã bị khóa"
-      );
+      throw new Error("Voucher không tồn tại hoặc đã bị khóa");
     }
 
     const now = new Date();
-
     if (now < voucher.startDate) {
-      throw new Error(
-        "Voucher chưa đến thời gian sử dụng"
-      );
+      throw new Error("Voucher chưa đến thời gian sử dụng");
     }
-
     if (now > voucher.endDate) {
-      throw new Error(
-        "Voucher đã hết hạn"
-      );
+      throw new Error("Voucher đã hết hạn");
     }
 
     if (
       voucher.usageLimit != null &&
-      voucher.usedCount >=
-      voucher.usageLimit
+      voucher.usedCount >= voucher.usageLimit
     ) {
-      throw new Error(
-        "Voucher đã hết lượt sử dụng"
-      );
+      throw new Error("Voucher đã hết lượt sử dụng");
     }
 
-    const pendingBookingCount =
-      await Booking.countDocuments({
-        voucher: voucher._id,
-        status: "pending",
-      });
+    const pendingBookingCount = await Booking.countDocuments({
+      voucher: voucher._id,
+      status: "pending",
+    });
 
     if (
       voucher.usageLimit != null &&
-      voucher.usedCount +
-      pendingBookingCount >=
-      voucher.usageLimit
+      voucher.usedCount + pendingBookingCount >= voucher.usageLimit
     ) {
-      throw new Error(
-        "Voucher sắp hết lượt sử dụng"
-      );
+      throw new Error("Voucher sắp hết lượt sử dụng");
     }
 
-    const userVoucherCount =
-      await Booking.countDocuments({
+    if (user) {
+      const userVoucherCount = await Booking.countDocuments({
         user,
         voucher: voucher._id,
-        status: {
-          $ne: "cancelled",
-        },
+        status: { $ne: "cancelled" },
       });
 
-    if (userVoucherCount >= 1) {
-      throw new Error(
-        "Mỗi tài khoản chỉ được sử dụng voucher này một lần"
-      );
-    }
+      if (userVoucherCount >= 1) {
+        throw new Error("Mỗi tài khoản chỉ được sử dụng voucher này một lần");
+      }
 
-    if (
-      voucher.code ===
-      "CHAOMUNGNGUOIMOI"
-    ) {
-      const oldBooking =
-        await Booking.findOne({
+      if (voucher.code === "CHAOMUNGNGUOIMOI") {
+        const oldBooking = await Booking.findOne({
           user,
-          status: {
-            $in: [
-              "confirmed",
-              "completed",
-            ],
-          },
+          status: { $in: ["confirmed", "completed"] },
         });
 
-      if (oldBooking) {
-        throw new Error(
-          "Voucher chỉ dành cho khách hàng mới"
-        );
+        if (oldBooking) {
+          throw new Error("Voucher chỉ dành cho khách hàng mới");
+        }
       }
     }
 
-    if (
-      orderAmount <
-      voucher.minOrderAmount
-    ) {
-      throw new Error(
-        `Đơn hàng tối thiểu ${voucher.minOrderAmount}`
-      );
+    if (orderAmount < voucher.minOrderAmount) {
+      throw new Error(`Đơn hàng tối thiểu ${voucher.minOrderAmount}`);
     }
 
-    if (
-      voucher.discountType ===
-      "percent"
-    ) {
-      discountAmount =
-        (orderAmount *
-          voucher.discountValue) /
-        100;
-
-      if (
-        voucher.maxDiscountAmount &&
-        discountAmount >
-        voucher.maxDiscountAmount
-      ) {
-        discountAmount =
-          voucher.maxDiscountAmount;
+    if (voucher.discountType === "percent") {
+      discountAmount = (orderAmount * voucher.discountValue) / 100;
+      if (voucher.maxDiscountAmount && discountAmount > voucher.maxDiscountAmount) {
+        discountAmount = voucher.maxDiscountAmount;
       }
+    } else if (voucher.discountType === "fixed") {
+      discountAmount = voucher.discountValue;
     }
 
-    if (
-      voucher.discountType ===
-      "fixed"
-    ) {
-      discountAmount =
-        voucher.discountValue;
+    if (discountAmount > orderAmount) {
+      discountAmount = orderAmount;
     }
 
-    if (
-      discountAmount >
-      orderAmount
-    ) {
-      discountAmount =
-        orderAmount;
-    }
-
-    finalAmount =
-      orderAmount -
-      discountAmount;
+    finalAmount = orderAmount - discountAmount;
   }
 
   const maxExpiresAt = Date.now() + 5 * 60 * 1000;
@@ -235,65 +225,75 @@ export const createBookingService = async ({
       ? new Date(customExpiresAt)
       : new Date(maxExpiresAt);
 
-  const booking = await Booking.create({
-    bookingCode: `BK${Date.now()}`,
-    user,
-    showtime,
+  // Counter sale paid by cash or counter payment -> confirmed immediately
+  const isAutoConfirmed = isCounterSale && (paymentMethod === "cash" || paymentMethod === "vnpay");
+  const bookingStatus = isAutoConfirmed ? "confirmed" : "pending";
+  const seatStatus = isAutoConfirmed ? "booked" : "held";
 
-    voucher: voucher?._id,
-
-    totalSeatPrice,
-    totalComboPrice, // <-- thêm dòng này
-    discountAmount,
-    finalAmount,
-
-    status: "pending",
-
-    expiresAt: resolvedExpiresAt,
-  });
-
-  const bookingSeats =
-    seats.map((seat) => ({
-      booking: booking._id,
-
+  let booking;
+  try {
+    booking = await Booking.create({
+      bookingCode: `BK${Date.now()}`,
+      user: user || undefined,
+      isCounterSale,
+      customerName: customerName || "Khách vãng lai",
+      customerPhone: customerPhone || "",
+      paymentMethod: paymentMethod || "cash",
+      paymentStatus: isAutoConfirmed ? "paid" : "unpaid",
+      createdByStaff: createdByStaff || undefined,
+      printStatus: "not_printed",
       showtime,
+      voucher: voucher?._id,
+      totalSeatPrice,
+      totalComboPrice,
+      discountAmount,
+      finalAmount,
+      status: bookingStatus,
+      expiresAt: resolvedExpiresAt,
+    });
 
+    if (isAutoConfirmed && voucher) {
+      await Voucher.findByIdAndUpdate(voucher._id, { $inc: { usedCount: 1 } });
+    }
+
+    const bookingSeats = seats.map((seat) => ({
+      booking: booking._id,
+      showtime,
       seat: seat._id,
-
       seatCode: seat.code,
-
       seatType: seat.type,
-
-      price:
-        showtimeExists.basePrice *
-        seat.priceMultiplier,
-
-      status: "held",
+      price: showtimeExists.basePrice * seat.priceMultiplier,
+      status: seatStatus,
     }));
 
-  await BookingSeat.insertMany(
-    bookingSeats
-  );
+    await BookingSeat.insertMany(bookingSeats);
 
-  if (combos.length > 0) {
-    const bookingCombos =
-      combos.map((combo) => ({
+    if (resolvedCombos.length > 0) {
+      const bookingCombos = resolvedCombos.map((combo) => ({
         booking: booking._id,
-
-        combo: combo._id,
-
+        combo: combo.combo,
         quantity: combo.quantity,
-
         unitPrice: combo.price,
-
-        totalPrice:
-          combo.price *
-          combo.quantity,
+        totalPrice: combo.price * combo.quantity,
       }));
 
-    await BookingCombo.insertMany(
-      bookingCombos
-    );
+      await BookingCombo.insertMany(bookingCombos);
+
+      if (isAutoConfirmed) {
+        try {
+          await deductReservedStock(normalizedComboItems);
+        } catch (err) {
+          console.error("[createBookingService] deductReservedStock error:", err.message);
+        }
+      }
+    }
+  } catch (err) {
+    if (booking?._id) {
+      await Booking.findByIdAndDelete(booking._id).catch(() => {});
+      await BookingSeat.deleteMany({ booking: booking._id }).catch(() => {});
+      await BookingCombo.deleteMany({ booking: booking._id }).catch(() => {});
+    }
+    throw err;
   }
 
   return booking;
@@ -302,7 +302,7 @@ export const updateBookingSeatsService = async ({
   booking,
   seatIds,
 }) => {
-    console.log("UPDATE SEATS CALLED", seatIds);
+  console.log("UPDATE SEATS CALLED", seatIds);
   const showtime = await Showtime.findById(booking.showtime);
 
   if (!showtime) {
@@ -386,39 +386,39 @@ export const updateBookingSeatsService = async ({
    * Huỷ các ghế bỏ chọn
    */
   if (removeSeatIds.length > 0) {
-  console.log("REMOVE SEATS:", removeSeatIds);
+    console.log("REMOVE SEATS:", removeSeatIds);
 
-  await BookingSeat.deleteMany({
-    booking: booking._id,
-    seat: {
-      $in: removeSeatIds
-    }
-  });
-}
+    await BookingSeat.deleteMany({
+      booking: booking._id,
+      seat: {
+        $in: removeSeatIds
+      }
+    });
+  }
 
   /**
    * Thêm ghế mới
    */
   // Thêm ghế mới
-// Thêm ghế mới
-if (addSeatIds.length > 0) {
-  const addSeats = seats.filter((s) =>
-    addSeatIds.includes(s._id.toString())
-  );
+  // Thêm ghế mới
+  if (addSeatIds.length > 0) {
+    const addSeats = seats.filter((s) =>
+      addSeatIds.includes(s._id.toString())
+    );
 
 
-  const newBookingSeats = addSeats.map((seat) => ({
-    booking: booking._id,
-    showtime: booking.showtime,
-    seat: seat._id,
-    seatCode: seat.code,
-    seatType: seat.type,
-    price: showtime.basePrice * seat.priceMultiplier,
-    status: "held",
-  }));
+    const newBookingSeats = addSeats.map((seat) => ({
+      booking: booking._id,
+      showtime: booking.showtime,
+      seat: seat._id,
+      seatCode: seat.code,
+      seatType: seat.type,
+      price: showtime.basePrice * seat.priceMultiplier,
+      status: "held",
+    }));
 
-  await BookingSeat.insertMany(newBookingSeats);
-}
+    await BookingSeat.insertMany(newBookingSeats);
+  }
   /**
    * Tính lại tiền ghế
    */

@@ -337,44 +337,59 @@ function Showtime() {
                                                 >
                                                     {list.map((st) => {
                                                         const startHour = format(new Date(st.startTime), 'HH:mm')
+                                                        const isPast = new Date(st.startTime) <= new Date()
                                                         return (
                                                             <button
                                                                 key={st._id}
-                                                                onClick={() => navigate(`/booking/${st._id}`)}
+                                                                disabled={isPast}
+                                                                onClick={() => {
+                                                                    if (!isPast) navigate(`/booking/${st._id}`)
+                                                                }}
                                                                 type="button"
                                                                 style={{
-                                                                    background: '#ffffff',
-                                                                    border: '1px solid #e2e8f0',
+                                                                    background: isPast ? '#f1f5f9' : '#ffffff',
+                                                                    border: isPast ? '1px dashed #cbd5e1' : '1px solid #e2e8f0',
                                                                     borderRadius: '8px',
                                                                     padding: '12px',
-                                                                    cursor: 'pointer',
+                                                                    cursor: isPast ? 'not-allowed' : 'pointer',
+                                                                    opacity: isPast ? 0.6 : 1,
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     alignItems: 'center',
                                                                     gap: '4px',
                                                                     transition: 'all 0.2s',
-                                                                    boxShadow: '0 2px 6px rgba(15,23,42,0.02)'
+                                                                    boxShadow: isPast ? 'none' : '0 2px 6px rgba(15,23,42,0.02)'
                                                                 }}
                                                                 onMouseEnter={(e) => {
-                                                                    e.currentTarget.style.borderColor = '#e11d48';
-                                                                    e.currentTarget.style.background = '#fff1f2';
-                                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                                    if (!isPast) {
+                                                                        e.currentTarget.style.borderColor = '#e11d48';
+                                                                        e.currentTarget.style.background = '#fff1f2';
+                                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                                    }
                                                                 }}
                                                                 onMouseLeave={(e) => {
-                                                                    e.currentTarget.style.borderColor = '#e2e8f0';
-                                                                    e.currentTarget.style.background = '#ffffff';
-                                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                                    if (!isPast) {
+                                                                        e.currentTarget.style.borderColor = '#e2e8f0';
+                                                                        e.currentTarget.style.background = '#ffffff';
+                                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                                    }
                                                                 }}
                                                             >
-                                                                <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                                                                <span style={{ fontSize: '18px', fontWeight: 800, color: isPast ? '#94a3b8' : '#0f172a', textDecoration: isPast ? 'line-through' : 'none' }}>
                                                                     {startHour}
                                                                 </span>
                                                                 <span style={{ fontSize: '12px', color: '#64748b' }}>
                                                                     {st.room.name}
                                                                 </span>
-                                                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#ea580c', marginTop: '4px' }}>
-                                                                    {st.basePrice.toLocaleString('vi-VN')}đ
-                                                                </span>
+                                                                {isPast ? (
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', marginTop: '4px' }}>
+                                                                        Đã chiếu
+                                                                    </span>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#ea580c', marginTop: '4px' }}>
+                                                                        {st.basePrice.toLocaleString('vi-VN')}đ
+                                                                    </span>
+                                                                )}
                                                             </button>
                                                         )
                                                     })}

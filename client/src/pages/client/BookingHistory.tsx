@@ -56,6 +56,7 @@ function BookingHistory() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [bookingDetail, setBookingDetail] = useState<any>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
+  const [qrComboUrl, setQrComboUrl] = useState<string>("")
 
   const filteredBookings = useMemo(() => {
     if (!statusFilter) return bookings
@@ -120,6 +121,7 @@ function BookingHistory() {
     setIsModalOpen(true)
     setDetailLoading(true)
     setQrCodeUrl("")
+    setQrComboUrl("")
     try {
       const res = await getBookingById(id)
       const data = res.data
@@ -136,6 +138,18 @@ function BookingHistory() {
         }
         const url = await QRCode.toDataURL(JSON.stringify(ticketData))
         setQrCodeUrl(url)
+
+        const comboData = {
+          bookingId: data.booking._id,
+          bookingCode: data.booking.bookingCode,
+          movie: data.booking.showtime?.movie?.title,
+          cinema: data.booking.showtime?.cinema?.name || "Rạp Lumora",
+          room: data.booking.showtime?.room?.name,
+          time: data.booking.showtime?.startTime,
+          type: "combo",
+        }
+        const comboUrl = await QRCode.toDataURL(JSON.stringify(comboData))
+        setQrComboUrl(comboUrl)
       }
     } catch (err) {
       console.error("Lỗi lấy chi tiết vé:", err)
@@ -484,7 +498,7 @@ function BookingHistory() {
                     <span>{bookingDetail.booking.totalSeatPrice?.toLocaleString()} đ</span>
                   </div>
 
-                  {(!bookingDetail.combos || bookingDetail.combos.length === 0) && bookingDetail.booking.totalComboPrice > 0 && (
+                  {bookingDetail.booking.totalComboPrice > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                       <span>Tiền combo:</span>
                       <span>{bookingDetail.booking.totalComboPrice?.toLocaleString()} đ</span>
@@ -516,9 +530,25 @@ function BookingHistory() {
                     border: "1px dashed #e5e7eb",
                     marginTop: "16px"
                   }}>
-                    <h4 style={{ margin: "0 0 8px 0", color: "#4b5563", fontSize: "14px", fontWeight: 600 }}>📌 QR Code vé của bạn</h4>
-                    <img src={qrCodeUrl} alt="Ticket QR Code" style={{ width: "160px", height: "160px", border: "4px solid #fff", borderRadius: "8px", boxShadow: "0 4px 10px rgba(0,0,0,0.06)" }} />
-                    <span style={{ fontSize: "12px", color: "#6b7280", marginTop: "6px" }}>Vui lòng xuất trình mã này khi vào rạp</span>
+                    <div style={{ display: "flex", justifyContent: "center", gap: "24px", flexWrap: "wrap", width: "100%" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <h4 style={{ margin: "0 0 8px 0", color: "#4b5563", fontSize: "14px", fontWeight: 600 }}>🎫 Vé xem phim (Vào cổng)</h4>
+                        <img src={qrCodeUrl} alt="Ticket QR Code" style={{ width: "150px", height: "150px", border: "4px solid #fff", borderRadius: "8px", boxShadow: "0 4px 10px rgba(0,0,0,0.06)" }} />
+                        <span style={{ fontSize: "11px", color: "#6b7280", marginTop: "6px" }}>Dùng để soát vé vào cửa</span>
+                      </div>
+
+                      {qrComboUrl && bookingDetail.booking.totalComboPrice > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <h4 style={{ margin: "0 0 8px 0", color: "#4b5563", fontSize: "14px", fontWeight: 600 }}>🍿 QR Combo (Nhận đồ ăn)</h4>
+                          <img src={qrComboUrl} alt="Combo QR Code" style={{ width: "150px", height: "150px", border: "4px solid #fff", borderRadius: "8px", boxShadow: "0 4px 10px rgba(0,0,0,0.06)" }} />
+                          <span style={{ fontSize: "11px", color: "#6b7280", marginTop: "6px" }}>Dùng để nhận đồ tại quầy</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <span style={{ fontSize: "11px", color: "#9ca3af", marginTop: "12px", borderTop: "1px solid #e5e7eb", width: "100%", textAlign: "center", paddingTop: "8px" }}>
+                      Vui lòng xuất trình mã QR tương ứng cho nhân viên soát vé hoặc nhân viên quầy bắp nước
+                    </span>
                   </div>
                 )}
               </div>

@@ -13,6 +13,7 @@ import {
   Spin,
   Alert,
   Divider,
+  Modal,
 } from "antd";
 import {
   QrcodeOutlined,
@@ -22,11 +23,14 @@ import {
   ClockCircleOutlined,
   ReloadOutlined,
   ScanOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
 import QRCode from "qrcode";
+import { printCinemaTicket } from "../../utils/ticketPrinter";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 const { Title, Text } = Typography;
 
@@ -39,14 +43,156 @@ export function StaffCheckIn() {
   const [bookingCombos, setBookingCombos] = useState<any[]>([]);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [checkInSuccess, setCheckInSuccess] = useState(false);
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
 
   const inputRef = useRef<any>(null);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
+
+  const startScanner = async () => {
+    try {
+      setTimeout(async () => {
+        const readerElement = document.getElementById("reader");
+        if (!readerElement) {
+          console.error("Không tìm thấy phần tử reader");
+          return;
+        }
+        const scanner = new Html5Qrcode("reader", {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
+        qrScannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 15,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            void handleScanSuccess(decodedText);
+          },
+          () => {
+            // Verbose error, ignore
+          }
+        );
+      }, 300);
+    } catch (err) {
+      console.error("Lỗi khởi động camera:", err);
+      toast.error("Không thể khởi động camera. Vui lòng cấp quyền truy cập camera.");
+    }
+  };
+
+  const stopScanner = async () => {
+    if (qrScannerRef.current) {
+      try {
+        if (qrScannerRef.current.isScanning) {
+          await qrScannerRef.current.stop();
+        }
+      } catch (err) {
+        console.error("Lỗi dừng camera:", err);
+      }
+      qrScannerRef.current = null;
+    }
+  };
+
+  const processScannedTicket = async (code: string) => {
+    setSearching(true);
+    setBooking(null);
+    setBookingSeats([]);
+    setBookingCombos([]);
+    setCheckInSuccess(false);
+
+    try {
+      const res = await api.get("/bookings");
+      const list: any[] = res.data?.data || res.data || [];
+      const cleanCode = code.toUpperCase();
+      const found = list.find(
+        (b) =>
+          b.bookingCode?.toUpperCase() === cleanCode ||
+          b._id === cleanCode ||
+          b._id?.toLowerCase() === code.toLowerCase()
+      );
+
+      if (!found) {
+        toast.error("Không tìm thấy thông tin vé trên hệ thống.");
+        setSearching(false);
+        return;
+      }
+
+      const detailRes = await api.get(`/bookings/${found._id}`);
+      const detailData = detailRes.data?.data || detailRes.data;
+      const currentBooking = detailData?.booking || detailData || found;
+
+      setBooking(currentBooking);
+      setBookingSeats(detailData?.seats || []);
+      setBookingCombos(detailData?.combos || []);
+
+      const qrData = await QRCode.toDataURL(found.bookingCode || found._id);
+      setQrCodeUrl(qrData);
+
+      if (currentBooking.status === "confirmed") {
+        setLoading(true);
+        try {
+          const checkInRes = await api.patch(`/bookings/${currentBooking._id}/complete`);
+          const updated = checkInRes.data?.data || checkInRes.data;
+
+          setBooking((prev: any) => ({
+            ...prev,
+            status: "completed",
+            checkedInAt: updated?.checkedInAt || new Date().toISOString(),
+          }));
+          setCheckInSuccess(true);
+          toast.success("SOÁT VÉ THÀNH CÔNG! Đã tự động hoàn tất soát vé đơn hàng. 🎉");
+        } catch (completeErr: any) {
+          console.error("Lỗi khi tự động soát vé:", completeErr);
+          toast.error(completeErr.response?.data?.message || "Không thể tự động hoàn tất soát vé");
+        } finally {
+          setLoading(false);
+        }
+      } else if (currentBooking.status === "completed") {
+        toast.warning("Vé này đã được soát vé vào rạp trước đó!");
+      } else if (currentBooking.status === "pending") {
+        toast.error("Vé chưa được thanh toán! Vui lòng thanh toán trước khi soát vé.");
+      } else if (currentBooking.status === "cancelled" || currentBooking.status === "expired") {
+        toast.error("Vé đã bị hủy hoặc hết hạn, không thể soát vé!");
+      } else {
+        toast.info(`Trạng thái vé: ${currentBooking.status}`);
+      }
+
+    } catch (err) {
+      console.error("Lỗi xử lý vé quét:", err);
+      toast.error("Lỗi khi kết nối với máy chủ soát vé.");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleScanSuccess = async (text: string) => {
+    await stopScanner();
+    setScannerModalOpen(false);
+
+    try {
+      const data = JSON.parse(text);
+      if (data && (data.bookingId || data.bookingCode)) {
+        const id = data.bookingId || data.bookingCode;
+        void processScannedTicket(id);
+      } else {
+        toast.error("Mã QR không đúng định dạng vé.");
+      }
+    } catch (err) {
+      if (text && (text.length === 24 || text.startsWith("LUMORA-") || text.trim().length > 0)) {
+        void processScannedTicket(text.trim());
+      } else {
+        toast.error("Quét mã QR thất bại: Dữ liệu không hợp lệ.");
+      }
+    }
+  };
 
   const handleSearch = async (queryCode?: string) => {
     const code = (queryCode || searchInput).trim();
@@ -67,16 +213,26 @@ export function StaffCheckIn() {
       const list: any[] = res.data?.data || res.data || [];
 
       const cleanCode = code.toUpperCase();
-      const found = list.find(
+      const matches = list.filter(
         (b) =>
           b.bookingCode?.toUpperCase() === cleanCode ||
           b._id === cleanCode ||
           b._id?.toLowerCase() === code.toLowerCase() ||
-          b.user?.phone?.includes(code)
+          b.customerPhone === code ||
+          b.user?.phone === code ||
+          b.customerName?.toLowerCase().includes(code.toLowerCase()) ||
+          b.user?.fullName?.toLowerCase().includes(code.toLowerCase())
       );
+      const found = matches[0];
 
       if (!found) {
         toast.error("Không tìm thấy mã vé / đơn hàng này!");
+        setSearching(false);
+        return;
+      }
+
+      if (matches.length > 1) {
+        toast.warning("Tìm thấy nhiều booking. Vui lòng quét hoặc nhập chính xác mã booking.");
         setSearching(false);
         return;
       }
@@ -145,6 +301,43 @@ export function StaffCheckIn() {
     if (inputRef.current) inputRef.current.focus();
   };
 
+  const handlePrintTicket = async () => {
+    if (!booking) return;
+
+    const combosFormatted = bookingCombos.map((bc: any) => ({
+      name: bc.combo?.name || "Combo",
+      quantity: bc.quantity || 1,
+      price: bc.price || (bc.combo?.price ? bc.combo.price * bc.quantity : 0),
+    }));
+
+    const printed = await printCinemaTicket({
+      bookingId: booking._id,
+      bookingCode: booking.bookingCode || booking._id,
+      movieTitle: booking.showtime?.movie?.title || "Phim Rạp Lumora",
+      roomName: booking.showtime?.room?.name || "Phòng chiếu",
+      startTime: booking.showtime?.startTime,
+      seats: bookingSeats,
+      combos: combosFormatted,
+      customerName: booking.isCounterSale
+        ? (booking.customerName || booking.user?.fullName || "Khách hàng")
+        : (booking.user?.fullName || booking.customerName || "Khách hàng"),
+      customerPhone: booking.isCounterSale
+        ? (booking.customerPhone || booking.user?.phone)
+        : (booking.user?.phone || booking.customerPhone),
+      paymentMethod: booking.paymentMethod,
+      finalAmount: booking.finalAmount,
+      discountAmount: booking.discountAmount,
+    });
+
+    if (printed) {
+      setBooking((prev: any) => ({
+        ...prev,
+        printStatus: "printed",
+        printCount: (prev?.printCount || 0) + 1,
+      }));
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* Top Banner */}
@@ -181,7 +374,7 @@ export function StaffCheckIn() {
       {/* Search Bar / QR Input */}
       <Card style={{ borderRadius: 12 }}>
         <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} md={18}>
+          <Col xs={24} md={15}>
             <Input
               ref={inputRef}
               size="large"
@@ -195,23 +388,40 @@ export function StaffCheckIn() {
             />
           </Col>
 
-          <Col xs={24} md={6}>
-            <Button
-              type="primary"
-              size="large"
-              block
-              icon={<SearchOutlined />}
-              loading={searching}
-              onClick={() => handleSearch()}
-              style={{
-                height: 48,
-                background: "#4f46e5",
-                borderColor: "#4f46e5",
-                fontWeight: "bold",
-              }}
-            >
-              Kiểm Tra Vé
-            </Button>
+          <Col xs={24} md={9}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<SearchOutlined />}
+                loading={searching}
+                onClick={() => handleSearch()}
+                style={{
+                  flex: 1,
+                  height: 48,
+                  background: "#4f46e5",
+                  borderColor: "#4f46e5",
+                  fontWeight: "bold",
+                }}
+              >
+                Kiểm Tra Vé
+              </Button>
+              <Button
+                type="primary"
+                size="large"
+                icon={<ScanOutlined />}
+                onClick={() => setScannerModalOpen(true)}
+                style={{
+                  height: 48,
+                  background: "#10b981",
+                  borderColor: "#10b981",
+                  fontWeight: "bold",
+                  color: "#ffffff",
+                }}
+              >
+                Quét QR
+              </Button>
+            </div>
           </Col>
         </Row>
       </Card>
@@ -290,13 +500,39 @@ export function StaffCheckIn() {
 
                 <Descriptions.Item label="Danh Sách Ghế" span={2}>
                   <Space wrap size={[8, 8]}>
-                    {bookingSeats.length > 0
-                      ? bookingSeats.map((bs) => (
-                        <Tag key={bs._id || bs.seat?._id} color="volcano" style={{ fontSize: 15, padding: "4px 10px" }}>
-                          Ghế {bs.seat?.code || bs.code}
-                        </Tag>
-                      ))
-                      : "Chưa cập nhật thông tin ghế"}
+                    {bookingSeats.length > 0 ? (
+                      bookingSeats.map((bs, index) => {
+                        const seatCode =
+                          bs.seatCode ||
+                          bs.seat?.code ||
+                          bs.code ||
+                          bs.label ||
+                          (bs.row && bs.number ? `${bs.row}${bs.number}` : "") ||
+                          (bs.seat?.row && bs.seat?.number ? `${bs.seat.row}${bs.seat.number}` : "") ||
+                          `Ghế #${index + 1}`;
+                        const rawType = (bs.seatType || bs.seat?.type || bs.type || "").toLowerCase();
+                        const isVip = rawType === "vip";
+                        const isCouple = rawType === "couple";
+                        const tagColor = isVip ? "gold" : isCouple ? "magenta" : "volcano";
+
+                        return (
+                          <Tag
+                            key={bs._id || bs.seat?._id || index}
+                            color={tagColor}
+                            style={{
+                              fontSize: 15,
+                              padding: "4px 12px",
+                              fontWeight: 700,
+                              borderRadius: 6,
+                            }}
+                          >
+                            Ghế {seatCode} {isVip ? "(VIP)" : isCouple ? "(Đôi)" : ""}
+                          </Tag>
+                        );
+                      })
+                    ) : (
+                      <Text type="secondary">Chưa cập nhật thông tin ghế</Text>
+                    )}
                   </Space>
                 </Descriptions.Item>
 
@@ -317,10 +553,14 @@ export function StaffCheckIn() {
 
               <Descriptions title="Thông Tin Khách Hàng & Thanh Toán" column={{ xs: 1, sm: 2 }}>
                 <Descriptions.Item label="Họ tên">
-                  {booking.user?.fullName || "Khách vãng lai"}
+                  {booking.isCounterSale
+                    ? (booking.customerName || booking.user?.fullName || "Khách tại quầy")
+                    : (booking.user?.fullName || booking.customerName || "Khách vãng lai")}
                 </Descriptions.Item>
                 <Descriptions.Item label="SĐT">
-                  {booking.user?.phone || "Khách tại quầy"}
+                  {booking.isCounterSale
+                    ? (booking.customerPhone || booking.user?.phone || "Khách tại quầy")
+                    : (booking.user?.phone || booking.customerPhone || "Chưa có SĐT")}
                 </Descriptions.Item>
                 <Descriptions.Item label="Tổng giá trị">
                   <Text type="success" strong style={{ fontSize: 16 }}>
@@ -328,11 +568,20 @@ export function StaffCheckIn() {
                   </Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Trạng thái in">
-                  {booking.printStatus === "printed" ? (
-                    <Tag color="green">Đã in vé giấy</Tag>
-                  ) : (
-                    <Tag color="default">Chưa in vé</Tag>
-                  )}
+                  <Space>
+                    {booking.printStatus === "printed" ? (
+                      <Tag color="green">Đã in vé giấy ({booking.printCount || 1} lần)</Tag>
+                    ) : (
+                      <Tag color="default">Chưa in vé</Tag>
+                    )}
+                    <Button
+                      size="small"
+                      icon={<PrinterOutlined />}
+                      onClick={handlePrintTicket}
+                    >
+                      In vé
+                    </Button>
+                  </Space>
                 </Descriptions.Item>
               </Descriptions>
             </Card>
@@ -385,10 +634,71 @@ export function StaffCheckIn() {
                   XÁC NHẬN CHO VÀO PHÒNG
                 </Button>
               )}
+
+              <Divider style={{ margin: "16px 0" }} />
+
+              <Button
+                type="default"
+                size="large"
+                block
+                icon={<PrinterOutlined style={{ fontSize: 18, color: "#2563eb" }} />}
+                onClick={handlePrintTicket}
+                style={{
+                  height: 44,
+                  fontWeight: "bold",
+                  borderRadius: 8,
+                  borderColor: "#3b82f6",
+                  color: "#2563eb",
+                }}
+              >
+                IN VÉ GIẤY GIẤY (IN MẪU CHUẨN)
+              </Button>
             </Card>
           </Col>
         </Row>
       )}
+
+      {/* QR Code Scanner Modal */}
+      <Modal
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <QrcodeOutlined style={{ color: "#10b981", fontSize: 20 }} />
+            <span style={{ fontWeight: 800, fontSize: 16 }}>QUÉT MÃ QR SOÁT VÉ</span>
+          </div>
+        }
+        open={scannerModalOpen}
+        onCancel={() => setScannerModalOpen(false)}
+        footer={null}
+        destroyOnClose
+        afterOpenChange={(open) => {
+          if (open) {
+            void startScanner();
+          } else {
+            void stopScanner();
+          }
+        }}
+        styles={{
+          body: { padding: "20px 24px" }
+        }}
+      >
+        <div style={{ textAlign: "center", margin: "8px 0" }}>
+          <div
+            id="reader"
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              margin: "0 auto",
+              overflow: "hidden",
+              borderRadius: "12px",
+              border: "1px dashed #cbd5e1",
+              backgroundColor: "#f8fafc"
+            }}
+          />
+          <p style={{ marginTop: 16, color: "#64748b", fontWeight: 500, fontSize: 13 }}>
+            Đưa mã QR trên vé của khách hàng vào khung hình camera để quét soát vé tự động.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -273,7 +273,7 @@ function ManageRoom() {
               onClick={() => handleEdit(record)}
             />
           </Tooltip>
-          {/* <Popconfirm
+          <Popconfirm
             title="Xóa phòng chiếu"
             description={`Bạn có chắc chắn muốn xóa phòng "${record.name}"? Tất cả ghế của phòng cũng sẽ bị xoá.`}
             onConfirm={() => handleDelete(record)}
@@ -284,7 +284,7 @@ function ManageRoom() {
             <Tooltip title="Xóa phòng">
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
-          </Popconfirm> */}
+          </Popconfirm>
         </Space>
       ),
     },

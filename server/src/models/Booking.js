@@ -12,7 +12,33 @@ const bookingSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+    },
+    isCounterSale: {
+      type: Boolean,
+      default: false,
+    },
+    customerName: {
+      type: String,
+      default: "Khách vãng lai",
+    },
+    customerPhone: {
+      type: String,
+      default: "",
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "vnpay", "momo", "card"],
+      default: "cash",
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid"],
+      default: "paid",
+    },
+    createdByStaff: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
     showtime: {
       type: mongoose.Schema.Types.ObjectId,
@@ -60,6 +86,35 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    comboStatus: {
+      type: String,
+      enum: ["pending", "claimed"],
+      default: "pending",
+    },
+    comboClaimedAt: {
+      type: Date,
+    },
+    comboClaimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    comboPrintStatus: {
+      type: String,
+      enum: ["not_printed", "printed"],
+      default: "not_printed",
+    },
+    comboPrintedAt: {
+      type: Date,
+    },
+    comboPrintedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    comboPrintCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     checkedInAt: {
       type: Date,
     },
@@ -77,10 +132,6 @@ const bookingSchema = new mongoose.Schema(
     },
     cancelledAt: {
       type: Date,
-    },
-    totalComboPrice: {
-      type: Number,
-      default: 0,
     },
   },
   {

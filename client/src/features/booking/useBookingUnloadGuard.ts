@@ -20,42 +20,6 @@ export function useBookingUnloadGuard(
 
   useEffect(() => {
     if (!bookingId || !isActive) return;
-    const apiBase =
-      (import.meta.env.VITE_API_URL as string | undefined) ||
-      `${window.location.origin}/api`;
-
-    const sendCancel = (id: string) => {
-      const url = `${apiBase}/bookings/${id}/cancel-beacon`;
-      const token = localStorage.getItem("cinema_token");
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      try {
-        fetch(url, {
-          method: "POST",
-          headers,
-          keepalive: true,
-          body: JSON.stringify({}),
-        }).catch(() => {
-          if (typeof navigator.sendBeacon === "function") {
-            const blob = new Blob([JSON.stringify({})], {
-              type: "application/json",
-            });
-            navigator.sendBeacon(url, blob);
-          }
-        });
-      } catch {
-        if (typeof navigator.sendBeacon === "function") {
-          const blob = new Blob([JSON.stringify({})], {
-            type: "application/json",
-          });
-          navigator.sendBeacon(url, blob);
-        }
-      }
-    };
 
     const handleBeforeUnload = () => {
       console.log(`[UnloadGuard] Reload/unloaded for booking ${bookingIdRef.current}`);

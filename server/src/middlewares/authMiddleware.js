@@ -16,3 +16,18 @@ export const protect = asyncHandler(async (req, res, next) => {
     req.user = user;
     next();
 });
+
+export const optionalProtect = asyncHandler(async (req, res, next) => {
+  const token = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const user = await User.findById(decoded.id);
+    if (user && user.isActive) {
+      req.user = user;
+    }
+  } catch {
+    // optional, fail silently
+  }
+  next();
+});

@@ -17,6 +17,7 @@ import inventoryRoutes from "./inventoryRoutes.js";
 import userRoutes from "./userRoutes.js";
 import pricingRuleRoutes from "./pricingRuleRoutes.js";
 import statisticsRoutes from "./statisticsRoutes.js";
+import comboOrderRoutes from "./comboOrderRoutes.js";
 const router = express.Router();
 
 // API Routes
@@ -38,6 +39,7 @@ router.use("/inventory", inventoryRoutes);
 router.use("/users", userRoutes);
 router.use("/pricing-rules", pricingRuleRoutes);
 router.use("/statistics", statisticsRoutes);
+router.use("/combo-orders", comboOrderRoutes);
 
 // Health check - Kiểm tra API còn chạy không
 router.get("/health", (req, res) => {

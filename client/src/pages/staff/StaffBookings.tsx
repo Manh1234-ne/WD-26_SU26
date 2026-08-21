@@ -38,6 +38,8 @@ import {
 import dayjs from "dayjs";
 import { api } from "../../services/api";
 import QRCode from "qrcode";
+import { useAuthStore } from "../../features/auth/auth.store";
+import { printCinemaTicket } from "../../utils/ticketPrinter";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -119,6 +121,8 @@ export function StaffBookings() {
       const matchSearch =
         !searchText ||
         item.bookingCode?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.customerName?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.customerPhone?.includes(searchText) ||
         item.user?.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
         item.user?.phone?.includes(searchText) ||
         item.showtime?.movie?.title?.toLowerCase().includes(searchText.toLowerCase());
@@ -180,102 +184,65 @@ export function StaffBookings() {
     }
   };
 
-  const executePrint = async (bookingDetails: any) => {
-    const booking = bookingDetails.booking || bookingDetails;
-    const seats = bookingDetails.seats || [];
+  const staffUser = useAuthStore((s) => s.user);
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      void message.error("Vui lòng cho phép mở popup để in vé.");
+  const executePrint = async (bookingDetails: any) => {
+    const booking = bookingDetails?.booking || bookingDetails;
+    if (!booking) {
+      void message.error("Không tìm thấy dữ liệu vé!");
       return;
     }
+    const seats = bookingDetails?.seats || booking.seats || [];
+    const combos = bookingDetails?.combos || booking.combos || [];
 
-    const movieTitle = booking.showtime?.movie?.title || "Phim chưa xác định";
-    const cinemaName = booking.showtime?.cinema?.name || "Rạp chiếu";
-    const roomName = booking.showtime?.room?.name || "Phòng";
-    const startTime = booking.showtime?.startTime
-      ? dayjs(booking.showtime.startTime).format("DD/MM/YYYY HH:mm")
-      : "Chưa cập nhật";
-    const bookingCode = booking.bookingCode || booking._id;
-    const basePrice = booking.showtime?.basePrice || 0;
-    const seatCount = seats.length || 1;
+    const combosFormatted = combos.map((bc: any) => ({
+      name: bc.combo?.name || bc.name || "Combo",
+      quantity: bc.quantity || bc.qty || 1,
+      price: bc.totalPrice || bc.price || (bc.combo?.price ? bc.combo.price * (bc.quantity || 1) : 0),
+    }));
 
-    let ticketHTML = `
-      <html>
-      <head>
-        <title>In Vé Xem Phim - ${bookingCode}</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
-          body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: #ffffff; color: #000000; }
-          .tickets-container { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
-          .ticket { width: 650px; border: 2px solid #000000; border-radius: 12px; display: flex; flex-direction: row; overflow: hidden; box-sizing: border-box; page-break-after: always; break-after: page; }
-          .ticket-main { flex: 7; padding: 20px; border-right: 2px dashed #000000; position: relative; }
-          .ticket-stub { flex: 3; padding: 20px; background-color: #fafafa; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; }
-          .ticket-header { font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 2px solid #000000; padding-bottom: 6px; }
-          .movie-title { font-size: 20px; font-weight: 900; margin: 8px 0; text-transform: uppercase; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
-          .info-item { display: flex; flex-direction: column; }
-          .info-label { font-size: 10px; text-transform: uppercase; color: #555555; font-weight: 600; }
-          .info-value { font-size: 14px; font-weight: 800; }
-          .seat-highlight { font-size: 24px; font-weight: 900; background-color: #000000; color: #ffffff; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; }
-          .stub-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #555555; }
-          .stub-seat { font-size: 28px; font-weight: 900; margin: 10px 0; }
-          .stub-info { font-size: 11px; font-weight: 600; }
-          .ticket-index { font-size: 11px; font-weight: 600; border: 1px solid #000000; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; }
-          @media print { body { background-color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .tickets-container { padding: 0; gap: 0; } .ticket { border: 2px solid #000000; margin-bottom: 0; page-break-after: always; break-after: page; } }
-        </style>
-      </head>
-      <body><div class="tickets-container">
-    `;
-
-    seats.forEach((seat: any, index: number) => {
-      const seatCode = seat.seatCode || seat.label || (seat.row && seat.col ? `${seat.row}${seat.col}` : "-");
-      const seatTypeLabel = (seat.seatType || seat.type) === "vip" ? "VIP" : (seat.seatType || seat.type) === "couple" ? "Đôi" : "Thường";
-      const seatPrice = seat.price || (basePrice * (seat.priceMultiplier || 1));
-
-      ticketHTML += `
-        <div class="ticket">
-          <div class="ticket-main">
-            <div class="ticket-header">${cinemaName}</div>
-            <div class="movie-title">${movieTitle}</div>
-            <div class="info-grid">
-              <div class="info-item"><span class="info-label">Suất Chiếu</span><span class="info-value">${startTime}</span></div>
-              <div class="info-item"><span class="info-label">Phòng Chiếu</span><span class="info-value">${roomName}</span></div>
-              <div class="info-item"><span class="info-label">Loại Ghế</span><span class="info-value">${seatTypeLabel}</span></div>
-              <div class="info-item"><span class="info-label">Mã Giao Dịch</span><span class="info-value" style="font-family: monospace;">${bookingCode}</span></div>
-            </div>
-            <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
-              <div class="info-item"><span class="info-label">Ghế Ngồi</span><span class="seat-highlight">${seatCode}</span></div>
-              <div class="info-item" style="text-align: right;"><span class="info-label">Giá Vé</span><span class="info-value">${seatPrice.toLocaleString("vi-VN")}đ</span></div>
-            </div>
-          </div>
-          <div class="ticket-stub">
-            <div><div class="ticket-index">VÉ ${index + 1} / ${seatCount}</div><div class="stub-title">SOÁT VÉ</div></div>
-            <div class="stub-seat">${seatCode}</div>
-            <div><div class="stub-info">${roomName}</div><div class="stub-info" style="font-size: 9px; color: #555555; margin-top: 4px;">${startTime}</div></div>
-          </div>
-        </div>
-      `;
+    const printed = await printCinemaTicket({
+      bookingId: booking._id,
+      bookingCode: booking.bookingCode || booking._id || "LUMORA-POS",
+      cinemaName: booking.showtime?.cinema?.name || "LUMORA CINEMA",
+      movieTitle: booking.showtime?.movie?.title || "Phim Rạp Lumora",
+      roomName: booking.showtime?.room?.name || "Phòng chiếu",
+      startTime: booking.showtime?.startTime,
+      seats: seats,
+      combos: combosFormatted,
+      customerName: booking.user?.fullName || booking.customerName || "Khách hàng",
+      customerPhone: booking.user?.phone || booking.customerPhone,
+      staffName: staffUser?.fullName || booking.createdByStaff?.fullName || "Nhân viên",
+      paymentMethod: booking.paymentMethod,
+      seatTotalPrice: booking.totalSeatPrice || booking.seatTotalPrice,
+      comboTotalPrice: booking.totalComboPrice || booking.comboTotalPrice,
+      discountAmount: booking.discountAmount,
+      voucherCode: booking.voucher?.code,
+      finalAmount: booking.finalAmount,
     });
 
-    ticketHTML += `</div><script>window.onload=function(){window.print();setTimeout(function(){window.close();},1000);};</script></body></html>`;
-    printWindow.document.write(ticketHTML);
-    printWindow.document.close();
-
-    try {
-      await api.patch(`/bookings/${booking._id}/print`);
+    if (printed) {
       setSelectedBookingDetails((prev: any) => {
         if (!prev) return null;
         const b = prev.booking || prev;
         if (prev.booking) {
-          return { ...prev, booking: { ...prev.booking, printCount: (b.printCount || 0) + 1 } };
+          return {
+            ...prev,
+            booking: {
+              ...prev.booking,
+              printCount: (b.printCount || 0) + 1,
+              printStatus: "printed",
+            },
+          };
         }
-        return { ...prev, printCount: (b.printCount || 0) + 1 };
+        return {
+          ...prev,
+          printCount: (b.printCount || 0) + 1,
+          printStatus: "printed",
+        };
       });
-      void message.success("Đã ghi nhận in vé thành công!");
+      void message.success("In vé thành công!");
       fetchBookings();
-    } catch {
-      void message.error("Không thể cập nhật số lần in vé trên máy chủ.");
     }
   };
 
@@ -298,6 +265,33 @@ export function StaffBookings() {
     }
   };
 
+  const handlePrintDirect = async (record: any) => {
+    try {
+      setLoading(true);
+      const res = await api.get(`/bookings/${record._id}`);
+      const detail = res.data?.data || res.data || record;
+      const booking = detail.booking || detail;
+      const printCount = booking.printCount || 0;
+
+      if (printCount > 0) {
+        Modal.confirm({
+          title: "Xác nhận in lại vé?",
+          content: `Vé ${booking.bookingCode || ""} đã được in ${printCount} lần trước đó. Bạn có chắc chắn muốn in lại không?`,
+          okText: "Đồng ý in lại",
+          cancelText: "Hủy bỏ",
+          okButtonProps: { type: "primary" },
+          onOk: () => { void executePrint(detail); },
+        });
+      } else {
+        await executePrint(detail);
+      }
+    } catch {
+      void message.error("Không thể tải thông tin vé để in.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     {
       title: "Mã Đơn / Barcode",
@@ -312,9 +306,9 @@ export function StaffBookings() {
       key: "customer",
       render: (_: any, record: any) => (
         <div>
-          <div>{record.user?.fullName || "Khách tại quầy"}</div>
-          {record.user?.phone && (
-            <Text type="secondary" style={{ fontSize: 12 }}>{record.user.phone}</Text>
+          <div>{record.user?.fullName || record.customerName || "Khách tại quầy"}</div>
+          {(record.user?.phone || record.customerPhone) && (
+            <Text type="secondary" style={{ fontSize: 12 }}>{record.user?.phone || record.customerPhone}</Text>
           )}
         </div>
       ),
@@ -378,7 +372,7 @@ export function StaffBookings() {
               type="default"
               size="small"
               icon={<PrinterOutlined />}
-              onClick={() => handleOpenDetail(record)}
+              onClick={() => handlePrintDirect(record)}
             >
               In vé
             </Button>

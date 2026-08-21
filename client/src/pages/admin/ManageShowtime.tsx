@@ -141,6 +141,7 @@ function ManageShowtime() {
 
     // States for viewing seats
     const [viewingShowtime, setViewingShowtime] = useState<Showtime | null>(null)
+    const [viewingRoom, setViewingRoom] = useState<any>(null)
     const [seats, setSeats] = useState<Seat[]>([])
     const [seatStatusMap, setSeatStatusMap] = useState<Map<string, string>>(new Map())
     const [isLoadingSeats, setIsLoadingSeats] = useState(false)
@@ -154,6 +155,7 @@ function ManageShowtime() {
             const seatRes = await getSeatsByRoom(showtime.room._id)
             const seatsList = seatRes?.seats || []
             setSeats(seatsList)
+            setViewingRoom(seatRes?.room || (showtime as any).room || null)
 
             const occupiedRes = await api.get(`/booking-seats/showtime/${showtime._id}/occupied`)
             const occupiedData = occupiedRes.data?.data || []
@@ -560,7 +562,7 @@ function ManageShowtime() {
                         {/* Section 1: Phim, Phòng chiếu & Định dạng */}
                         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
                             <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                                📌 1. THÔNG TIN PHIM & PHÒNG CHIẾU
+                                1. THÔNG TIN PHIM & PHÒNG CHIẾU
                             </Text>
                             <Row gutter={[20, 16]}>
                                 <Col xs={24} md={10}>
@@ -671,7 +673,7 @@ function ManageShowtime() {
                         {/* Section 2: Khung giờ chiếu */}
                         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
                             <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                                ⏰ 2. KHUNG GIỜ CHIẾU (HOẠT ĐỘNG TỪ 08:00 ĐẾN 23:00)
+                                2. KHUNG GIỜ CHIẾU (HOẠT ĐỘNG TỪ 08:00 ĐẾN 23:00)
                             </Text>
                             <Row gutter={[20, 16]}>
                                 <Col xs={24} sm={12}>
@@ -772,7 +774,7 @@ function ManageShowtime() {
                         {/* Section 3: Thiết lập chi tiết & Giá vé */}
                         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #f1f5f9' }}>
                             <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                                💵 3. THIẾT LẬP GIÁ VÉ & TRẠNG THÁI
+                                3. THIẾT LẬP GIÁ VÉ & TRẠNG THÁI
                             </Text>
                             <Row gutter={[20, 16]}>
                                 <Col xs={24} sm={12} md={8}>
@@ -1045,80 +1047,110 @@ function ManageShowtime() {
                                                         return <div style={{ color: '#64748b', padding: '20px 0' }}>Không có sơ đồ ghế hoặc phòng chiếu chưa có ghế</div>
                                                     }
 
+                                                    const parsedAisles = (viewingRoom?.aisleColumns || (viewingShowtime?.room as any)?.aisleColumns || []) as number[]
+                                                    const parsedAisleRows = ((viewingRoom?.aisleRows || (viewingShowtime?.room as any)?.aisleRows || []) as string[]).map((r: string) => r.toUpperCase())
+
                                                     return sortedRows.map(row => {
-                                                        const rowSeats = grouped[row];
-                                                        const maxSeatNum = Math.max(...rowSeats.map(s => s.number), 0);
-                                                        const elements = [];
-
-                                                        for (let num = 1; num <= maxSeatNum; num++) {
-                                                            const seat = rowSeats.find(s => s.number === num);
-                                                            if (seat) {
-                                                                const seatStatus = seatStatusMap.get(seat._id);
-                                                                const isBooked = seatStatus === 'booked';
-                                                                const isHeld = seatStatus === 'held';
-                                                                let seatStyle: React.CSSProperties = {}
-                                                                if (isBooked) {
-                                                                    // Ghế đã đặt: Chữ V màu xanh lá
-                                                                    seatStyle = {
-                                                                        background: '#dcfce7',
-                                                                        borderColor: '#bbf7d0',
-                                                                        color: '#16a34a',
-                                                                        opacity: 1,
-                                                                        textDecoration: 'none',
-                                                                    }
-                                                                } else if (isHeld) {
-                                                                    // Ghế đang giữ: Chữ ⏳ màu cam
-                                                                    seatStyle = {
-                                                                        background: '#fef3c7',
-                                                                        borderColor: '#fde68a',
-                                                                        color: '#d97706',
-                                                                        opacity: 1,
-                                                                        textDecoration: 'none',
-                                                                    }
-                                                                } else {
-                                                                    // Ghế chưa đặt (Chung một màu xám nhẹ)
-                                                                    seatStyle = {
-                                                                        background: '#f1f5f9',
-                                                                        borderColor: '#cbd5e1',
-                                                                        color: '#475569',
-                                                                    }
-                                                                }
-
-                                                                const isCouple = seat.type === 'couple';
-
-                                                                elements.push(
-                                                                    <div key={seat._id} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                                        <Tooltip
-                                                                            title={`${seat.code} (${seat.type.toUpperCase()}) - ${isBooked ? 'Đã đặt' : isHeld ? 'Đang giữ' : 'Còn trống'}`}
-                                                                        >
-                                                                            <button
-                                                                                className={`seat-unit ${seat.type}`}
-                                                                                style={{ cursor: 'default', ...seatStyle }}
-                                                                                type="button"
-                                                                            >
-                                                                                {isBooked ? 'V' : isHeld ? '⏳' : seat.type === 'disabled' ? '♿' : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
-                                                                            </button>
-                                                                        </Tooltip>
-                                                                    </div>
-                                                                )
-
-                                                                if (isCouple) num++;
-                                                            } else {
-                                                                elements.push(
-                                                                    <div key={`gap-${num}`} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                                        <div style={{ width: '32px', height: '32px' }} />
-                                                                    </div>
-                                                                )
-                                                            }
-                                                        }
-
+                                                        const isAisleRow = parsedAisleRows.includes(row.toUpperCase())
                                                         return (
                                                             <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', width: '100%' }}>
                                                                 <div className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                                                     <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
-                                                                    {elements}
+                                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                        {grouped[row].map(seat => {
+                                                                            const seatStatus = seatStatusMap.get(seat._id)
+                                                                            const isBooked = seatStatus === 'booked' || seatStatus === 'paid' || seatStatus === 'completed'
+                                                                            const isHeld = seatStatus === 'held' || seatStatus === 'holding'
+                                                                            const isCouple = seat.type === 'couple'
+                                                                            const isAisle = isCouple
+                                                                                ? (parsedAisles.includes(seat.number) || parsedAisles.includes(seat.number + 1))
+                                                                                : parsedAisles.includes(seat.number)
+
+                                                                            let seatStyle: React.CSSProperties = {}
+                                                                            if (isBooked) {
+                                                                                // Ghế đã đặt: Chữ V màu xanh lá
+                                                                                seatStyle = {
+                                                                                    background: '#dcfce7',
+                                                                                    borderColor: '#bbf7d0',
+                                                                                    color: '#16a34a',
+                                                                                    opacity: 1,
+                                                                                    textDecoration: 'none',
+                                                                                }
+                                                                            } else if (isHeld) {
+                                                                                // Ghế đang giữ: Chữ ⏳ màu cam
+                                                                                seatStyle = {
+                                                                                    background: '#fef3c7',
+                                                                                    borderColor: '#fde68a',
+                                                                                    color: '#d97706',
+                                                                                    opacity: 1,
+                                                                                    textDecoration: 'none',
+                                                                                }
+                                                                            } else {
+                                                                                // Ghế chưa đặt (Chung một màu xám nhẹ)
+                                                                                seatStyle = {
+                                                                                    background: '#f1f5f9',
+                                                                                    borderColor: '#cbd5e1',
+                                                                                    color: '#475569',
+                                                                                }
+                                                                            }
+
+                                                                            return (
+                                                                                <div key={seat._id} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                                    <Tooltip
+                                                                                        key={seat._id}
+                                                                                        title={`${seat.code} (${seat.type.toUpperCase()}) - ${isBooked ? 'Đã đặt' : isHeld ? 'Đang giữ' : 'Còn trống'}`}
+                                                                                    >
+                                                                                        <button
+                                                                                            className={`seat-unit ${seat.type}`}
+                                                                                            style={{ cursor: 'default', ...seatStyle }}
+                                                                                            type="button"
+                                                                                        >
+                                                                                            {isBooked ? 'V' : isHeld ? '⏳' : seat.type === 'disabled' ? '♿' : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                                                        </button>
+                                                                                    </Tooltip>
+                                                                                    {isAisle && (
+                                                                                        <div
+                                                                                            style={{
+                                                                                                width: '20px',
+                                                                                                height: '28px',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                justifyContent: 'center',
+                                                                                                fontSize: '10px',
+                                                                                                color: '#cbd5e1',
+                                                                                                fontWeight: 700,
+                                                                                                userSelect: 'none',
+                                                                                            }}
+                                                                                        >
+                                                                                            |
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                    </div>
                                                                     <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
                                                                 </div>
+                                                                {isAisleRow && (
+                                                                    <div
+                                                                        style={{
+                                                                            height: '20px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            fontSize: '9px',
+                                                                            color: '#94a3b8',
+                                                                            fontWeight: 800,
+                                                                            width: '100%',
+                                                                            borderBottom: '1px dashed #cbd5e1',
+                                                                            margin: '4px 0',
+                                                                            letterSpacing: '1.5px',
+                                                                            textTransform: 'uppercase',
+                                                                        }}
+                                                                    >
+                                                                        LỐI ĐI NGANG (AISLE)
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )
                                                     })

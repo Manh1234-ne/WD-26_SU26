@@ -8,23 +8,24 @@ import {
   cancelBooking,
   cancelBookingBeacon,
   completeBooking,
+  claimBookingCombo,
+  markBookingComboPrinted,
   markBookingPrinted,
   applyVoucherToBooking,
   updateBookingSeats,
-  updateBookingCombos,
-  incrementPrintCount
+  updateBookingCombos
 } from "../controllers/bookingController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+import { protect, optionalProtect } from "../middlewares/authMiddleware.js";
 import { isAdmin, isStaffOrAdmin } from "../middlewares/adminMiddleware.js";
 
 const routerBooking = express.Router();
 
-routerBooking.get("/", getAllBookings);
-routerBooking.post("/", createBooking);
+routerBooking.get("/", protect, isStaffOrAdmin, getAllBookings);
+routerBooking.post("/", optionalProtect, createBooking);
 
-routerBooking.get("/user/:userId", getBookingsByUser);
+routerBooking.get("/user/:userId", protect, getBookingsByUser);
 
-routerBooking.get("/:id", getBookingById);
+routerBooking.get("/:id", protect, getBookingById);
 
 routerBooking.patch("/:id/seats", updateBookingSeats);
 routerBooking.patch("/:id/combos", updateBookingCombos);
@@ -43,13 +44,22 @@ routerBooking.patch(
 );
 
 routerBooking.patch(
-  "/:id/apply-voucher",
-  applyVoucherToBooking
+  "/:id/claim-combo",
+  protect,
+  isStaffOrAdmin,
+  claimBookingCombo
 );
 
 routerBooking.patch(
-  "/:id/print",
-  incrementPrintCount
+  "/:id/print-combo",
+  protect,
+  isStaffOrAdmin,
+  markBookingComboPrinted
+);
+
+routerBooking.patch(
+  "/:id/apply-voucher",
+  applyVoucherToBooking
 );
 
 
