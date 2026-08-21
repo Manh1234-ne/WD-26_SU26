@@ -352,7 +352,7 @@ function ManageRoom() {
           >
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
               <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                📌 1. THÔNG TIN PHÒNG CHIẾU
+                1. THÔNG TIN PHÒNG CHIẾU
               </Text>
               <Row gutter={16}>
                 <Col xs={24} sm={12}>
@@ -378,7 +378,7 @@ function ManageRoom() {
 
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
               <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                💺 2. CẤU HÌNH GHẾ & SỨC CHỨA
+                2. CẤU HÌNH GHẾ & SỨC CHỨA
               </Text>
               <Row gutter={16}>
                 <Col xs={24} sm={8}>
@@ -415,7 +415,7 @@ function ManageRoom() {
 
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #f1f5f9' }}>
               <Text strong style={{ color: '#e11d48', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '16px' }}>
-                🛤️ 3. THIẾT LẬP LỐI ĐI
+                3. THIẾT LẬP LỐI ĐI
               </Text>
               <Row gutter={16}>
                 <Col xs={24} sm={12}>

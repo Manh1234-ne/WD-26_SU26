@@ -10,7 +10,8 @@ import { getRooms } from '../../features/room/room.service'
 import type { Room } from '../../features/room/room.types'
 import { api } from '../../services/api'
 import { getSeatsByRoom } from '../../features/seat/seat.service'
-
+import { AccessibilityIcon, Time01Icon, Time02FreeIcons } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 interface Seat {
     _id: string
     code: string
@@ -1105,7 +1106,7 @@ function ManageShowtime() {
                                                                                             style={{ cursor: 'default', ...seatStyle }}
                                                                                             type="button"
                                                                                         >
-                                                                                            {isBooked ? 'V' : isHeld ? '⏳' : seat.type === 'disabled' ? '♿' : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                                                            {isBooked ? 'V' : isHeld ? <HugeiconsIcon icon={Time01Icon} /> : seat.type === 'disabled' ? <HugeiconsIcon icon={AccessibilityIcon} /> : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
                                                                                         </button>
                                                                                     </Tooltip>
                                                                                     {isAisle && (
@@ -1168,8 +1169,8 @@ function ManageShowtime() {
                                                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Đã đặt (V)</span>
                                             </div>
                                             <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div className="seat-unit occupied" style={{ cursor: 'default', background: '#fef3c7', borderColor: '#fde68a', color: '#d97706', opacity: 1 }}>⏳</div>
-                                                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Đang giữ (⏳)</span>
+                                                <div className="seat-unit occupied" style={{ cursor: 'default', background: '#fef3c7', borderColor: '#fde68a', color: '#d97706', opacity: 1 }}><HugeiconsIcon icon={Time01Icon} /></div>
+                                                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>(Đang giữ)</span>
                                             </div>
                                         </div>
                                     </div>
