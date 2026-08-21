@@ -8,9 +8,8 @@ import { createShowtime, deleteShowtime, getAllShowtimes, updateShowtime, massDe
 import type { Showtime } from '../../features/showtime/showtime.type'
 import { getRooms } from '../../features/room/room.service'
 import type { Room } from '../../features/room/room.types'
-import { api } from '../../services/api'
 import { getSeatsByRoom } from '../../features/seat/seat.service'
-import { AccessibilityIcon, Time01Icon, Time02FreeIcons } from "@hugeicons/core-free-icons"
+import { AccessibilityIcon, Time01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 interface Seat {
     _id: string
@@ -59,6 +58,7 @@ const { Title, Text } = Typography
 const { Option } = Select
 
 import { MassCreateShowtimeModal } from './MassCreateShowtimeModal'
+import { api } from '../../services/api'
 
 interface ShowtimePayload {
     movieId: string

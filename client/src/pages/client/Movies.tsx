@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Pagination } from "antd";
 import {
   SearchOutlined,
   FilterOutlined,
@@ -13,6 +14,8 @@ import {
 import { getMovies } from "../../features/movie/movie.service";
 import type { Movie, MovieStatus } from "../../features/movie/movie.types";
 import Loading from "../../components/Loading/Loading";
+
+const PAGE_SIZE = 8;
 
 const statusTabs: Array<{ label: string; value: MovieStatus | "all" }> = [
   { label: "Tất cả phim", value: "all" },
@@ -61,6 +64,7 @@ export default function Movies() {
   const initialGenre = searchParams.get("genre") || "Tất cả";
   const initialSearch = searchParams.get("search") || "";
 
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [status, setStatus] = useState<MovieStatus | "all">(initialStatus);
   const [selectedGenre, setSelectedGenre] = useState<string>(initialGenre);
@@ -104,6 +108,11 @@ export default function Movies() {
     if (search.trim()) params.search = search.trim();
     setSearchParams(params, { replace: true });
   }, [status, selectedGenre, search, setSearchParams]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [status, selectedGenre, search, sortBy]);
 
   const availableGenres = useMemo(() => {
     const genreSet = new Set<string>();
@@ -183,11 +192,17 @@ export default function Movies() {
       });
   }, [movies, status, selectedGenre, search, sortBy]);
 
+  const paginatedMovies = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return filteredMovies.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredMovies, currentPage]);
+
   const handleResetFilters = () => {
     setStatus("all");
     setSelectedGenre("Tất cả");
     setSearch("");
     setSortBy("newest");
+    setCurrentPage(1);
   };
 
   const hasActiveFilters =
@@ -475,10 +490,6 @@ export default function Movies() {
           marginBottom: "20px",
         }}
       >
-        <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-          Hiển thị <strong>{filteredMovies.length}</strong> bộ phim phù hợp
-        </p>
-
         {hasActiveFilters && (
           <button
             type="button"
@@ -562,274 +573,305 @@ export default function Movies() {
       )}
 
       {/* Movie Grid */}
-      {!isLoading && !error && filteredMovies.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: "24px",
-          }}
-        >
-          {filteredMovies.map((movie) => {
-            const statusConfig = statusLabel[movie.status] || {
-              text: movie.status,
-              bg: "#f1f5f9",
-              color: "#475569",
-            };
-            const ageBadge = ageRatingBadge[movie.ageRating] || {
-              label: movie.ageRating || "P",
-              bg: "#e2e8f0",
-              color: "#334155",
-            };
+      {!isLoading && !error && paginatedMovies.length > 0 && (
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: "24px",
+            }}
+          >
+            {paginatedMovies.map((movie) => {
+              const statusConfig = statusLabel[movie.status] || {
+                text: movie.status,
+                bg: "#f1f5f9",
+                color: "#475569",
+              };
+              const ageBadge = ageRatingBadge[movie.ageRating] || {
+                label: movie.ageRating || "P",
+                bg: "#e2e8f0",
+                color: "#334155",
+              };
 
-            return (
-              <div
-                key={movie._id}
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "14px",
-                  overflow: "hidden",
-                  boxShadow: "0 4px 18px rgba(15, 23, 42, 0.06)",
-                  border: "1px solid #f1f5f9",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-6px)";
-                  e.currentTarget.style.boxShadow = "0 14px 30px rgba(15, 23, 42, 0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 18px rgba(15, 23, 42, 0.06)";
-                }}
-              >
-                {/* Poster Container */}
-                <Link
-                  to={`/movies/${movie._id}`}
-                  style={{
-                    position: "relative",
-                    aspectRatio: "2 / 3",
-                    background: "#0f172a",
-                    display: "block",
-                    overflow: "hidden",
-                    textDecoration: "none",
-                  }}
-                >
-                  {movie.posterUrl ? (
-                    <img
-                      src={movie.posterUrl}
-                      alt={movie.title}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        transition: "transform 0.5s ease",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#94a3b8",
-                        fontWeight: 800,
-                        fontSize: "36px",
-                        background: "linear-gradient(135deg, #1e293b, #0f172a)",
-                      }}
-                    >
-                      {movie.title.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-
-                  {/* Top Status Tag */}
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "12px",
-                      left: "12px",
-                      padding: "4px 10px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      backgroundColor: statusConfig.bg,
-                      color: statusConfig.color,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                    }}
-                  >
-                    {statusConfig.text}
-                  </span>
-
-                  {/* Age Rating Tag */}
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "12px",
-                      right: "12px",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      fontSize: "11px",
-                      fontWeight: 800,
-                      backgroundColor: ageBadge.bg,
-                      color: ageBadge.color,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                    }}
-                  >
-                    {movie.ageRating}
-                  </span>
-                </Link>
-
-                {/* Card Content */}
+              return (
                 <div
+                  key={movie._id}
                   style={{
-                    padding: "18px",
+                    background: "#ffffff",
+                    borderRadius: "14px",
+                    overflow: "hidden",
+                    boxShadow: "0 4px 18px rgba(15, 23, 42, 0.06)",
+                    border: "1px solid #f1f5f9",
                     display: "flex",
                     flexDirection: "column",
-                    flex: 1,
+                    transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-6px)";
+                    e.currentTarget.style.boxShadow = "0 14px 30px rgba(15, 23, 42, 0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 18px rgba(15, 23, 42, 0.06)";
                   }}
                 >
+                  {/* Poster Container */}
                   <Link
                     to={`/movies/${movie._id}`}
                     style={{
+                      position: "relative",
+                      aspectRatio: "2 / 3",
+                      background: "#0f172a",
+                      display: "block",
+                      overflow: "hidden",
                       textDecoration: "none",
-                      color: "#0f172a",
                     }}
                   >
-                    <h3
+                    {movie.posterUrl ? (
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          transition: "transform 0.5s ease",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#94a3b8",
+                          fontWeight: 800,
+                          fontSize: "36px",
+                          background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                        }}
+                      >
+                        {movie.title.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    {/* Top Status Tag */}
+                    <span
                       style={{
-                        fontSize: "17px",
+                        position: "absolute",
+                        top: "12px",
+                        left: "12px",
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                        fontSize: "12px",
                         fontWeight: 700,
-                        margin: "0 0 6px 0",
-                        lineHeight: 1.35,
-                        overflow: "hidden",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 1,
-                        WebkitBoxOrient: "vertical",
+                        backgroundColor: statusConfig.bg,
+                        color: statusConfig.color,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                       }}
                     >
-                      {movie.title}
-                    </h3>
+                      {statusConfig.text}
+                    </span>
+
+                    {/* Age Rating Tag */}
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "12px",
+                        right: "12px",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        fontWeight: 800,
+                        backgroundColor: ageBadge.bg,
+                        color: ageBadge.color,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                      }}
+                    >
+                      {movie.ageRating}
+                    </span>
                   </Link>
 
-                  {movie.originalTitle && (
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#94a3b8",
-                        margin: "0 0 10px 0",
-                        fontStyle: "italic",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {movie.originalTitle}
-                    </p>
-                  )}
-
-                  {/* Genres list */}
+                  {/* Card Content */}
                   <div
                     style={{
+                      padding: "18px",
                       display: "flex",
-                      flexWrap: "wrap",
-                      gap: "4px",
-                      marginBottom: "14px",
+                      flexDirection: "column",
+                      flex: 1,
                     }}
                   >
-                    {movie.genres && movie.genres.length > 0 ? (
-                      movie.genres.map((g) => (
-                        <span
-                          key={g}
-                          onClick={() => setSelectedGenre(g.trim())}
-                          style={{
-                            fontSize: "11px",
-                            padding: "2px 8px",
-                            borderRadius: "4px",
-                            background: "#f1f5f9",
-                            color: "#475569",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            transition: "background 0.2s",
-                          }}
-                        >
-                          {g.trim()}
-                        </span>
-                      ))
-                    ) : (
-                      <span style={{ fontSize: "12px", color: "#94a3b8" }}>Chưa phân loại</span>
-                    )}
-                  </div>
-
-                  {/* Meta info */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      fontSize: "12px",
-                      color: "#64748b",
-                      marginTop: "auto",
-                      paddingTop: "12px",
-                      borderTop: "1px solid #f1f5f9",
-                      marginBottom: "16px",
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <ClockCircleOutlined /> {movie.duration} phút
-                    </span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <CalendarOutlined />{" "}
-                      {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
-                    </span>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ display: "flex", gap: "8px" }}>
                     <Link
                       to={`/movies/${movie._id}`}
                       style={{
-                        flex: 1,
-                        textAlign: "center",
-                        padding: "9px 0",
-                        borderRadius: "8px",
-                        border: "1.5px solid #e11d48",
-                        color: "#e11d48",
-                        fontWeight: 600,
-                        fontSize: "13px",
                         textDecoration: "none",
-                        transition: "all 0.2s",
+                        color: "#0f172a",
                       }}
                     >
-                      Chi Tiết
+                      <h3
+                        style={{
+                          fontSize: "17px",
+                          fontWeight: 700,
+                          margin: "0 0 6px 0",
+                          lineHeight: 1.35,
+                          overflow: "hidden",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 1,
+                          WebkitBoxOrient: "vertical",
+                        }}
+                      >
+                        {movie.title}
+                      </h3>
                     </Link>
 
-                    <Link
-                      to={`/movies/${movie._id}/showtimes`}
+                    {movie.originalTitle && (
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          color: "#94a3b8",
+                          margin: "0 0 10px 0",
+                          fontStyle: "italic",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {movie.originalTitle}
+                      </p>
+                    )}
+
+                    {/* Genres list */}
+                    <div
                       style={{
-                        flex: 1,
-                        textAlign: "center",
-                        padding: "9px 0",
-                        borderRadius: "8px",
-                        background: "#e11d48",
-                        color: "#ffffff",
-                        fontWeight: 700,
-                        fontSize: "13px",
-                        textDecoration: "none",
-                        boxShadow: "0 4px 10px rgba(225, 29, 72, 0.2)",
-                        transition: "all 0.2s",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "4px",
+                        marginBottom: "14px",
                       }}
                     >
-                      Đặt Vé
-                    </Link>
+                      {movie.genres && movie.genres.length > 0 ? (
+                        movie.genres.map((g) => (
+                          <span
+                            key={g}
+                            onClick={() => setSelectedGenre(g.trim())}
+                            style={{
+                              fontSize: "11px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "#f1f5f9",
+                              color: "#475569",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              transition: "background 0.2s",
+                            }}
+                          >
+                            {g.trim()}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>Chưa phân loại</span>
+                      )}
+                    </div>
+
+                    {/* Meta info */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        fontSize: "12px",
+                        color: "#64748b",
+                        marginTop: "auto",
+                        paddingTop: "12px",
+                        borderTop: "1px solid #f1f5f9",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <ClockCircleOutlined /> {movie.duration} phút
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <CalendarOutlined />{" "}
+                        {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <Link
+                        to={`/movies/${movie._id}`}
+                        style={{
+                          flex: 1,
+                          textAlign: "center",
+                          padding: "9px 0",
+                          borderRadius: "8px",
+                          border: "1.5px solid #e11d48",
+                          color: "#e11d48",
+                          fontWeight: 600,
+                          fontSize: "13px",
+                          textDecoration: "none",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        Chi Tiết
+                      </Link>
+
+                      <Link
+                        to={`/movies/${movie._id}/showtimes`}
+                        style={{
+                          flex: 1,
+                          textAlign: "center",
+                          padding: "9px 0",
+                          borderRadius: "8px",
+                          background: "#e11d48",
+                          color: "#ffffff",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          textDecoration: "none",
+                          boxShadow: "0 4px 10px rgba(225, 29, 72, 0.2)",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        Đặt Vé
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination Controls */}
+          {filteredMovies.length > PAGE_SIZE && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                marginTop: "40px",
+                padding: "16px 0",
+              }}
+            >
+              <Pagination
+                current={currentPage}
+                pageSize={PAGE_SIZE}
+                total={filteredMovies.length}
+                showSizeChanger={false}
+                onChange={(page) => {
+                  setCurrentPage(page);
+                  const anchor = document.getElementById("movies-content-anchor");
+                  if (anchor) {
+                    anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+                  } else {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
