@@ -208,18 +208,18 @@ function ManageMovie() {
     return movies.filter(m => {
       // Filter by status
       if (statusFilter !== 'all' && m.status !== statusFilter) return false;
-      
+
       // Filter by date range (if selected)
       if (dateRange && dateRange[0] && dateRange[1]) {
-         const release = dayjs(m.releaseDate).startOf('day')
-         const end = dayjs(m.endDate).endOf('day')
-         const filterStart = dateRange[0].startOf('day')
-         const filterEnd = dateRange[1].endOf('day')
-         
-         // Check if movie's date range overlaps with selected filter range
-         if (end.isBefore(filterStart) || release.isAfter(filterEnd)) {
-            return false;
-         }
+        const release = dayjs(m.releaseDate).startOf('day')
+        const end = dayjs(m.endDate).endOf('day')
+        const filterStart = dateRange[0].startOf('day')
+        const filterEnd = dateRange[1].endOf('day')
+
+        // Check if movie's date range overlaps with selected filter range
+        if (end.isBefore(filterStart) || release.isAfter(filterEnd)) {
+          return false;
+        }
       }
       return true;
     }).sort((a, b) => a.title.localeCompare(b.title));
@@ -545,6 +545,9 @@ function ManageMovie() {
                       <Select.Option value="Tội phạm">Tội phạm</Select.Option>
                       <Select.Option value="Chiến tranh">Chiến tranh</Select.Option>
                       <Select.Option value="Xã hội">Xã hội</Select.Option>
+                      <Select.Option value="Hoạt hình">Hoạt hình</Select.Option>
+                      <Select.Option value="Võ thuật">võ thuật</Select.Option>
+                      <Select.Option value="Tài liệu">Tài liệu</Select.Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -771,7 +774,7 @@ function ManageMovie() {
                 <Select.Option value="now_showing">Đang chiếu</Select.Option>
                 <Select.Option value="ended">Đã kết thúc</Select.Option>
               </Select>
-              <DatePicker.RangePicker 
+              <DatePicker.RangePicker
                 onChange={(dates) => setDateRange(dates as any)}
                 format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']}
