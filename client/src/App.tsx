@@ -41,6 +41,7 @@ import StaffPos from "./pages/staff/StaffPos";
 import StaffBookings from "./pages/staff/StaffBookings";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StaffCheckIn from "./pages/staff/StaffCheckIn";
+import { ToastContainer } from "react-toastify";
 
 function App() {
   return (
@@ -106,7 +107,9 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        <ToastContainer position="top-center" autoClose={2000} />
       </AntdApp>
+
     </ConfigProvider >
   );
 }

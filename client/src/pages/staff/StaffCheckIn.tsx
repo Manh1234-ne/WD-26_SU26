@@ -78,7 +78,6 @@ export function StaffCheckIn() {
             void handleScanSuccess(decodedText);
           },
           () => {
-            // Verbose error, ignore
           }
         );
       }, 300);
@@ -355,7 +354,7 @@ export function StaffCheckIn() {
       >
         <div>
           <Title level={3} style={{ color: "white", margin: 0 }}>
-            Quản Lý Soát Vé & Quét Mã QR Cửa 🎫
+            Quản Lý Soát Vé & Quét Mã QR Cửa
           </Title>
           <Text style={{ color: "#c7d2fe" }}>
             Kiểm tra tính hợp lệ của vé, kiểm tra phòng chiếu và xác nhận cho khách vào phòng
@@ -468,7 +467,7 @@ export function StaffCheckIn() {
             >
               {checkInSuccess && (
                 <Alert
-                  message="SOÁT VÉ THÀNH CÔNG 🎉"
+                  message="SOÁT VÉ THÀNH CÔNG "
                   description={`Vé đã được xác nhận vào phòng lúc ${dayjs(booking.checkedInAt).format("HH:mm:ss - DD/MM/YYYY")}. Chúc khách hàng xem phim vui vẻ!`}
                   type="success"
                   showIcon
