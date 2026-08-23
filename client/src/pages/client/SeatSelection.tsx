@@ -531,7 +531,7 @@ function SeatSelection() {
                                                     : parsedAisles.includes(seat.number)
 
                                                 return (
-                                                    <div key={seat._id} style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
+                                                    <div key={seat._id} style={{ display: 'flex', gap: '22px', alignItems: 'center' }}>
                                                         <button
                                                             className={`seat-unit ${seat.type} ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
                                                             onClick={() => toggleSeat(seat)}
@@ -573,6 +573,10 @@ function SeatSelection() {
                     <div className="legend-item">
                         <span className="legend-box couple" />
                         <span>Couple</span>
+                    </div>
+                    <div className="legend-item">
+                        <span className="legend-box disabled" />
+                        <span>Disable</span>
                     </div>
                     <div className="legend-item">
                         <span className="legend-box selected" />

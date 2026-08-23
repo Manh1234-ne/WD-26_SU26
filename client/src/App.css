@@ -1474,6 +1474,12 @@ button:disabled {
   width: 68px;
 }
 
+.seat-unit.disabled {
+  background: #add8e665;
+  border-color: #005baa;
+  color: #005baa;
+}
+
 .seat-unit:hover:not(.occupied) {
   transform: translateY(-2px) scale(1.05);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -1547,6 +1553,12 @@ button:disabled {
   background: #334155;
   border-color: #334155;
   opacity: 0.35;
+}
+
+.legend-box.disabled {
+  background: #add8e6c5;
+  border-color: #005baa;
+  opacity: 0.35
 }
 
 .booking-summary-panel {

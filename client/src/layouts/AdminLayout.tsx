@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Layout, Menu, Button, theme, Avatar, Space, Typography, Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import {
@@ -18,6 +18,9 @@ import {
   CoffeeOutlined,
   InboxOutlined,
 } from "@ant-design/icons";
+import { logout } from "../features/auth/services/auth.service";
+import { useAuth } from "../features/auth/hooks/useAuth";
+import Swal from "sweetalert2";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -45,6 +48,26 @@ function AdminLayout() {
     { key: "/admin/pricing-rules", icon: <DollarOutlined />, label: "Quản lý tăng giá vé" },
   ];
 
+  const { clearAuth, user } = useAuth()
+  const nav = useNavigate()
+  const handleLogout = () => {
+    Swal.fire({
+      title: "chắc chắn muốn đăng xuất?",
+      showDenyButton: true,
+      confirmButtonText: "Có",
+      denyButtonText: "Không",
+      icon: 'question',
+      confirmButtonColor: "green"
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        await logout();
+        clearAuth();
+        nav('/')
+      } else if (result.isDenied) {
+        nav('/admin')
+      }
+    })
+  }
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider
@@ -130,9 +153,9 @@ function AdminLayout() {
             </Button>
             <Dropdown menu={{
               items: [
-                { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ' },
+                { key: 'profile', icon: <UserOutlined />, onClick: () => { nav(`/profile/${user?._id}`) }, label: 'Hồ sơ' },
                 { type: 'divider' },
-                { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
+                { key: 'logout', icon: <LogoutOutlined />, onClick: handleLogout, label: 'Đăng xuất', danger: true },
               ]
             }} placement="bottomRight">
               <Space style={{ cursor: "pointer", padding: "0 12px" }}>
