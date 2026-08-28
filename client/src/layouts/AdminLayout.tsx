@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Layout, Menu, Button, theme, Avatar, Space, Typography, Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import {

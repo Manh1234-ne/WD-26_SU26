@@ -1997,7 +1997,7 @@ function ManageBooking() {
                         <strong>Trạng thái thanh toán</strong>
                         {selectedBookingDetails.booking.status === "pending" ? (
                           <p style={{ fontSize: 11, color: "#f59e0b", margin: "4px 0 0 0" }}>
-                            Đang đợi hệ thống ghi nhận thanh toán (Momo/VNPay hoặc tiền mặt)...
+                            Đang đợi hệ thống ghi nhận thanh toán (VNPay hoặc tiền mặt)...
                           </p>
                         ) : (
                           <p style={{ fontSize: 11, color: "#64748b", margin: "4px 0 0 0" }}>
@@ -2046,7 +2046,6 @@ function ManageBooking() {
             {/* Quick Actions Panel */}
             <Card bordered={false} style={{ borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 700, color: "#475569" }}>Thao tác quản lý</span>
                 <Space>
                   {(selectedBookingDetails.booking.status === "pending" ||
                     selectedBookingDetails.booking.status === "confirmed") && (
