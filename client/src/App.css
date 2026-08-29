@@ -1423,7 +1423,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
+  width: max-content;
 }
 
 .seat-row-line {
@@ -1453,6 +1454,7 @@ button:disabled {
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .seat-unit.standard {

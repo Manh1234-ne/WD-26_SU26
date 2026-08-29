@@ -518,41 +518,108 @@ function SeatSelection() {
                         {sortedRows.map((row) => {
                             const isAisleRow = parsedAisleRows.includes(row.toUpperCase())
                             return (
-                                <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', width: '100%' }}>
-                                    <div className="seat-row-line">
-                                        <span className="row-label">{row}</span>
+                                <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start', width: '100%' }}>
+                                    <div className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                        <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                            {groupedSeats[row].map((seat) => {
-                                                const isOccupied = occupiedSet.has(seat._id)
-                                                const isSelected = selectedSeats.some((s) => s._id === seat._id)
-                                                const isCouple = seat.type === 'couple'
-                                                const isAisle = isCouple
-                                                    ? (parsedAisles.includes(seat.number) || parsedAisles.includes(seat.number + 1))
-                                                    : parsedAisles.includes(seat.number)
+                                            {(() => {
+                                                const rowSeats = groupedSeats[row];
+                                                const maxSeatNum = Math.max(...rowSeats.map(s => s.number), 0);
+                                                const elements = [];
+                                                let currentCol = 1;
+                                                for (let num = 1; num <= maxSeatNum; num++) {
+                                                    const seat = rowSeats.find(s => s.number === num);
+                                                    if (seat) {
+                                                        const isCouple = seat.type === 'couple';
+                                                        const colsOccupied = isCouple ? 2 : 1;
+                                                        const seatPhysicalCols = Array.from({ length: colsOccupied }, (_, i) => currentCol + i);
+                                                        const isAisle = parsedAisles.some(a => seatPhysicalCols.includes(a));
+                                                        const isOccupied = occupiedSet.has(seat._id);
+                                                        const isSelected = selectedSeats.some((s) => s._id === seat._id);
 
-                                                return (
-                                                    <div key={seat._id} style={{ display: 'flex', gap: '22px', alignItems: 'center' }}>
-                                                        <button
-                                                            className={`seat-unit ${seat.type} ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
-                                                            onClick={() => toggleSeat(seat)}
-                                                            disabled={isOccupied}
-                                                            title={`${seat.code} (${seat.type}) - ${(showtime.basePrice * seat.priceMultiplier).toLocaleString()}đ`}
-                                                            type="button"
-                                                        >
-                                                            {isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
-                                                        </button>
-                                                        {isAisle && (
-                                                            <div className="aisle-column-gap" title="Lối đi" />
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
+                                                        elements.push(
+                                                            <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                <button
+                                                                    className={`seat-unit ${seat.type} ${isOccupied ? 'occupied' : ''} ${isSelected ? 'selected' : ''}`}
+                                                                    onClick={() => toggleSeat(seat)}
+                                                                    disabled={isOccupied}
+                                                                    title={`${seat.code} (${seat.type}) - ${(showtime.basePrice * seat.priceMultiplier).toLocaleString()}đ`}
+                                                                    type="button"
+                                                                    style={isCouple ? { width: '72px' } : undefined}
+                                                                >
+                                                                    {isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                                </button>
+                                                                {isAisle && (
+                                                                    <div
+                                                                        style={{
+                                                                            width: '24px',
+                                                                            height: '32px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            fontSize: '10px',
+                                                                            color: '#cbd5e1',
+                                                                            fontWeight: 700,
+                                                                            userSelect: 'none',
+                                                                        }}
+                                                                    >
+                                                                        |
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                        currentCol += colsOccupied;
+                                                        if (isCouple) num++;
+                                                    } else {
+                                                        const isAisle = parsedAisles.includes(currentCol);
+                                                        elements.push(
+                                                            <div key={`gap-${num}`} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                <div style={{ width: '32px', height: '32px', flexShrink: 0 }} />
+                                                                {isAisle && (
+                                                                    <div
+                                                                        style={{
+                                                                            width: '24px',
+                                                                            height: '32px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            fontSize: '10px',
+                                                                            color: '#cbd5e1',
+                                                                            fontWeight: 700,
+                                                                            userSelect: 'none',
+                                                                        }}
+                                                                    >
+                                                                        |
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                        currentCol += 1;
+                                                    }
+                                                }
+                                                return elements;
+                                            })()}
                                         </div>
-                                        <span className="row-label">{row}</span>
+                                        <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
                                     </div>
                                     {isAisleRow && (
-                                        <div className="aisle-row-divider" style={{ fontFamily: "Arial", fontWeight: "600", letterSpacing: "1px", color: "#94a3b8", fontSize: "12px" }}>
-                                            <span>LỐI ĐI NGANG</span>
+                                        <div
+                                            style={{
+                                                height: '20px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '9px',
+                                                color: '#94a3b8',
+                                                fontWeight: 800,
+                                                width: '100%',
+                                                borderBottom: '1px dashed #cbd5e1',
+                                                margin: '4px 0',
+                                                letterSpacing: '1.5px',
+                                                textTransform: 'uppercase',
+                                            }}
+                                        >
+                                            LỐI ĐI NGANG (AISLE)
                                         </div>
                                     )}
                                 </div>

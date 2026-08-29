@@ -842,6 +842,7 @@ function ManageShowtime() {
                                                         onChange={field.onChange}
                                                         checkedChildren="Mở bán"
                                                         unCheckedChildren="Ẩn"
+                                                        disabled={true}
                                                     />
                                                     <span style={{ fontSize: '13px', fontWeight: 600, color: field.value ? '#16a34a' : '#64748b' }}>
                                                         {field.value ? 'Đang kích hoạt' : 'Đang tạm ẩn'}
@@ -1054,81 +1055,115 @@ function ManageShowtime() {
                                                     return sortedRows.map(row => {
                                                         const isAisleRow = parsedAisleRows.includes(row.toUpperCase())
                                                         return (
-                                                            <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', width: '100%' }}>
+                                                            <div key={row} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start', width: '100%' }}>
                                                                 <div className="seat-row-line" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                                                     <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
-                                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                                        {grouped[row].map(seat => {
-                                                                            const seatStatus = seatStatusMap.get(seat._id)
-                                                                            const isBooked = seatStatus === 'booked' || seatStatus === 'paid' || seatStatus === 'completed'
-                                                                            const isHeld = seatStatus === 'held' || seatStatus === 'holding'
-                                                                            const isCouple = seat.type === 'couple'
-                                                                            const isAisle = isCouple
-                                                                                ? (parsedAisles.includes(seat.number) || parsedAisles.includes(seat.number + 1))
-                                                                                : parsedAisles.includes(seat.number)
+                                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                        {(() => {
+                                                                            const rowSeats = grouped[row];
+                                                                            const maxSeatNum = Math.max(...rowSeats.map(s => s.number), 0);
+                                                                            const elements = [];
+                                                                            let currentCol = 1;
+                                                                            for (let num = 1; num <= maxSeatNum; num++) {
+                                                                                const seat = rowSeats.find(s => s.number === num);
+                                                                                if (seat) {
+                                                                                    const seatStatus = seatStatusMap.get(seat._id);
+                                                                                    const isBooked = seatStatus === 'booked' || seatStatus === 'paid' || seatStatus === 'completed';
+                                                                                    const isHeld = seatStatus === 'held' || seatStatus === 'holding';
+                                                                                    const isCouple = seat.type === 'couple';
+                                                                                    const colsOccupied = isCouple ? 2 : 1;
+                                                                                    const seatPhysicalCols = Array.from({ length: colsOccupied }, (_, i) => currentCol + i);
+                                                                                    const isAisle = parsedAisles.some(a => seatPhysicalCols.includes(a));
 
-                                                                            let seatStyle: React.CSSProperties = {}
-                                                                            if (isBooked) {
-                                                                                // Ghế đã đặt: Chữ V màu xanh lá
-                                                                                seatStyle = {
-                                                                                    background: '#dcfce7',
-                                                                                    borderColor: '#bbf7d0',
-                                                                                    color: '#16a34a',
-                                                                                    opacity: 1,
-                                                                                    textDecoration: 'none',
-                                                                                }
-                                                                            } else if (isHeld) {
-                                                                                // Ghế đang giữ: Chữ ⏳ màu cam
-                                                                                seatStyle = {
-                                                                                    background: '#fef3c7',
-                                                                                    borderColor: '#fde68a',
-                                                                                    color: '#d97706',
-                                                                                    opacity: 1,
-                                                                                    textDecoration: 'none',
-                                                                                }
-                                                                            } else {
-                                                                                // Ghế chưa đặt (Chung một màu xám nhẹ)
-                                                                                seatStyle = {
-                                                                                    background: '#f1f5f9',
-                                                                                    borderColor: '#cbd5e1',
-                                                                                    color: '#475569',
+                                                                                    let seatStyle: React.CSSProperties = {}
+                                                                                    if (isBooked) {
+                                                                                        seatStyle = {
+                                                                                            background: '#dcfce7',
+                                                                                            borderColor: '#bbf7d0',
+                                                                                            color: '#16a34a',
+                                                                                            opacity: 1,
+                                                                                            textDecoration: 'none',
+                                                                                        }
+                                                                                    } else if (isHeld) {
+                                                                                        seatStyle = {
+                                                                                            background: '#fef3c7',
+                                                                                            borderColor: '#fde68a',
+                                                                                            color: '#d97706',
+                                                                                            opacity: 1,
+                                                                                            textDecoration: 'none',
+                                                                                        }
+                                                                                    } else {
+                                                                                        seatStyle = {
+                                                                                            background: '#f1f5f9',
+                                                                                            borderColor: '#cbd5e1',
+                                                                                            color: '#475569',
+                                                                                        }
+                                                                                    }
+
+                                                                                    elements.push(
+                                                                                        <div key={seat._id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                                            <Tooltip
+                                                                                                key={seat._id}
+                                                                                                title={`${seat.code} (${seat.type.toUpperCase()}) - ${isBooked ? 'Đã đặt' : isHeld ? 'Đang giữ' : 'Còn trống'}`}
+                                                                                            >
+                                                                                                <button
+                                                                                                    className={`seat-unit ${seat.type}`}
+                                                                                                    style={{ cursor: 'default', ...seatStyle, ...(isCouple ? { width: '72px' } : {}) }}
+                                                                                                    type="button"
+                                                                                                >
+                                                                                                    {isBooked ? 'V' : isHeld ? <HugeiconsIcon icon={Time01Icon} /> : seat.type === 'disabled' ? <HugeiconsIcon icon={AccessibilityIcon} /> : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
+                                                                                                </button>
+                                                                                            </Tooltip>
+                                                                                            {isAisle && (
+                                                                                                <div
+                                                                                                    style={{
+                                                                                                        width: '24px',
+                                                                                                        height: '32px',
+                                                                                                        display: 'flex',
+                                                                                                        alignItems: 'center',
+                                                                                                        justifyContent: 'center',
+                                                                                                        fontSize: '10px',
+                                                                                                        color: '#cbd5e1',
+                                                                                                        fontWeight: 700,
+                                                                                                        userSelect: 'none',
+                                                                                                    }}
+                                                                                                >
+                                                                                                    |
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    );
+                                                                                    currentCol += colsOccupied;
+                                                                                    if (isCouple) num++;
+                                                                                } else {
+                                                                                    const isAisle = parsedAisles.includes(currentCol);
+                                                                                    elements.push(
+                                                                                        <div key={`gap-${num}`} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                                            <div style={{ width: '32px', height: '32px', flexShrink: 0 }} />
+                                                                                            {isAisle && (
+                                                                                                <div
+                                                                                                    style={{
+                                                                                                        width: '24px',
+                                                                                                        height: '32px',
+                                                                                                        display: 'flex',
+                                                                                                        alignItems: 'center',
+                                                                                                        justifyContent: 'center',
+                                                                                                        fontSize: '10px',
+                                                                                                        color: '#cbd5e1',
+                                                                                                        fontWeight: 700,
+                                                                                                        userSelect: 'none',
+                                                                                                    }}
+                                                                                                >
+                                                                                                    |
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    );
+                                                                                    currentCol += 1;
                                                                                 }
                                                                             }
-
-                                                                            return (
-                                                                                <div key={seat._id} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                                                    <Tooltip
-                                                                                        key={seat._id}
-                                                                                        title={`${seat.code} (${seat.type.toUpperCase()}) - ${isBooked ? 'Đã đặt' : isHeld ? 'Đang giữ' : 'Còn trống'}`}
-                                                                                    >
-                                                                                        <button
-                                                                                            className={`seat-unit ${seat.type}`}
-                                                                                            style={{ cursor: 'default', ...seatStyle }}
-                                                                                            type="button"
-                                                                                        >
-                                                                                            {isBooked ? 'V' : isHeld ? <HugeiconsIcon icon={Time01Icon} /> : seat.type === 'disabled' ? <HugeiconsIcon icon={AccessibilityIcon} /> : isCouple ? `${seat.number} - ${seat.number + 1}` : seat.number}
-                                                                                        </button>
-                                                                                    </Tooltip>
-                                                                                    {isAisle && (
-                                                                                        <div
-                                                                                            style={{
-                                                                                                width: '20px',
-                                                                                                height: '28px',
-                                                                                                display: 'flex',
-                                                                                                alignItems: 'center',
-                                                                                                justifyContent: 'center',
-                                                                                                fontSize: '10px',
-                                                                                                color: '#cbd5e1',
-                                                                                                fontWeight: 700,
-                                                                                                userSelect: 'none',
-                                                                                            }}
-                                                                                        >
-                                                                                            |
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            )
-                                                                        })}
+                                                                            return elements;
+                                                                        })()}
                                                                     </div>
                                                                     <span className="row-label" style={{ fontWeight: 800, color: '#94a3b8', width: '24px', textAlign: 'center' }}>{row}</span>
                                                                 </div>
