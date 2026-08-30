@@ -42,6 +42,7 @@ import StaffBookings from "./pages/staff/StaffBookings";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StaffCheckIn from "./pages/staff/StaffCheckIn";
 import { ToastContainer } from "react-toastify";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
     >
       <AntdApp>
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Auth */}
             <Route element={<AuthLayout />}>

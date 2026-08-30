@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Carousel, Pagination } from "antd";
+import { Carousel } from "antd";
 import {
   SearchOutlined,
   FilterOutlined,
@@ -9,6 +9,7 @@ import {
   ClockCircleOutlined,
   TagOutlined,
   SortAscendingOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
 import { getMovies } from "../../features/movie/movie.service";
 import type { Movie, MovieStatus } from "../../features/movie/movie.types";
@@ -196,6 +197,15 @@ function Home() {
     setSearch("");
     setSortBy("newest");
     setCurrentPage(1);
+  };
+
+  const getMoviesUrl = () => {
+    const params = new URLSearchParams();
+    if (status !== "all") params.set("status", status);
+    if (selectedGenre !== "Tất cả") params.set("genre", selectedGenre);
+    if (search.trim()) params.set("search", search.trim());
+    const query = params.toString();
+    return query ? `/movies?${query}` : "/movies";
   };
 
   const hasActiveFilters =
@@ -963,33 +973,51 @@ function Home() {
                 );
               })}
             </div>
-
-            {/* Pagination Controls */}
-            {filteredMovies.length > PAGE_SIZE && (
-              <div
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                marginTop: "40px",
+                marginBottom: "20px",
+              }}
+            >
+              <Link
+                to={getMoviesUrl()}
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
+                  display: "inline-flex",
                   alignItems: "center",
-                  marginTop: "40px",
-                  padding: "16px 0",
+                  justifyContent: "center",
+                  gap: "10px",
+                  padding: "13px 36px",
+                  borderRadius: "50px",
+                  background: "linear-gradient(135deg, #e11d48 0%, #be123c 100%)",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: "15px",
+                  textDecoration: "none",
+                  boxShadow: "0 8px 24px rgba(225, 29, 72, 0.3)",
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                  e.currentTarget.style.boxShadow = "0 12px 28px rgba(225, 29, 72, 0.45)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(225, 29, 72, 0.3)";
                 }}
               >
-                <Pagination
-                  current={currentPage}
-                  pageSize={PAGE_SIZE}
-                  total={filteredMovies.length}
-                  showSizeChanger={false}
-                  onChange={(page) => {
-                    setCurrentPage(page);
-                    const controlSection = document.getElementById("movie-section-anchor");
-                    if (controlSection) {
-                      controlSection.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }
-                  }}
-                />
-              </div>
-            )}
+                <span>
+                  {filteredMovies.length > PAGE_SIZE
+                    ? `Xem thêm`
+                    : "Xem tất cả danh sách phim"}
+                </span>
+                <ArrowRightOutlined style={{ fontSize: "14px" }} />
+              </Link>
+            </div>
+
           </>
         )}
       </div>
