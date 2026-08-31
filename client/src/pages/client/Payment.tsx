@@ -98,7 +98,33 @@ function Payment() {
 
     const selectedComboItems = (combosData || []).filter((c: any) => (selectedCombos[c._id] || 0) > 0);
 
-    const displayedTotal = (booking?.totalSeatPrice || 0) + selectedCombosTotal - (discountAmount || 0);
+    const orderAmount = (booking?.totalSeatPrice || 0) + selectedCombosTotal;
+
+    const computedDiscountAndFinal = (() => {
+        let discount = 0;
+        if (appliedVoucher) {
+            if (orderAmount >= (appliedVoucher.minOrderAmount || 0)) {
+                if (appliedVoucher.discountType === "percent") {
+                    discount = (orderAmount * (appliedVoucher.discountValue || 0)) / 100;
+                    if (appliedVoucher.maxDiscountAmount && discount > appliedVoucher.maxDiscountAmount) {
+                        discount = appliedVoucher.maxDiscountAmount;
+                    }
+                } else if (appliedVoucher.discountType === "fixed") {
+                    discount = appliedVoucher.discountValue || 0;
+                }
+                if (discount > orderAmount) {
+                    discount = orderAmount;
+                }
+            }
+        }
+        return {
+            discountAmount: discount,
+            finalAmount: orderAmount - discount
+        };
+    })();
+
+    const displayedDiscount = computedDiscountAndFinal.discountAmount;
+    const displayedFinal = computedDiscountAndFinal.finalAmount;
 
     // Persist selection to sessionStorage (used implicitly on changes)
     useEffect(() => {
@@ -189,6 +215,13 @@ function Payment() {
 
         setIsCheckingVoucher(true)
         try {
+            // Sync latest combos to server first so the voucher logic is calculated against correct total
+            const combosPayload = Object.entries(selectedCombos)
+                .map(([combo, quantity]) => ({ combo, quantity }))
+                .filter((c) => c.quantity > 0);
+
+            await api.patch(`/bookings/${bookingId}/combos`, { combos: combosPayload });
+
             const res = await api.patch(`/bookings/${bookingId}/apply-voucher`, {
                 voucherCode: voucherCode.trim(),
             })
@@ -199,6 +232,8 @@ function Payment() {
                 setDiscountAmount(voucherData.discountAmount)
                 setFinalAmount(voucherData.finalAmount)
                 message.success(`Áp dụng voucher thành công: ${voucherData.voucher.code}`)
+                // refresh booking cache
+                queryClient.invalidateQueries({ queryKey: ["booking", bookingId] });
             } else {
                 setAppliedVoucher(null)
                 setDiscountAmount(0)
@@ -536,7 +571,7 @@ function Payment() {
                     style={{ width: "100%", padding: "14px 28px", fontSize: "16px", fontWeight: 700, marginTop: "16px" }}
                     type="button"
                 >
-                    {isProcessing ? "Đang xử lý giao dịch..." : `Thanh Toán ${finalAmount.toLocaleString("vi-VN")} đ`}
+                    {isProcessing ? "Đang xử lý giao dịch..." : `Thanh Toán ${displayedFinal.toLocaleString("vi-VN")} đ`}
                 </button>
                 <div style={{ marginTop: "20px", display: "flex", alignItems: "center", gap: "8px", color: "#64748b", fontSize: "13px", justifyContent: "center" }}>
                     <SafetyCertificateOutlined style={{ color: "#10b981" }} />
@@ -624,13 +659,13 @@ function Payment() {
                     )}
                     <div className="summary-info-item">
                         <span className="label">Khuyến mãi giảm</span>
-                        <span className="val">-{(discountAmount || 0).toLocaleString("vi-VN")} đ</span>
+                        <span className="val">-{displayedDiscount.toLocaleString("vi-VN")} đ</span>
                     </div>
                     {/* Combo total now shown per-item above; removed aggregated line */}
                 </div>
                 <div className="summary-total-price">
                     <span className="label">Tổng tiền thanh toán</span>
-                    <span className="val">{displayedTotal.toLocaleString("vi-VN")} đ</span>
+                    <span className="val">{displayedFinal.toLocaleString("vi-VN")} đ</span>
                 </div>
                 <button
                     className="ghost-button"
