@@ -36,14 +36,15 @@ const fail = (res, status, message) =>
   });
 
 const canAccessBooking = (user, booking) => {
-  if (!user || !booking) return false;
-  if (["admin", "staff"].includes(user.role)) return true;
+  if (!booking) return false;
+  if (user && ["admin", "staff"].includes(user.role)) return true;
+  if (!booking.user || booking.status === "pending") return true;
   const bookingUserId = booking.user?._id
     ? booking.user._id.toString()
     : booking.user
     ? booking.user.toString()
     : null;
-  return Boolean(bookingUserId && bookingUserId === user._id.toString());
+  return Boolean(user && bookingUserId && bookingUserId === user._id.toString());
 };
 
 export const createBooking = asyncHandler(

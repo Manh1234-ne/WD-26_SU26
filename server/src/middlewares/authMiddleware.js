@@ -8,7 +8,12 @@ export const protect = asyncHandler(async (req, res, next) => {
     if (!token) {
         return res.status(401).json({ success: false, message: "Chưa đăng nhập" });
     }
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    let decoded;
+    try {
+        decoded = jwt.verify(token, process.env.SECRET_KEY);
+    } catch {
+        return res.status(401).json({ success: false, message: "Token không hợp lệ hoặc đã hết hạn" });
+    }
     const user = await User.findById(decoded.id);
     if (!user || !user.isActive) {
         return res.status(401).json({ success: false, message: "Token không hợp lệ hoặc tài khoản bị khoá" });
