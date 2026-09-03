@@ -44,6 +44,7 @@ export function StaffCheckIn() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [checkInSuccess, setCheckInSuccess] = useState(false);
   const [scannerModalOpen, setScannerModalOpen] = useState(false);
+  const [comboWarning, setComboWarning] = useState<string | null>(null);
 
   const inputRef = useRef<any>(null);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
@@ -106,6 +107,7 @@ export function StaffCheckIn() {
     setBookingSeats([]);
     setBookingCombos([]);
     setCheckInSuccess(false);
+    setComboWarning(null);
 
     try {
       const res = await api.get("/bookings");
@@ -172,18 +174,62 @@ export function StaffCheckIn() {
     }
   };
 
+  const handleScannedComboWarning = () => {
+    setSearching(false);
+    setBooking(null);
+    setBookingSeats([]);
+    setBookingCombos([]);
+    setCheckInSuccess(false);
+    setQrCodeUrl("");
+    setSearchInput("");
+    setComboWarning(
+      "Bạn vừa quét mã QR Combo bắp nước. Hệ thống KHÔNG cho phép in vé hay xem thông tin vé từ mã Combo. Bắt buộc phải quét mã QR vé xem phim thì mới hiện ra thông tin vé và cho in vé!"
+    );
+
+    toast.warning("Đây là mã QR Combo! Cần quét mã QR vé xem phim để hiển thị thông tin vé và in vé.");
+
+    Modal.warning({
+      title: (
+        <span style={{ color: "#d97706", fontWeight: 800, fontSize: 17 }}>
+          ⚠️ MÃ QR COMBO BẮP NƯỚC
+        </span>
+      ),
+      content: (
+        <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.6 }}>
+          <p style={{ marginBottom: 8, color: "#1e293b", fontWeight: 600 }}>
+            Bạn vừa quét mã QR của Combo bắp nước, không phải mã QR vé xem phim!
+          </p>
+          <p style={{ margin: 0, color: "#475569" }}>
+            Hệ thống <b>không hiển thị thông tin vé</b> và <b>không cho phép in vé</b> từ mã QR Combo. Bắt buộc phải <b>quét mã QR vé xem phim</b> thì mới hiện ra thông tin vé rồi cho in vé.
+          </p>
+        </div>
+      ),
+      okText: "Đã hiểu, quét lại mã vé xem phim",
+      okButtonProps: {
+        type: "primary",
+        style: { background: "#d97706", borderColor: "#d97706", fontWeight: "bold" },
+      },
+    });
+  };
+
   const handleScanSuccess = async (text: string) => {
     await stopScanner();
     setScannerModalOpen(false);
 
     try {
       const data = JSON.parse(text);
-      if (data && (data.bookingId || data.bookingCode)) {
-        const id = data.bookingId || data.bookingCode;
-        void processScannedTicket(id);
-      } else {
-        toast.error("Mã QR không đúng định dạng vé.");
+      if (data) {
+        if (data.type === "combo") {
+          handleScannedComboWarning();
+          return;
+        }
+        if (data.bookingId || data.bookingCode) {
+          const id = data.bookingId || data.bookingCode;
+          void processScannedTicket(id);
+          return;
+        }
       }
+      toast.error("Mã QR không đúng định dạng vé.");
     } catch (err) {
       if (text && (text.length === 24 || text.startsWith("LUMORA-") || text.trim().length > 0)) {
         void processScannedTicket(text.trim());
@@ -200,6 +246,23 @@ export function StaffCheckIn() {
       return;
     }
 
+    try {
+      const parsed = JSON.parse(code);
+      if (parsed) {
+        if (parsed.type === "combo") {
+          handleScannedComboWarning();
+          return;
+        }
+        if (parsed.bookingId || parsed.bookingCode) {
+          void processScannedTicket(parsed.bookingId || parsed.bookingCode);
+          return;
+        }
+      }
+    } catch {
+      // not JSON, continue search below
+    }
+
+    setComboWarning(null);
     setSearching(true);
     setBooking(null);
     setBookingSeats([]);
@@ -297,6 +360,7 @@ export function StaffCheckIn() {
     setBookingSeats([]);
     setBookingCombos([]);
     setCheckInSuccess(false);
+    setComboWarning(null);
     if (inputRef.current) inputRef.current.focus();
   };
 
@@ -431,15 +495,36 @@ export function StaffCheckIn() {
           <Spin size="large" tip="Đang truy xuất dữ liệu vé rạp..." />
         </div>
       ) : !booking ? (
-        <Card style={{ textAlign: "center", padding: "50px 20px", borderRadius: 12 }}>
-          <ScanOutlined style={{ fontSize: 64, color: "#94a3b8" }} />
-          <Title level={4} style={{ color: "#64748b", marginTop: 16 }}>
-            Vui lòng nhập hoặc quét mã vé để bắt đầu soát vé
-          </Title>
-          <Text type="secondary">
-            Đầu quét mã barcode/QR sẽ tự động điền mã vé vào thanh tìm kiếm trên.
-          </Text>
-        </Card>
+        <>
+          {comboWarning && (
+            <Alert
+              message="CẢNH BÁO: ĐÃ QUÉT MÃ QR COMBO BẮP NƯỚC"
+              description="Bạn vừa quét mã QR của Combo bắp nước. Hệ thống KHÔNG hiển thị thông tin vé và KHÔNG cho phép in vé từ mã QR Combo. Bắt buộc phải quét mã QR vé xem phim thì mới hiện ra thông tin vé rồi cho in vé!"
+              type="warning"
+              showIcon
+              closable
+              onClose={() => setComboWarning(null)}
+              style={{
+                marginBottom: 20,
+                borderRadius: 12,
+                border: "2px solid #f59e0b",
+                background: "#fffbeb",
+                padding: "16px 20px",
+              }}
+            />
+          )}
+          <Card style={{ textAlign: "center", padding: "50px 20px", borderRadius: 12 }}>
+            <ScanOutlined style={{ fontSize: 64, color: comboWarning ? "#f59e0b" : "#94a3b8" }} />
+            <Title level={4} style={{ color: comboWarning ? "#d97706" : "#64748b", marginTop: 16 }}>
+              {comboWarning
+                ? "Cần quét mã QR vé xem phim để hiển thị thông tin vé và in vé"
+                : "Vui lòng nhập hoặc quét mã vé để bắt đầu soát vé"}
+            </Title>
+            <Text type="secondary">
+              Đầu quét mã barcode/QR camera sẽ tự động nhận diện vé xem phim.
+            </Text>
+          </Card>
+        </>
       ) : (
         <Row gutter={[24, 24]}>
           {/* Main Ticket Information */}
