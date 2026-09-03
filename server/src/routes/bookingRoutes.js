@@ -25,7 +25,7 @@ routerBooking.post("/", optionalProtect, createBooking);
 
 routerBooking.get("/user/:userId", protect, getBookingsByUser);
 
-routerBooking.get("/:id", protect, getBookingById);
+routerBooking.get("/:id", optionalProtect, getBookingById);
 
 routerBooking.patch("/:id/seats", updateBookingSeats);
 routerBooking.patch("/:id/combos", updateBookingCombos);

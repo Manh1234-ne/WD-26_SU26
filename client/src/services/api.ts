@@ -16,3 +16,14 @@ api.interceptors.request.use((config) => {
 
   return config
 })
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('cinema_token')
+      localStorage.removeItem('cinema_user')
+    }
+    return Promise.reject(error)
+  }
+)
