@@ -41,8 +41,8 @@ const canAccessBooking = (user, booking) => {
   const bookingUserId = booking.user?._id
     ? booking.user._id.toString()
     : booking.user
-    ? booking.user.toString()
-    : null;
+      ? booking.user.toString()
+      : null;
   return Boolean(bookingUserId && bookingUserId === user._id.toString());
 };
 
