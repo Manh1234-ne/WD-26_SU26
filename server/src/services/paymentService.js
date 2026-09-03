@@ -81,7 +81,7 @@ export const createVnPayUrlService = async ({ bookingId, ipAddr }) => {
     throw new Error("Thiếu cấu hình VNPay");
   }
   const vnpCreateDate = moment().utcOffset(7).format("YYYYMMDDHHmmss");
-  const BUFFER_MS = 2.5 * 60 * 1000; // 2.5 phút
+  const BUFFER_MS = 2 * 60 * 1000;
   const vnpExpireDate = moment(booking.expiresAt)
     .subtract(BUFFER_MS, "ms")
     .utcOffset(7)
