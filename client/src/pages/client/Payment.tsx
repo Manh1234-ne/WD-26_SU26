@@ -7,7 +7,19 @@ import { getBookingById } from "../../features/booking/booking.service";
 import { useBookingUnloadGuard } from "../../features/booking/useBookingUnloadGuard";
 import Swal from "sweetalert2";
 import { createMockMomoPayment, createVnPayUrl } from "../../features/payment/payment.service";
-import { ArrowLeftOutlined, ClockCircleOutlined, SafetyCertificateOutlined, VideoCameraOutlined, WalletOutlined } from "@ant-design/icons";
+import { 
+    ArrowLeftOutlined, 
+    CheckCircleFilled, 
+    CheckOutlined, 
+    ClockCircleOutlined, 
+    DeleteOutlined, 
+    MinusOutlined, 
+    PlusOutlined, 
+    SafetyCertificateOutlined, 
+    ShoppingOutlined, 
+    VideoCameraOutlined, 
+    WalletOutlined 
+} from "@ant-design/icons";
 import { format } from "date-fns";
 import Loading from "../../components/Loading/Loading";
 import { api } from "../../services/api";
@@ -97,6 +109,35 @@ function Payment() {
     })();
 
     const selectedComboItems = (combosData || []).filter((c: any) => (selectedCombos[c._id] || 0) > 0);
+    const totalSelectedComboCount = Object.values(selectedCombos).reduce((acc, q) => acc + (q || 0), 0);
+
+    const handleAddCombo = (combo: any, availableForOne: boolean, hasStockForQty: (qty: number) => boolean) => {
+        const currentQty = selectedCombos[combo._id] || 0;
+        const wanted = currentQty + 1;
+        if (!availableForOne || !hasStockForQty(wanted)) {
+            message.error("Combo không đủ tồn kho hoặc đã ngừng bán");
+            return;
+        }
+        const newMap = { ...selectedCombos, [combo._id]: wanted };
+        setSelectedCombos(newMap);
+    };
+
+    const handleRemoveCombo = (comboId: string) => {
+        const currentQty = selectedCombos[comboId] || 0;
+        const newQty = Math.max(0, currentQty - 1);
+        const newMap = { ...selectedCombos };
+        if (newQty === 0) {
+            delete newMap[comboId];
+        } else {
+            newMap[comboId] = newQty;
+        }
+        setSelectedCombos(newMap);
+    };
+
+    const handleClearCombos = () => {
+        setSelectedCombos({});
+        message.info("Đã bỏ chọn tất cả combo");
+    };
 
     const orderAmount = (booking?.totalSeatPrice || 0) + selectedCombosTotal;
 
@@ -439,81 +480,185 @@ function Payment() {
                     </div> */}
                 </div>
                 {/* Combo selector: client-only UI between payment and voucher */}
-                <div style={{ marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid #e6e7eb', background: '#ffffff' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 10 }}>Chọn combo</div>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        {(combosData || []).map((combo: any) => {
-                            const qty = selectedCombos[combo._id] || 0;
-                            const isActive = combo.isActive !== false;
-                            const ingredients = combo.ingredients || [];
-                            const isIngredientActive = ingredients.every((ing: any) => ing.inventoryItem && ing.inventoryItem.isActive !== false);
-                            const hasStockForQty = (wantedQty: number) => {
-                                return ingredients.every((ing: any) => {
-                                    const inv = ing.inventoryItem;
-                                    if (!inv || typeof inv.stockQuantity !== 'number') return false;
-                                    const required = (ing.quantity || 0) * wantedQty;
-                                    return inv.stockQuantity >= required;
-                                })
-                            }
-                            const availableForOne = isActive && isIngredientActive && hasStockForQty(1);
-                            return (
-                                <div key={combo._id} style={{ border: '1px solid #eef2ff', padding: 10, borderRadius: 8, width: 220, background: '#fff' }}>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        {combo.image ? (
-                                            <img src={combo.image} alt={combo.name} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }} />
-                                        ) : (
-                                            <div style={{ width: 56, height: 56, background: '#f1f5f9', borderRadius: 6 }} />
+                <div className="combo-section-card">
+                    <div className="combo-section-header">
+                        <div className="combo-header-left">
+                            <div className="combo-header-icon">
+                                🍿
+                            </div>
+                            <div>
+                                <h3 className="combo-header-title">Chọn Combo Bắp Nước</h3>
+                                <p className="combo-header-subtitle">Thưởng thức bắp giòn &amp; nước mát để xem phim thêm trọn vẹn</p>
+                            </div>
+                        </div>
+                        <div>
+                            {totalSelectedComboCount > 0 ? (
+                                <span className="combo-header-badge active">
+                                    <ShoppingOutlined /> Đã chọn: {totalSelectedComboCount} phần
+                                </span>
+                            ) : (
+                                <span className="combo-header-badge">
+                                    Tùy chọn
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {(!combosData || combosData.length === 0) ? (
+                        <div className="combo-empty-state">
+                            Hiện chưa có combo bắp nước nào khả dụng.
+                        </div>
+                    ) : (
+                        <div className="combo-grid">
+                            {(combosData || []).map((combo: any) => {
+                                const qty = selectedCombos[combo._id] || 0;
+                                const isSelected = qty > 0;
+                                const isActive = combo.isActive !== false;
+                                const ingredients = combo.ingredients || [];
+                                const isIngredientActive = ingredients.every((ing: any) => ing.inventoryItem && ing.inventoryItem.isActive !== false);
+                                const hasStockForQty = (wantedQty: number) => {
+                                    return ingredients.every((ing: any) => {
+                                        const inv = ing.inventoryItem;
+                                        if (!inv || typeof inv.stockQuantity !== 'number') return false;
+                                        const required = (ing.quantity || 0) * wantedQty;
+                                        return inv.stockQuantity >= required;
+                                    });
+                                };
+                                const availableForOne = isActive && isIngredientActive && hasStockForQty(1);
+                                const canAddMore = availableForOne && hasStockForQty(qty + 1);
+
+                                return (
+                                    <div
+                                        key={combo._id}
+                                        className={`combo-card ${isSelected ? 'is-selected' : ''} ${!availableForOne ? 'is-disabled' : ''}`}
+                                    >
+                                        {isSelected && (
+                                            <div className="combo-card-tag">
+                                                <CheckCircleFilled /> Đã chọn x{qty}
+                                            </div>
                                         )}
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 700 }}>{combo.name}</div>
-                                            <div style={{ color: '#64748b', fontSize: 12 }}>{combo.description}</div>
-                                            <div style={{ marginTop: 6, fontWeight: 800 }}>{(combo.price || 0).toLocaleString('vi-VN')} đ</div>
+
+                                        <div className="combo-card-content">
+                                            <div className="combo-img-wrap">
+                                                {combo.image ? (
+                                                    <img
+                                                        src={combo.image}
+                                                        alt={combo.name}
+                                                        className="combo-img"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLElement).style.display = 'none';
+                                                            const fallback = (e.target as HTMLElement).nextElementSibling;
+                                                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div
+                                                    className="combo-img-fallback"
+                                                    style={{ display: combo.image ? 'none' : 'flex' }}
+                                                >
+                                                    🍿
+                                                </div>
+                                            </div>
+
+                                            <div className="combo-details">
+                                                <div className="combo-name" title={combo.name}>{combo.name}</div>
+                                                <div className="combo-desc" title={combo.description || "Combo bắp nước rạp chiếu phim"}>
+                                                    {combo.description || "Combo bắp nước rạp chiếu phim"}
+                                                </div>
+                                                <div className="combo-price-line">
+                                                    <span className="combo-price">
+                                                        {(combo.price || 0).toLocaleString('vi-VN')} đ
+                                                    </span>
+
+                                                    {!isActive && (
+                                                        <span className="combo-status-badge stopped">Ngừng bán</span>
+                                                    )}
+                                                    {isActive && !isIngredientActive && (
+                                                        <span className="combo-status-badge missing">Tạm ngưng</span>
+                                                    )}
+                                                    {isActive && isIngredientActive && !availableForOne && (
+                                                        <span className="combo-status-badge out">Hết hàng</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="combo-card-actions">
+                                            {!isSelected ? (
+                                                <button
+                                                    type="button"
+                                                    className="combo-btn-add"
+                                                    disabled={!availableForOne}
+                                                    onClick={() => handleAddCombo(combo, availableForOne, hasStockForQty)}
+                                                >
+                                                    <PlusOutlined /> {availableForOne ? "Thêm" : "Tạm hết"}
+                                                </button>
+                                            ) : (
+                                                <div className="combo-stepper-wrap">
+                                                    <div className="combo-stepper">
+                                                        <button
+                                                            type="button"
+                                                            className="combo-step-btn"
+                                                            onClick={() => handleRemoveCombo(combo._id)}
+                                                            title="Giảm số lượng"
+                                                        >
+                                                            <MinusOutlined />
+                                                        </button>
+                                                        <span className="combo-step-qty">{qty}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="combo-step-btn"
+                                                            disabled={!canAddMore}
+                                                            onClick={() => handleAddCombo(combo, availableForOne, hasStockForQty)}
+                                                            title={canAddMore ? "Tăng số lượng" : "Đã đạt giới hạn số lượng có sẵn"}
+                                                        >
+                                                            <PlusOutlined />
+                                                        </button>
+                                                    </div>
+                                                    <span className="combo-subtotal">
+                                                        {((combo.price || 0) * qty).toLocaleString('vi-VN')} đ
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <button type="button" onClick={() => {
-                                                const newMap = { ...selectedCombos };
-                                                newMap[combo._id] = Math.max(0, qty - 1);
-                                                setSelectedCombos(newMap);
-                                            }} style={{ width: 28, height: 28, borderRadius: 6 }} disabled={qty <= 0}>-</button>
-                                            <div style={{ minWidth: 26, textAlign: 'center' }}>{qty}</div>
-                                            <button type="button" onClick={() => {
-                                                const wanted = (qty || 0) + 1;
-                                                if (!availableForOne || !hasStockForQty(wanted)) {
-                                                    message.error("Combo không đủ tồn kho hoặc đã ngừng bán");
-                                                    return;
-                                                }
-                                                const newMap = { ...selectedCombos };
-                                                newMap[combo._id] = wanted;
-                                                setSelectedCombos(newMap);
-                                            }} style={{ width: 28, height: 28, borderRadius: 6 }} disabled={!availableForOne}>+</button>
-                                        </div>
-                                        <div>
-                                            <button type="button" onClick={() => {
-                                                const wanted = (qty || 0) + 1;
-                                                if (!availableForOne || !hasStockForQty(wanted)) {
-                                                    message.error("Combo không đủ tồn kho hoặc đã ngừng bán");
-                                                    return;
-                                                }
-                                                const newMap = { ...selectedCombos };
-                                                newMap[combo._id] = wanted;
-                                                setSelectedCombos(newMap);
-                                            }} className="primary-button" style={{ padding: '6px 10px', fontSize: 12 }} disabled={!availableForOne}>Thêm</button>
-                                        </div>
-                                    </div>
-                                    <div style={{ marginTop: 8 }}>
-                                        {!isActive && <span style={{ color: '#ef4444', fontWeight: 700 }}>Ngừng bán</span>}
-                                        {isActive && !isIngredientActive && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Thiếu nguyên liệu</span>}
-                                        {isActive && isIngredientActive && !availableForOne && <span style={{ color: '#ef4444', fontWeight: 700 }}>Hết hàng</span>}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <button type="button" onClick={applyCombosLocally} className="primary-button" style={{ padding: '8px 12px' }}>Cập nhật combo</button>
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {totalSelectedComboCount > 0 && (
+                        <div className="combo-section-footer">
+                            <div className="combo-footer-summary">
+                                <ShoppingOutlined style={{ fontSize: 17, color: '#e11d48' }} />
+                                <span>
+                                    Đã chọn <strong>{totalSelectedComboCount}</strong> phần • Tổng tiền:{" "}
+                                    <span className="combo-footer-summary-highlight">
+                                        {selectedCombosTotal.toLocaleString('vi-VN')} đ
+                                    </span>
+                                </span>
+                            </div>
+                            <div className="combo-footer-actions">
+                                <button
+                                    type="button"
+                                    className="combo-btn-clear"
+                                    onClick={handleClearCombos}
+                                    title="Bỏ chọn tất cả combo"
+                                >
+                                    <DeleteOutlined /> Bỏ chọn
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={applyCombosLocally}
+                                    className="combo-btn-sync"
+                                    disabled={isProcessing}
+                                    title="Lưu và giữ kho combo"
+                                >
+                                    {isProcessing ? "Đang lưu..." : <><CheckOutlined /> Xác nhận combo</>}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ marginTop: "20px", border: "1px dashed #f59e0b", borderRadius: "10px", padding: "14px", background: "#fff7ed" }}>
@@ -641,18 +786,24 @@ function Payment() {
                         <span className="val">{(booking.totalSeatPrice || 0).toLocaleString("vi-VN")} đ</span>
                     </div>
                     {selectedComboItems.length > 0 && (
-                        <div style={{ marginTop: 8, width: '100%' }}>
-                            <div style={{ fontWeight: 700, marginBottom: 6 }}>Combo đã chọn</div>
+                        <div style={{ marginTop: 10, marginBottom: 4, width: '100%', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontWeight: 700, fontSize: '13px', color: '#334155', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>🍿 Combo đã chọn</span>
+                                <span style={{ fontSize: '12px', color: '#64748b' }}>{totalSelectedComboCount} phần</span>
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {selectedComboItems.map((c: any) => {
                                     const qty = selectedCombos[c._id] || 0;
                                     const sub = (c.price || 0) * qty;
                                     return (
-                                        <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ color: '#0f172a' }}>{c.name} x{qty}</div>
-                                            <div style={{ fontWeight: 700 }}>{sub.toLocaleString('vi-VN')} đ</div>
+                                        <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                                            <div style={{ color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontWeight: 500 }}>{c.name}</span>
+                                                <span style={{ background: '#fee2e2', color: '#e11d48', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>x{qty}</span>
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{sub.toLocaleString('vi-VN')} đ</div>
                                         </div>
-                                    )
+                                    );
                                 })}
                             </div>
                         </div>
